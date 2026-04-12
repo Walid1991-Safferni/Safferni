@@ -146,8 +146,8 @@ export default function App() {
     setError("");
 
     const r = selectedRoute;
-    const routeText = `${r.from[lang]} → ${r.to[lang]}`;
-    const routeTextEn = `${r.from.en} → ${r.to.en}`;
+    const routeText = `${r.from[lang]} ${lang === "ar" ? "إلى" : "to"} ${r.to[lang]}`;
+    const routeTextEn = `${r.from.en} to ${r.to.en}`;
     const typeLabel = effectiveType === "seat" ? "Seat" : effectiveType === "car" ? "Car" : "Van";
 
     // 1. Save to Google Sheets
@@ -327,7 +327,7 @@ export default function App() {
                 <label style={lbl}>{t.booking.route} *</label>
                 <select value={form.route} onChange={e => setForm({ ...form, route: e.target.value })} style={inp}>
                   <option value="">{t.booking.selectRoute}</option>
-                  {allRoutes.map((r,i) => <option key={i} value={i}>{r.from[lang]} → {r.to[lang]}</option>)}
+                  {allRoutes.map((r,i) => <option key={i} value={i}>{r.from[lang]} {lang === "ar" ? "إلى" : "to"} {r.to[lang]}</option>)}
                 </select>
               </div>
 
