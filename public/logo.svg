@@ -1,0 +1,38 @@
+<svg width="680" height="320" viewBox="0 0 680 320" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&amp;display=swap');
+    .logo-ar { font-family: 'Montserrat', sans-serif; font-size: 72px; font-weight: 900; fill: #1B3A2A; }
+    .logo-en { font-family: 'Montserrat', sans-serif; font-size: 22px; font-weight: 700; fill: #1B3A2A; letter-spacing: 8px; }
+    .logo-tagline { font-family: 'Montserrat', sans-serif; font-size: 13px; font-weight: 500; fill: #888; }
+    .road-color { fill: #1B3A2A; }
+    .road-stripe { fill: #F0F7F3; }
+    .dot-accent { fill: #2D5A3D; }
+  </style>
+
+  <!-- Road icon -->
+  <g transform="translate(340, 55)">
+    <path d="M-18 0 L-10 40 L10 40 L18 0 Z" class="road-color"/>
+    <rect x="-1.5" y="6" width="3" height="8" rx="1" class="road-stripe"/>
+    <rect x="-1.5" y="19" width="3" height="8" rx="1" class="road-stripe"/>
+    <rect x="-1.5" y="32" width="3" height="5" rx="1" class="road-stripe"/>
+  </g>
+
+  <!-- Arabic brand name -->
+  <text x="340" y="155" text-anchor="middle" class="logo-ar">سفّرني</text>
+
+  <!-- English brand name -->
+  <text x="340" y="195" text-anchor="middle" class="logo-en">SAFFERNI</text>
+
+  <!-- Decorative line -->
+  <line x1="260" y1="215" x2="420" y2="215" stroke="#1B3A2A" stroke-width="1" opacity="0.2"/>
+
+  <!-- Tagline -->
+  <text x="340" y="242" text-anchor="middle" class="logo-tagline">وجهتك علينا — بس قلنا وين</text>
+
+  <!-- Accent dots -->
+  <circle cx="248" cy="215" r="2.5" class="dot-accent"/>
+  <circle cx="432" cy="215" r="2.5" class="dot-accent"/>
+
+  <!-- Route cities -->
+  <text x="340" y="275" text-anchor="middle" font-family="Montserrat, sans-serif" font-size="10" font-weight="500" fill="#BBB" letter-spacing="3">دمشق · حلب · حمص · عمّان · بيروت</text>
+</svg>
