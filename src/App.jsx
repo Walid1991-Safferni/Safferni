@@ -283,6 +283,16 @@ export default function App() {
           {/* HERO */}
           <section style={{ background:"linear-gradient(180deg, #1B3A2A 0%, #234D36 100%)", padding:"70px 24px 80px", textAlign:"center", position:"relative", overflow:"hidden" }}>
             <div style={{ position:"absolute", top:0, left:"50%", transform:"translateX(-50%)", width:3, height:"100%", background:"rgba(255,255,255,0.05)" }} />
+<svg style={{ position:"absolute", top:0, left:0, width:"100%", height:"100%", opacity:0.04 }} viewBox="0 0 800 400" preserveAspectRatio="xMidYMid slice">
+  <g fill="white">
+    <path d="M60 320 l10-20 h30 l5-15 h25 l5 15 h30 l10 20 z M75 320 a8 8 0 1 0 16 0 M125 320 a8 8 0 1 0 16 0" />
+    <path d="M700 280 l10-20 h30 l5-15 h25 l5 15 h30 l10 20 z M715 280 a8 8 0 1 0 16 0 M765 280 a8 8 0 1 0 16 0" transform="scale(-1,1) translate(-820,0)" />
+    <path d="M250 350 l8-16 h24 l4-12 h20 l4 12 h24 l8 16 z M262 350 a6 6 0 1 0 12 0 M302 350 a6 6 0 1 0 12 0" />
+    <path d="M550 300 l12-24 h36 l6-18 h30 l6 18 h36 l12 24 z M568 300 a10 10 0 1 0 20 0 M628 300 a10 10 0 1 0 20 0" />
+    <path d="M150 260 l6-12 h18 l3-9 h15 l3 9 h18 l6 12 z M159 260 a5 5 0 1 0 10 0 M189 260 a5 5 0 1 0 10 0" />
+    <path d="M420 340 l10-20 h30 l5-15 h25 l5 15 h30 l10 20 z M435 340 a8 8 0 1 0 16 0 M485 340 a8 8 0 1 0 16 0" />
+  </g>
+</svg>
             <div style={{ position:"relative", zIndex:1, ...fade }}>
               <div style={{ animation:"float 3s ease-in-out infinite", marginBottom:20 }}><LogoSVG light /></div>
               <h1 style={{ fontSize:"clamp(48px, 10vw, 80px)", fontWeight:900, color:"white", lineHeight:1.1, marginBottom:4 }}>{t.brand}</h1>
