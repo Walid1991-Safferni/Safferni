@@ -152,11 +152,7 @@ export default function App() {
 
     // 1. Save to Google Sheets
     try {
-      fetch(SHEET_URL, {
-        method: "POST",
-        mode: "no-cors",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      const params = new URLSearchParams({
           date: form.date,
           time: form.time || "-",
           route: routeTextEn,
@@ -165,8 +161,8 @@ export default function App() {
           name: form.name,
           phone: form.phone,
           notes: form.notes || "-",
-        }),
-      });
+        });
+      fetch(`${SHEET_URL}?${params.toString()}`, { method: "GET", mode: "no-cors" });
     } catch (err) {
       console.log("Sheet save error:", err);
     }
