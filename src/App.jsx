@@ -1,5 +1,7 @@
 import { useState, useRef } from "react";
 
+const SHEET_URL = "https://script.google.com/macros/s/AKfycbxfCu6s3k-Pt618KoEdZuPV6mfv98L2J3ZAptGUURFiVKkUdIQnZh66ZNSAWcfL42r0/exec";
+
 const routes = [
   { from: { ar: "دمشق", en: "Damascus" }, to: { ar: "بيروت", en: "Beirut" }, car: 100, van: 110, seat: 25, carOnly: false },
   { from: { ar: "دمشق", en: "Damascus" }, to: { ar: "حمص", en: "Homs" }, car: 100, van: 110, seat: 25, carOnly: false },
@@ -17,7 +19,7 @@ const T = {
     brandEn: "SAFFERNI",
     tagline: "وجهتك علينا... بس قلنا وين!",
     subtitle: "خدمة نقل بين المدن — من سوريا لعمّان وبيروت. احجز مقعد أو سيارة كاملة بضغطة زر.",
-    nav: { home: "الرئيسية", pricing: "الأسعار", team: "الفريق", contact: "تواصل معنا", book: "احجز الآن" },
+    nav: { home: "الرئيسية", pricing: "الأسعار", contact: "تواصل معنا", book: "احجز الآن" },
     about: {
       title: "من نحن",
       p1: "سفّرني هي خدمة نقل بين المدن تربط سوريا بعمّان وبيروت. نوفر رحلات يومية بسيارات حديثة ومكيّفة.",
@@ -51,13 +53,6 @@ const T = {
       note: "الأسعار بالدولار الأمريكي — نفس الأسعار بالاتجاهين",
       carOnly: "سيارة كاملة فقط",
     },
-    team: {
-      title: "الفريق",
-      founder: "المؤسس",
-      founderName: "م. وليد الأخوان",
-      founderRole: "المؤسس والمدير التنفيذي",
-      founderBio: "طبيب ورائد أعمال، أسّس سفّرني لتوفير خدمة نقل موثوقة ومريحة بين المدن السورية والعواصم المجاورة.",
-    },
     contact: {
       title: "تواصل معنا", desc: "لأي استفسار أو حجز — نحن بخدمتك",
       phone: "الهاتف", email: "البريد الإلكتروني",
@@ -71,7 +66,7 @@ const T = {
     brandEn: "SAFFERNI",
     tagline: "Your destination is on us — just tell us where!",
     subtitle: "Intercity transport from Syria to Amman and Beirut. Book a seat or a whole car with one tap.",
-    nav: { home: "Home", pricing: "Pricing", team: "Team", contact: "Contact", book: "Book Now" },
+    nav: { home: "Home", pricing: "Pricing", contact: "Contact", book: "Book Now" },
     about: {
       title: "About Us",
       p1: "Safferni is an intercity transport service connecting Syria with Amman and Beirut. We offer daily trips in modern, air-conditioned vehicles.",
@@ -104,13 +99,6 @@ const T = {
       route: "Route", seat: "Seat", car: "Car (4 pax)", van: "Van (6 pax)",
       note: "Prices in USD — same prices both directions",
       carOnly: "Whole car only",
-    },
-    team: {
-      title: "Our Team",
-      founder: "Founder",
-      founderName: "Dr. M. Walid Alokhwan",
-      founderRole: "Founder & CEO",
-      founderBio: "Physician and entrepreneur who founded Safferni to provide reliable and comfortable intercity transport between Syrian cities and neighboring capitals.",
     },
     contact: {
       title: "Contact Us", desc: "For any inquiries or bookings — we're here for you",
@@ -145,33 +133,50 @@ export default function App() {
   const toggleLang = () => setLang(l => l === "ar" ? "en" : "ar");
   const selectedRoute = form.route !== "" ? allRoutes[parseInt(form.route)] : null;
 
-  // If route is carOnly, force type to car or van
   const effectiveType = selectedRoute?.carOnly && form.type === "seat" ? "car" : form.type;
   const currentPrice = selectedRoute
     ? effectiveType === "seat" ? selectedRoute.seat : effectiveType === "car" ? selectedRoute.car : selectedRoute.van
     : null;
 
   const handleSubmit = () => {
-  if (!form.route || !form.date || !form.name || !form.phone) {
-    setError(t.booking.fillAll);
-    return;
-  }
+    if (!form.route || !form.date || !form.name || !form.phone) {
+      setError(t.booking.fillAll);
+      return;
+    }
+    setError("");
 
-  const r = selectedRoute;
+    const r = selectedRoute;
+    const routeText = `${r.from[lang]} → ${r.to[lang]}`;
+    const routeTextEn = `${r.from.en} → ${r.to.en}`;
+    const typeLabel = effectiveType === "seat" ? "Seat" : effectiveType === "car" ? "Car" : "Van";
 
-  const message =
-    lang === "ar"
-      ? `
-🚗 *طلب حجز جديد - سفّرني*
+    // 1. Save to Google Sheets
+    try {
+      fetch(SHEET_URL, {
+        method: "POST",
+        mode: "no-cors",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          date: form.date,
+          time: form.time || "-",
+          route: routeTextEn,
+          type: typeLabel,
+          price: `$${currentPrice}`,
+          name: form.name,
+          phone: form.phone,
+          notes: form.notes || "-",
+        }),
+      });
+    } catch (err) {
+      console.log("Sheet save error:", err);
+    }
 
-📍 المسار: ${r.from.ar} → ${r.to.ar}
-🧾 نوع الحجز: ${
-          form.type === "seat"
-            ? "مقعد"
-            : form.type === "car"
-            ? "سيارة كاملة"
-            : "فان"
-        }
+    // 2. Open WhatsApp
+    const message = lang === "ar"
+      ? `🚗 *طلب حجز جديد - سفّرني*
+
+📍 المسار: ${routeText}
+🧾 نوع الحجز: ${effectiveType === "seat" ? "مقعد" : effectiveType === "car" ? "سيارة كاملة" : "فان"}
 💰 السعر: $${currentPrice}
 
 📅 التاريخ: ${form.date}
@@ -180,13 +185,11 @@ export default function App() {
 👤 الاسم: ${form.name}
 📞 الهاتف: ${form.phone}
 
-📝 ملاحظات: ${form.notes || "-"}
-      `
-      : `
-🚗 *New Booking - Safferni*
+📝 ملاحظات: ${form.notes || "-"}`
+      : `🚗 *New Booking - Safferni*
 
-📍 Route: ${r.from.en} → ${r.to.en}
-🧾 Type: ${form.type}
+📍 Route: ${routeText}
+🧾 Type: ${typeLabel}
 💰 Price: $${currentPrice}
 
 📅 Date: ${form.date}
@@ -195,22 +198,20 @@ export default function App() {
 👤 Name: ${form.name}
 📞 Phone: ${form.phone}
 
-📝 Notes: ${form.notes || "-"}
-      `;
+📝 Notes: ${form.notes || "-"}`;
 
-  const phone = "963949191411";
-  const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+    const phone = "963949191411";
+    const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+    window.open(url, "_blank");
 
-  window.open(url, "_blank");
-
-  setSubmitted(true);
-  setTimeout(() => setSubmitted(false), 5000);
-  setForm({ route: "", type: "car", date: "", time: "", name: "", phone: "", notes: "" });
-};
+    setSubmitted(true);
+    setTimeout(() => setSubmitted(false), 5000);
+    setForm({ route: "", type: "car", date: "", time: "", name: "", phone: "", notes: "" });
+  };
 
   const scrollToBook = () => { setPage("home"); setTimeout(() => bookRef.current?.scrollIntoView({ behavior: "smooth" }), 100); };
   const fade = { animation: "fadeUp 0.7s ease both" };
-  const navLinks = [["home", t.nav.home], ["pricing", t.nav.pricing], ["team", t.nav.team], ["contact", t.nav.contact]];
+  const navLinks = [["home", t.nav.home], ["pricing", t.nav.pricing], ["contact", t.nav.contact]];
 
   return (
     <div style={{ direction: isRTL ? "rtl" : "ltr", fontFamily: "'Montserrat', sans-serif", background: "#FAFAF8", color: "#1A1A1A", minHeight: "100vh", fontSize: 15, lineHeight: 1.7 }}>
@@ -287,7 +288,7 @@ export default function App() {
             </div>
           </section>
 
-          {/* ABOUT SECTION ON HOME */}
+          {/* ABOUT */}
           <section style={{ maxWidth:800, margin:"0 auto", padding:"60px 24px 20px", textAlign:"center" }}>
             <h2 style={{ fontSize:26, fontWeight:900, color:"#1B3A2A", marginBottom:16, animation:"fadeUp 0.6s ease 0.1s both" }}>{t.about.title}</h2>
             <p style={{ fontSize:15, color:"#555", lineHeight:1.9, maxWidth:620, margin:"0 auto 10px", animation:"fadeUp 0.6s ease 0.2s both" }}>{t.about.p1}</p>
@@ -314,7 +315,6 @@ export default function App() {
             </div>
           </section>
 
-          {/* DIVIDER */}
           <div style={{ maxWidth:120, margin:"0 auto 10px", borderTop:"2px solid #E8E6E1" }} />
 
           {/* BOOKING */}
@@ -327,7 +327,6 @@ export default function App() {
               <h2 style={{ fontSize:24, fontWeight:900, marginBottom:6, color:"#1B3A2A", textAlign:"center" }}>{t.booking.title}</h2>
               <p style={{ fontSize:12, color:"#AAA", textAlign:"center", marginBottom:28 }}>{t.booking.formNote}</p>
 
-              {/* Route */}
               <div style={{ marginBottom:18 }}>
                 <label style={lbl}>{t.booking.route} *</label>
                 <select value={form.route} onChange={e => setForm({ ...form, route: e.target.value })} style={inp}>
@@ -336,22 +335,16 @@ export default function App() {
                 </select>
               </div>
 
-              {/* Car only notice */}
               {selectedRoute?.carOnly && form.type === "seat" && (
                 <div style={{ marginBottom:14, padding:"10px 16px", background:"#FFF8E1", border:"1px solid #FFE082", borderRadius:10, color:"#F57F17", fontSize:12, fontWeight:700 }}>
                   {t.booking.carOnlyNote}
                 </div>
               )}
 
-              {/* Type */}
               <div style={{ marginBottom:18 }}>
                 <label style={lbl}>{t.booking.type} *</label>
                 <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
-                  {[
-                    ["seat", t.booking.seat],
-                    ["car", t.booking.car],
-                    ["van", t.booking.van],
-                  ].map(([key, label]) => {
+                  {[["seat", t.booking.seat], ["car", t.booking.car], ["van", t.booking.van]].map(([key, label]) => {
                     const disabled = key === "seat" && selectedRoute?.carOnly;
                     return (
                       <button key={key} onClick={() => !disabled && setForm({ ...form, type: key })} style={{
@@ -367,7 +360,6 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Price */}
               {currentPrice !== null && (
                 <div style={{
                   background:"linear-gradient(135deg, #F0F7F3, #E8F5ED)", borderRadius:12,
@@ -379,19 +371,16 @@ export default function App() {
                 </div>
               )}
 
-              {/* Date + Time */}
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:18 }}>
                 <div><label style={lbl}>{t.booking.date} *</label><input type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} style={inp} /></div>
                 <div><label style={lbl}>{t.booking.time}</label><input type="time" value={form.time} onChange={e => setForm({ ...form, time: e.target.value })} style={inp} /></div>
               </div>
 
-              {/* Name + Phone */}
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:18 }}>
                 <div><label style={lbl}>{t.booking.name} *</label><input type="text" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} style={inp} /></div>
                 <div><label style={lbl}>{t.booking.phone} *</label><input type="tel" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} style={inp} placeholder="+963..." /></div>
               </div>
 
-              {/* Notes */}
               <div style={{ marginBottom:18 }}>
                 <label style={lbl}>{t.booking.notes}</label>
                 <textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} style={{ ...inp, minHeight:65, resize:"vertical" }} rows={2} />
@@ -417,7 +406,6 @@ export default function App() {
         <section style={{ maxWidth:800, margin:"0 auto", padding:"60px 24px 80px", ...fade }}>
           <h2 style={{ fontSize:32, fontWeight:900, marginBottom:10, textAlign:"center", color:"#1B3A2A" }}>{t.pricing.title}</h2>
           <p style={{ textAlign:"center", color:"#888", marginBottom:36, fontSize:15 }}>{t.pricing.desc}</p>
-
           <div style={{ background:"white", borderRadius:16, border:"1px solid #E8E6E1", overflow:"hidden", boxShadow:"0 2px 12px rgba(0,0,0,0.03)" }}>
             <div style={{ display:"grid", gridTemplateColumns:"1.8fr 1fr 1fr 1fr", padding:"14px 20px", background:"#1B3A2A", fontSize:11, fontWeight:700, color:"rgba(255,255,255,0.85)", textTransform:"uppercase" }}>
               <div>{t.pricing.route}</div>
@@ -446,30 +434,6 @@ export default function App() {
           <p style={{ marginTop:20, fontSize:12, color:"#999", textAlign:"center", fontStyle:"italic" }}>{t.pricing.note}</p>
           <div style={{ textAlign:"center", marginTop:36 }}>
             <button onClick={scrollToBook} style={{ background:"#1B3A2A", color:"white", border:"none", padding:"14px 40px", borderRadius:12, fontSize:16, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>{t.nav.book}</button>
-          </div>
-        </section>
-      )}
-
-      {/* ═══ TEAM ═══ */}
-      {page === "team" && (
-        <section style={{ maxWidth:600, margin:"0 auto", padding:"60px 24px 80px", ...fade }}>
-          <h2 style={{ fontSize:32, fontWeight:900, marginBottom:36, textAlign:"center", color:"#1B3A2A" }}>{t.team.title}</h2>
-
-          <div style={{
-            background:"white", borderRadius:20, padding:"40px 32px", border:"1px solid #E8E6E1",
-            boxShadow:"0 4px 24px rgba(0,0,0,0.04)", textAlign:"center",
-          }}>
-            {/* Avatar placeholder */}
-            <div style={{
-              width:90, height:90, borderRadius:"50%", background:"linear-gradient(135deg, #1B3A2A, #2D6B45)",
-              margin:"0 auto 20px", display:"flex", alignItems:"center", justifyContent:"center",
-              fontSize:36, color:"white", fontWeight:900,
-            }}>W</div>
-
-            <div style={{ fontSize:11, fontWeight:700, color:"#1B3A2A", textTransform:"uppercase", letterSpacing:2, marginBottom:6 }}>{t.team.founder}</div>
-            <h3 style={{ fontSize:22, fontWeight:900, color:"#1B3A2A", marginBottom:4 }}>{t.team.founderName}</h3>
-            <p style={{ fontSize:13, fontWeight:600, color:"#888", marginBottom:20 }}>{t.team.founderRole}</p>
-            <p style={{ fontSize:14, color:"#555", lineHeight:1.8, maxWidth:420, margin:"0 auto" }}>{t.team.founderBio}</p>
           </div>
         </section>
       )}
