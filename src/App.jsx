@@ -198,7 +198,7 @@ export default function App() {
 📝 Notes: ${form.notes || "-"}
       `;
 
-  const phone = "963933383307";
+  const phone = "963949191411";
   const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
 
   window.open(url, "_blank");
