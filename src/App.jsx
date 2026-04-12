@@ -152,11 +152,61 @@ export default function App() {
     : null;
 
   const handleSubmit = () => {
-    if (!form.route || !form.date || !form.name || !form.phone) { setError(t.booking.fillAll); return; }
-    setError(""); setSubmitted(true);
-    setTimeout(() => setSubmitted(false), 5000);
-    setForm({ route: "", type: "car", date: "", time: "", name: "", phone: "", notes: "" });
-  };
+  if (!form.route || !form.date || !form.name || !form.phone) {
+    setError(t.booking.fillAll);
+    return;
+  }
+
+  const r = selectedRoute;
+
+  const message =
+    lang === "ar"
+      ? `
+🚗 *طلب حجز جديد - سفّرني*
+
+📍 المسار: ${r.from.ar} → ${r.to.ar}
+🧾 نوع الحجز: ${
+          form.type === "seat"
+            ? "مقعد"
+            : form.type === "car"
+            ? "سيارة كاملة"
+            : "فان"
+        }
+💰 السعر: $${currentPrice}
+
+📅 التاريخ: ${form.date}
+⏰ الوقت: ${form.time || "-"}
+
+👤 الاسم: ${form.name}
+📞 الهاتف: ${form.phone}
+
+📝 ملاحظات: ${form.notes || "-"}
+      `
+      : `
+🚗 *New Booking - Safferni*
+
+📍 Route: ${r.from.en} → ${r.to.en}
+🧾 Type: ${form.type}
+💰 Price: $${currentPrice}
+
+📅 Date: ${form.date}
+⏰ Time: ${form.time || "-"}
+
+👤 Name: ${form.name}
+📞 Phone: ${form.phone}
+
+📝 Notes: ${form.notes || "-"}
+      `;
+
+  const phone = "963949191411";
+  const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+
+  window.open(url, "_blank");
+
+  setSubmitted(true);
+  setTimeout(() => setSubmitted(false), 5000);
+  setForm({ route: "", type: "car", date: "", time: "", name: "", phone: "", notes: "" });
+};
 
   const scrollToBook = () => { setPage("home"); setTimeout(() => bookRef.current?.scrollIntoView({ behavior: "smooth" }), 100); };
   const fade = { animation: "fadeUp 0.7s ease both" };
