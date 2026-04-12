@@ -37,13 +37,13 @@ const T = {
     },
     features: [
       { icon: "🛣️", t: "٦ مسارات", d: "رحلات بين المدن الرئيسية والمطارات" },
-      { icon: "🚗", t: "سيارة أو فان", d: "سيارة لحد ٤ ركاب أو فان لحد ٦ ركاب" },
+      { icon: "🚗", t: "سيارة أو فان", d: "سيارة لحد ٤ ركاب أو فان لحد ١٠ ركاب" },
       { icon: "💺", t: "مقعد واحد", d: "مو لازم تحجز سيارة كاملة — احجز مقعد بس" },
       { icon: "💵", t: "أسعار ثابتة", d: "تعرفة واضحة — نفس السعر بالاتجاهين" },
     ],
     booking: {
       title: "احجز رحلتك", route: "المسار", type: "نوع الحجز",
-      seat: "مقعد واحد", car: "سيارة كاملة (حتى ٤ ركاب)", van: "فان (حتى ٦ ركاب)",
+      seat: "مقعد واحد", car: "سيارة كاملة (حتى ٤ ركاب)", van: "فان (حتى ١٠ ركاب)",
       date: "التاريخ", time: "الوقت", name: "الاسم الكامل", phone: "رقم الهاتف",
       notes: "ملاحظات إضافية", submit: "تأكيد الحجز",
       selectRoute: "اختر المسار", price: "السعر",
@@ -63,7 +63,7 @@ const T = {
     },
     pricing: {
       title: "الأسعار", desc: "أسعار واضحة وثابتة — بدون مفاجآت",
-      route: "المسار", seat: "مقعد", car: "سيارة (٤ ركاب)", van: "فان (٦ ركاب)",
+      route: "المسار", seat: "مقعد", car: "سيارة (٤ ركاب)", van: "فان (١٠ ركاب)",
       note: "الأسعار بالدولار الأمريكي — نفس الأسعار بالاتجاهين",
       carOnly: "سيارة كاملة فقط",
     },
@@ -88,13 +88,13 @@ const T = {
     },
     features: [
       { icon: "🛣️", t: "6 routes", d: "Trips between major cities and airports" },
-      { icon: "🚗", t: "Car or van", d: "Car up to 4 passengers or van up to 6" },
+      { icon: "🚗", t: "Car or van", d: "Car up to 4 passengers or van up to 10" },
       { icon: "💺", t: "Single seat", d: "No need to book a whole car — just a seat" },
       { icon: "💵", t: "Fixed prices", d: "Clear fares — same price both directions" },
     ],
     booking: {
       title: "Book Your Ride", route: "Route", type: "Booking Type",
-      seat: "Single Seat", car: "Full Car (up to 4 pax)", van: "Van (up to 6 pax)",
+      seat: "Single Seat", car: "Full Car (up to 4 pax)", van: "Van (up to 10 pax)",
       date: "Date", time: "Time", name: "Full Name", phone: "Phone Number",
       notes: "Additional Notes", submit: "Confirm Booking",
       selectRoute: "Select route", price: "Price",
@@ -114,7 +114,7 @@ const T = {
     },
     pricing: {
       title: "Pricing", desc: "Clear, fixed prices — no surprises",
-      route: "Route", seat: "Seat", car: "Car (4 pax)", van: "Van (6 pax)",
+      route: "Route", seat: "Seat", car: "Car (4 pax)", van: "Van (10 pax)",
       note: "Prices in USD — same prices both directions",
       carOnly: "Whole car only",
     },
