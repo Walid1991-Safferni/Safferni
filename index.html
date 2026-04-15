@@ -3,12 +3,25 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="سفّرني — احجز رحلتك بين المدن بضغطة زر. دمشق، حلب، حمص، عمّان، بيروت. Safferni — Book your intercity ride." />
-    <title>سفّرني | Safferni</title>
+    <meta name="description" content="سفّرني — احجز رحلتك بين المحافظات بضغطة زر. دمشق، حلب، حمص، عمّان، بيروت. Safferni — Book your intercity ride." />
+    <meta name="theme-color" content="#1B3A2A" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Safferni" />
+    <link rel="manifest" href="/manifest.json" />
     <link rel="icon" type="image/svg+xml" href="/logo.svg" />
+    <link rel="apple-touch-icon" href="/icon-192.png" />
+    <title>سفّرني | Safferni</title>
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js');
+        });
+      }
+    </script>
   </body>
 </html>
