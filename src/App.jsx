@@ -52,9 +52,9 @@ const T = {
       from:"من", to:"إلى", selectCity:"اختر المحافظة", selectDest:"اختر الوجهة", selectFromFirst:"اختر نقطة الانطلاق أولاً",
       dateRange:"أي وقت بين", dateFrom:"من تاريخ", dateTo:"إلى تاريخ",
       name:"الاسم", phone:"رقم الهاتف",
-      submit:"بلّغني!", fillAll:"يرجى ملء جميع الحقول",
+      submit:"خبّرني!!", fillAll:"يرجى ملء جميع الحقول",
       confirmTitle:"تم تسجيل طلبك!",
-      confirmMsg:"سنبلّغك عبر واتساب لما يتوفر مقعد فاضي. بتعرف الوقت والتكلفة وبتقدر تأكد أو تلغي الحجز.",
+      confirmMsg:"منخبرك عبر واتساب لما يتوفر مقعد فاضي. بتعرف الوقت والتكلفة وبتقدر تأكد أو تلغي الحجز.",
       confirmClose:"تمام",
     },
     b:{ title:"احجز رحلتك", from:"من", to:"إلى", type:"نوع الحجز",
@@ -194,7 +194,7 @@ export default function App(){
     const fc=gc(dealForm.from),tc=gc(dealForm.to);
     const rt=`${fc[lang]} ${lang==="ar"?"إلى":"to"} ${tc[lang]}`;
     const msg=lang==="ar"
-      ?`🎫 *طلب مقعد مرن - سفّرني*\n\n📍 المسار: ${rt}\n📅 أي وقت بين: ${dealForm.dateFrom} و ${dealForm.dateTo}\n\n👤 الاسم: ${dealForm.name}\n📞 الهاتف: ${dealForm.phone}\n\n⏳ بانتظار مقعد فاضي — بلّغوني لما يتوفر!`
+      ?`🎫 *طلب مقعد مرن - سفّرني*\n\n📍 المسار: ${rt}\n📅 أي وقت بين: ${dealForm.dateFrom} و ${dealForm.dateTo}\n\n👤 الاسم: ${dealForm.name}\n📞 الهاتف: ${dealForm.phone}\n\n⏳ بانتظار مقعد فاضي — خبّروني لما يتوفر!`
       :`🎫 *Flexible Seat Request - Safferni*\n\n📍 Route: ${rt}\n📅 Anytime between: ${dealForm.dateFrom} and ${dealForm.dateTo}\n\n👤 Name: ${dealForm.name}\n📞 Phone: ${dealForm.phone}\n\n⏳ Waiting for an available seat — notify me!`;
     window.open(`https://wa.me/${WA_PHONE}?text=${encodeURIComponent(msg)}`,"_blank");
     setDealSubmitted(true);
