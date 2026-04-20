@@ -107,6 +107,8 @@ export default function App(){
   const [selectedTrip,setSelectedTrip]=useState(null);
   const [tripBooking,setTripBooking]=useState({name:"",phone:"",seats:1,payment:"cash"});
   const [tripBooked,setTripBooked]=useState(false);
+  const [searchFrom, setSearchFrom] = useState("");
+  const [searchTo, setSearchTo] = useState("");
 
   // Deal state
   const [dealForm,setDealForm]=useState({from:"",to:"",dateFrom:"",dateTo:"",name:"",phone:""});
@@ -226,7 +228,10 @@ export default function App(){
   const searchTrips=async()=>{
     if(!searchDate) return;
     setTripsLoaded(false);
-    const{data}=await supabase.from("trips").select("*").eq("trip_date",searchDate).eq("status","active").gt("available_seats",0).order("trip_time");
+    let query=supabase.from("trips").select("*").eq("trip_date",searchDate).eq("status","active").gt("available_seats",0).order("trip_time");
+    if(searchFrom) query=query.eq("from_city",searchFrom);
+    if(searchTo) query=query.eq("to_city",searchTo);
+    const{data}=await query;
     setTrips(data||[]);
     setTripsLoaded(true);
   };
@@ -540,6 +545,10 @@ export default function App(){
         <section style={{maxWidth:680,margin:"0 auto",padding:"40px 24px 20px"}}>
           <div style={{background:"white",borderRadius:16,padding:"28px",border:"1px solid #E8E6E1",boxShadow:"0 4px 20px rgba(0,0,0,0.04)"}}>
             <h3 style={{fontSize:18,fontWeight:900,color:"#1B3A2A",marginBottom:16,textAlign:"center"}}>{b.searchTitle}</h3>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
+              <div><label style={lbl}>{b.from}</label><select value={searchFrom} onChange={e=>{setSearchFrom(e.target.value);setSearchTo("")}} style={inp}><option value="">{b.selectCity}</option>{cities.map(c=><option key={c.id} value={c.id}>{c[lang]}</option>)}</select></div>
+              <div><label style={lbl}>{b.to}</label><select value={searchTo} onChange={e=>setSearchTo(e.target.value)} style={inp} disabled={!searchFrom}><option value="">{searchFrom?b.selectDest:b.selectFromFirst}</option>{searchFrom?getDests(searchFrom).map(id=>{const c=gc(id);return<option key={id} value={id}>{c[lang]}</option>}):null}</select></div>
+            </div>
             <div style={{display:"flex",gap:10,alignItems:"flex-end"}}>
               <div style={{flex:1}}><label style={lbl}>{b.searchDate}</label><input type="date" value={searchDate} onChange={e=>setSearchDate(e.target.value)} style={inp}/></div>
               <button onClick={searchTrips} style={{background:"#1B3A2A",color:"white",border:"none",padding:"11px 24px",borderRadius:10,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>{b.searchBtn}</button>
