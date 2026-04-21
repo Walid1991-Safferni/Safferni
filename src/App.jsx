@@ -162,7 +162,7 @@ export default function App(){
   },[]);
 
   useEffect(()=>{if(user){checkDriverApplication();}  },[user]);
-  useEffect(()=>{ supabase.rpc("complete_past_trips").catch(()=>{}); },[]);
+  useEffect(()=>{ try{ supabase.rpc("complete_past_trips"); }catch(e){} },[]);
 
   const loadProfile=async(u)=>{
     const{data}=await supabase.from("profiles").select("*").eq("id",u.id).single();
