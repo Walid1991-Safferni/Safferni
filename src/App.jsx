@@ -290,7 +290,7 @@ export default function App(){
   const searchTrips=async()=>{
     if(!searchDate) return;
     setTripsLoaded(false);
-    let query=supabase.from("trips").select("*, profiles(full_name, phone)").eq("trip_date",searchDate).eq("status","active").gt("available_seats",0).order("trip_time");
+    let query=supabase.from("trips").select("*").eq("trip_date",searchDate).eq("status","active").gt("available_seats",0).order("trip_time");
     if(searchFrom) query=query.eq("from_city",searchFrom);
     if(searchTo) query=query.eq("to_city",searchTo);
     const{data}=await query;
@@ -683,8 +683,8 @@ export default function App(){
                             <div style={{flex:1}}>
                               <div style={{fontWeight:800,fontSize:14,color:"#1B3A2A"}}>{fc?.[lang]||trip.from_city} → {tc?.[lang]||trip.to_city}</div>
                               <div style={{fontSize:12,color:"#888"}}>{trip.trip_time||"—"} · {trip.available_seats} {b.seatsLeft} · {trip.car_type||""}</div>
-                              {trip.profiles?.full_name&&(<div style={{fontSize:12,color:"#555",marginTop:4}}>👤 {trip.profiles.full_name}</div>)}
-                              {trip.avg_rating>0&&(<div style={{marginTop:4}}><StarRating value={Math.round(trip.avg_rating)} readOnly/></div>)}
+
+                             {trip.avg_rating>0&&(<div style={{marginTop:4}}><StarRating value={Math.round(trip.avg_rating)} readOnly/></div>)}
                             </div>
                             <div style={{display:"flex",alignItems:"center",gap:12}}>
                               <span style={{fontSize:20,fontWeight:900,color:"#1B3A2A"}}>${trip.price_per_seat}</span>
