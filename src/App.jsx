@@ -35,6 +35,7 @@ const gc=(id)=>cities.find(c=>c.id===id);
 const genRef=()=>{const d=new Date();return`SAF-${d.getFullYear().toString().slice(-2)}${String(d.getMonth()+1).padStart(2,"0")}-${Math.floor(Math.random()*9000)+1000}`};
 const pricingRoutes=routeMap.map(r=>({from:gc(r.from),to:gc(r.to),car:r.car,van:r.van,seat:r.seat,carOnly:r.carOnly}));
 const timeToMinutes=(t)=>{if(!t)return 0;const[h,m]=t.split(":").map(Number);return h*60+m};
+const formatTime=(t)=>{if(!t)return"—";const h=parseInt(t.slice(0,2));const m=t.slice(3,5);const ampm=h>=12?"PM":"AM";const h12=h===0?12:h>12?h-12:h;return`${h12}:${m} ${ampm}`};
 
 const StarRating=({value,onChange,readOnly=false})=>(
   <div style={{display:"flex",gap:4}}>
@@ -42,7 +43,12 @@ const StarRating=({value,onChange,readOnly=false})=>(
   </div>
 );
 
-const T = {
+const GenderBadge=({type,lang})=>{
+  const isWomen=type==="women_only";
+  return(<span style={{display:"inline-flex",alignItems:"center",gap:4,padding:"3px 10px",borderRadius:20,fontSize:11,fontWeight:700,background:isWomen?"#F3E8FF":"#F0FDF4",color:isWomen?"#7C3AED":"#065F46",border:`1px solid ${isWomen?"#DDD6FE":"#BBF7D0"}`}}>{isWomen?"💜 "+(lang==="ar"?"نساء فقط":"Women Only"):"🚗 "+(lang==="ar"?"مختلط":"Mixed")}</span>);
+};
+
+const T={
   ar:{
     brand:"سفّرني",brandEn:"SAFFERNI",
     tagline:"وجهتك علينا... بس قلنا وين!",
@@ -55,15 +61,14 @@ const T = {
       {icon:"💺",t:"مقعد واحد",d:"مو لازم تحجز سيارة كاملة — احجز مقعد بس"},
       {icon:"💜",t:"رحلات للنساء فقط",d:"بيئة آمنة للسيدات فقط 💅"},
     ],
-    womenBanner:{title:"سافري بأمان وراحة 💜",desc:"عندنا رحلات مخصصة للنساء فقط — بيئة آمنة ومريحة للسيدات فقط — سافري براحة بال 💅.",badge:"نساء فقط"},
-    deal:{banner:"سافر بـ 10$ لأي مكان!",bannerSub:"مقاعد محدودة — لا تفوّت الفرصة",title:"سافر ابتداءً من 10$",desc:"إذا عندك مرونة بالوقت، شاركنا خطتك وبنخبرك لما يتوفر مقعد فاضي.",from:"من",to:"إلى",selectCity:"اختر المحافظة",selectDest:"اختر الوجهة",selectFromFirst:"اختر نقطة الانطلاق أولاً",dateRange:"أي وقت بين",dateFrom:"من تاريخ",dateTo:"إلى تاريخ",name:"الاسم",phone:"رقم الهاتف",submit:"خبرني!",fillAll:"يرجى ملء جميع الحقول",confirmTitle:"تم تسجيل طلبك!",confirmMsg:"سنخبرك عبر واتساب لما يتوفر مقعد فاضي.",confirmClose:"تمام"},
-    b:{title:"احجز رحلة خاصة",searchTitle:"ابحث عن رحلة",searchDate:"تاريخ السفر",searchBtn:"ابحث",noTrips:"لا توجد رحلات متاحة",customBook:"احجز رحلة خاصة",availableTrips:"الرحلات المتاحة",bookSeat:"احجز مقعد",seatsLeft:"مقاعد متبقية",from:"من",to:"إلى",filterGender:"نوع الرحلة",allTrips:"الكل",mixedOnly:"مختلط",womenOnly:"نساء فقط",type:"نوع الحجز",seat:"مقعد واحد",car:"سيارة كاملة (حتى ٤ ركاب)",van:"فان (حتى ١٠ ركاب)",date:"التاريخ",time:"الوقت",name:"الاسم الكامل",phone:"رقم الهاتف",passengers:"عدد الركاب",bags:"عدد الحقائب",notes:"ملاحظات إضافية",submit:"تأكيد الحجز",selectCity:"اختر المحافظة",selectDest:"اختر الوجهة",selectFromFirst:"اختر نقطة الانطلاق أولاً",price:"السعر",fillAll:"يرجى ملء جميع الحقول المطلوبة",carOnlyNote:"هذا المسار متاح للسيارة الكاملة فقط",formNote:"عبّي المعلومات وبنتواصل معك",payment:"طريقة الدفع",cash:"كاش",crypto:"عملات رقمية",shamcash:"شام كاش",shamcashSoon:"قريباً...",cryptoNote:"أرسل المبلغ بـ USDT على شبكة BEP20 إلى العنوان التالي:",copied:"تم النسخ!",copyAddress:"نسخ العنوان",confirmTitle:"تم الحجز بنجاح!",confirmRef:"رقم الحجز",confirmMsg:"سيتم إرسال تأكيد الحجز عبر واتساب مع تعليمات التواصل مع السائق.",confirmClose:"إغلاق",rateTrip:"قيّم رحلتك",submitRating:"إرسال التقييم",ratingThanks:"شكراً على تقييمك!"},
+    deal:{from:"من",to:"إلى",selectCity:"اختر المحافظة",selectDest:"اختر الوجهة",selectFromFirst:"اختر نقطة الانطلاق أولاً",dateRange:"أي وقت بين",dateFrom:"من تاريخ",dateTo:"إلى تاريخ",name:"الاسم",phone:"رقم الهاتف",submit:"خبرني!",fillAll:"يرجى ملء جميع الحقول",confirmTitle:"تم تسجيل طلبك!",confirmMsg:"سنخبرك عبر واتساب لما يتوفر مقعد فاضي.",confirmClose:"تمام"},
+    b:{title:"احجز رحلة خاصة",searchTitle:"ابحث عن رحلة",searchDate:"تاريخ السفر",searchBtn:"ابحث",noTrips:"لا توجد رحلات متاحة",customBook:"احجز رحلة خاصة",availableTrips:"الرحلات المتاحة",bookSeat:"احجز مقعد",seatsLeft:"مقاعد متبقية",from:"من",to:"إلى",filterGender:"نوع الرحلة",mixedOnly:"مختلط",womenOnly:"نساء فقط",type:"نوع الحجز",seat:"مقعد واحد",car:"سيارة كاملة (حتى ٤ ركاب)",van:"فان (حتى ١٠ ركاب)",date:"التاريخ",time:"الوقت",name:"الاسم الكامل",phone:"رقم الهاتف",passengers:"عدد الركاب",bags:"عدد الحقائب",notes:"ملاحظات إضافية",submit:"تأكيد الحجز",selectCity:"اختر المحافظة",selectDest:"اختر الوجهة",selectFromFirst:"اختر نقطة الانطلاق أولاً",price:"السعر",fillAll:"يرجى ملء جميع الحقول المطلوبة",carOnlyNote:"هذا المسار متاح للسيارة الكاملة فقط",formNote:"عبّي المعلومات وبنتواصل معك",payment:"طريقة الدفع",cash:"كاش",crypto:"عملات رقمية",shamcash:"شام كاش",shamcashSoon:"قريباً...",cryptoNote:"أرسل المبلغ بـ USDT على شبكة BEP20 إلى العنوان التالي:",copied:"تم النسخ!",copyAddress:"نسخ العنوان",confirmTitle:"تم الحجز بنجاح!",confirmRef:"رقم الحجز",confirmMsg:"سيتم إرسال تأكيد الحجز عبر واتساب مع تعليمات التواصل مع السائق.",confirmClose:"إغلاق",rateTrip:"قيّم رحلتك",submitRating:"إرسال التقييم",ratingThanks:"شكراً على تقييمك!"},
     pricing:{title:"الأسعار",desc:"أسعار واضحة وثابتة — بدون مفاجآت",route:"المسار",seat:"مقعد",car:"سيارة (٤ ركاب)",van:"فان (١٠ ركاب)",note:"الأسعار بالدولار الأمريكي — نفس الأسعار بالاتجاهين",carOnly:"سيارة فقط"},
     contact:{title:"تواصل معنا",desc:"لأي استفسار أو حجز — نحن بخدمتك",email:"البريد الإلكتروني",whatsapp:"واتساب",hours:"ساعات العمل",hoursVal:"٧ أيام في الأسبوع، ٢٤ ساعة"},
     auth:{login:"تسجيل الدخول",signup:"إنشاء حساب",email:"البريد الإلكتروني",password:"كلمة المرور",fullName:"الاسم الكامل",phone:"رقم الهاتف",loginBtn:"دخول",signupBtn:"إنشاء حساب",noAccount:"ليس لديك حساب؟",haveAccount:"لديك حساب؟",error:"حدث خطأ، حاول مرة أخرى"},
     apply:{title:"سجّل كسائق",desc:"انضم إلى فريق سفّرني وابدأ بنشر رحلاتك",alreadyApplied:"طلبك قيد المراجعة أو تم قبوله",fullName:"الاسم الكامل",phone:"رقم الهاتف",city:"مدينتك",carType:"نوع السيارة",carModel:"موديل السيارة",licensePlate:"رقم اللوحة",notes:"ملاحظات إضافية",submit:"تقديم الطلب",success:"تم إرسال طلبك! سنراجعه ونتواصل معك قريباً.",fillAll:"يرجى ملء جميع الحقول المطلوبة"},
     admin:{title:"لوحة الإدارة",applications:"طلبات السائقين",editRequests:"طلبات تعديل الوقت",drivers:"السائقون",allTrips:"كل الرحلات",pending:"قيد المراجعة",approved:"مقبول",denied:"مرفوض",approve:"قبول",deny:"رفض",approveTrip:"قبول الرحلة",noApps:"لا توجد طلبات",noTrips:"لا توجد رحلات",revokeAndDelete:"إلغاء وحذف رحلاته",cancelTrip:"إلغاء",deleteTrip:"حذف",filterByDriver:"فلتر حسب السائق",filterByDate:"فلتر حسب التاريخ",allDrivers:"كل السائقين",phone:"الهاتف",city:"المدينة",car:"السيارة",requestedTime:"الوقت المطلوب",currentTime:"الوقت الحالي",driver:"السائق",bookings:"حجوزات",notApprovedYet:"قيد المراجعة"},
-    driver:{title:"لوحة السائق",addTrip:"أضف رحلة",from:"من",to:"إلى",date:"التاريخ",time:"الوقت",pricePerSeat:"سعر المقعد ($)",totalSeats:"عدد المقاعد",carType:"نوع السيارة",genderType:"نوع الرحلة",mixed:"مختلط 🚗",womenOnly:"نساء فقط 💜",submit:"نشر الرحلة",myTrips:"رحلاتي",noTrips:"لم تنشر أي رحلات بعد",cancel:"إلغاء",requestTimeEdit:"طلب تعديل الوقت",newTime:"الوقت الجديد",submitRequest:"إرسال الطلب",selectCity:"اختر المحافظة",fillAll:"يرجى ملء جميع الحقول",success:"تم إرسال الرحلة للمراجعة!",notApproved:"طلبك قيد المراجعة. سنتواصل معك عند الموافقة.",limitReached:"وصلت الحد الأقصى من الرحلات (١٠ رحلات)",dayLimitReached:"لا يمكن إضافة أكثر من رحلتين في نفس اليوم",timeTooClose:"يجب أن يكون الفارق ٥ ساعات على الأقل بين رحلتي نفس اليوم",noticeRequired:"يجب نشر الرحلة قبل موعدها بساعتين على الأقل",bookings:"حجز",requestSent:"تم إرسال طلب التعديل للمراجعة",pendingApproval:"قيد المراجعة من الإدارة"},
+    driver:{title:"لوحة السائق",addTrip:"أضف رحلة",from:"من",to:"إلى",date:"التاريخ",time:"الوقت",pricePerSeat:"سعر المقعد ($)",totalSeats:"عدد المقاعد",carType:"نوع السيارة",genderType:"نوع الرحلة",mixed:"مختلط 🚗",womenOnly:"نساء فقط 💜",submit:"نشر الرحلة",myTrips:"رحلاتي",noTrips:"لم تنشر أي رحلات بعد",cancel:"إلغاء",requestTimeEdit:"طلب تعديل الوقت",newTime:"الوقت الجديد",submitRequest:"إرسال الطلب",selectCity:"اختر المحافظة",fillAll:"يرجى ملء جميع الحقول",success:"تم إرسال الرحلة للمراجعة!",notApproved:"طلبك قيد المراجعة. سنتواصل معك عند الموافقة.",limitReached:"وصلت الحد الأقصى من الرحلات (١٠ رحلات)",dayLimitReached:"لا يمكن إضافة أكثر من رحلتين في نفس اليوم",timeTooClose:"يجب أن يكون الفارق ٥ ساعات على الأقل بين رحلتي نفس اليوم",noticeRequired:"يجب نشر الرحلة قبل موعدها بساعتين على الأقل",bookings:"حجز",requestSent:"تم إرسال طلب التعديل للمراجعة",pendingApproval:"⏳ قيد المراجعة من الإدارة"},
     footer:"جميع الحقوق محفوظة",
   },
   en:{
@@ -78,15 +83,14 @@ const T = {
       {icon:"💺",t:"Single seat",d:"No need to book a whole car — just a seat"},
       {icon:"💜",t:"Women-only rides",d:"A safe space for women travelers only 💅"},
     ],
-    womenBanner:{title:"Travel safe & comfortable 💜",desc:"We offer women-only rides A safe space for women travelers only 💅.",badge:"Women Only"},
-    deal:{banner:"Travel for $10 anywhere!",bannerSub:"Limited seats — don't miss out",title:"Travel starting from $10",desc:"If you're flexible with your travel dates, share your plan and we'll notify you when a seat opens up.",from:"From",to:"To",selectCity:"Select city",selectDest:"Select destination",selectFromFirst:"Select origin first",dateRange:"Anytime between",dateFrom:"From date",dateTo:"To date",name:"Name",phone:"Phone number",submit:"Let me know!",fillAll:"Please fill all fields",confirmTitle:"You're on the list!",confirmMsg:"We'll notify you via WhatsApp when a seat is available.",confirmClose:"Got it"},
-    b:{title:"Book a Custom Ride",searchTitle:"Find a Trip",searchDate:"Travel Date",searchBtn:"Search",noTrips:"No trips available",customBook:"Book a custom ride",availableTrips:"Available Trips",bookSeat:"Book a Seat",seatsLeft:"seats left",from:"From",to:"To",filterGender:"Trip Type",allTrips:"All",mixedOnly:"Mixed",womenOnly:"Women Only",type:"Booking Type",seat:"Single Seat",car:"Full Car (up to 4 pax)",van:"Van (up to 10 pax)",date:"Date",time:"Time",name:"Full Name",phone:"Phone Number",passengers:"Passengers",bags:"Bags",notes:"Additional Notes",submit:"Confirm Booking",selectCity:"Select city",selectDest:"Select destination",selectFromFirst:"Select origin first",price:"Price",fillAll:"Please fill all required fields",carOnlyNote:"This route is available for whole car only",formNote:"Fill in the details and we'll get back to you",payment:"Payment Method",cash:"Cash",crypto:"Crypto",shamcash:"Sham Cash",shamcashSoon:"Coming soon...",cryptoNote:"Send the amount in USDT on BEP20 network to the following address:",copied:"Copied!",copyAddress:"Copy Address",confirmTitle:"Booking Confirmed!",confirmRef:"Booking Reference",confirmMsg:"Your booking confirmation will be sent to you via WhatsApp along with instructions on how to connect with the driver.",confirmClose:"Close",rateTrip:"Rate Your Trip",submitRating:"Submit Rating",ratingThanks:"Thanks for your rating!"},
+    deal:{from:"From",to:"To",selectCity:"Select city",selectDest:"Select destination",selectFromFirst:"Select origin first",dateRange:"Anytime between",dateFrom:"From date",dateTo:"To date",name:"Name",phone:"Phone number",submit:"Let me know!",fillAll:"Please fill all fields",confirmTitle:"You're on the list!",confirmMsg:"We'll notify you via WhatsApp when a seat is available.",confirmClose:"Got it"},
+    b:{title:"Book a Custom Ride",searchTitle:"Find a Trip",searchDate:"Travel Date",searchBtn:"Search",noTrips:"No trips available",customBook:"Book a custom ride",availableTrips:"Available Trips",bookSeat:"Book a Seat",seatsLeft:"seats left",from:"From",to:"To",filterGender:"Trip Type",mixedOnly:"Mixed",womenOnly:"Women Only",type:"Booking Type",seat:"Single Seat",car:"Full Car (up to 4 pax)",van:"Van (up to 10 pax)",date:"Date",time:"Time",name:"Full Name",phone:"Phone Number",passengers:"Passengers",bags:"Bags",notes:"Additional Notes",submit:"Confirm Booking",selectCity:"Select city",selectDest:"Select destination",selectFromFirst:"Select origin first",price:"Price",fillAll:"Please fill all required fields",carOnlyNote:"This route is available for whole car only",formNote:"Fill in the details and we'll get back to you",payment:"Payment Method",cash:"Cash",crypto:"Crypto",shamcash:"Sham Cash",shamcashSoon:"Coming soon...",cryptoNote:"Send the amount in USDT on BEP20 network to the following address:",copied:"Copied!",copyAddress:"Copy Address",confirmTitle:"Booking Confirmed!",confirmRef:"Booking Reference",confirmMsg:"Your booking confirmation will be sent to you via WhatsApp along with instructions on how to connect with the driver.",confirmClose:"Close",rateTrip:"Rate Your Trip",submitRating:"Submit Rating",ratingThanks:"Thanks for your rating!"},
     pricing:{title:"Pricing",desc:"Clear, fixed prices — no surprises",route:"Route",seat:"Seat",car:"Car (4 pax)",van:"Van (10 pax)",note:"Prices in USD — same prices both directions",carOnly:"Car only"},
     contact:{title:"Contact Us",desc:"For any inquiries or bookings — we're here for you",email:"Email",whatsapp:"WhatsApp",hours:"Working Hours",hoursVal:"7 days a week, 24 hours"},
     auth:{login:"Login",signup:"Sign Up",email:"Email",password:"Password",fullName:"Full Name",phone:"Phone Number",loginBtn:"Login",signupBtn:"Create Account",noAccount:"Don't have an account?",haveAccount:"Already have an account?",error:"An error occurred, please try again"},
     apply:{title:"Become a Driver",desc:"Join the Safferni team and start posting your trips",alreadyApplied:"Your application is under review or already approved",fullName:"Full Name",phone:"Phone Number",city:"Your City",carType:"Car Type",carModel:"Car Model",licensePlate:"License Plate",notes:"Additional Notes",submit:"Submit Application",success:"Application submitted! We'll review it and get back to you soon.",fillAll:"Please fill all required fields"},
     admin:{title:"Admin Panel",applications:"Driver Applications",editRequests:"Time Edit Requests",drivers:"Drivers",allTrips:"All Trips",pending:"Pending",approved:"Approved",denied:"Denied",approve:"Approve",deny:"Deny",approveTrip:"Approve Trip",noApps:"No applications",noTrips:"No trips",revokeAndDelete:"Revoke & Delete Trips",cancelTrip:"Cancel",deleteTrip:"Delete",filterByDriver:"Filter by Driver",filterByDate:"Filter by Date",allDrivers:"All Drivers",phone:"Phone",city:"City",car:"Car",requestedTime:"Requested Time",currentTime:"Current Time",driver:"Driver",bookings:"bookings",notApprovedYet:"Pending Review"},
-    driver:{title:"Driver Panel",addTrip:"Add a Trip",from:"From",to:"To",date:"Date",time:"Time",pricePerSeat:"Price per Seat ($)",totalSeats:"Total Seats",carType:"Car Type",genderType:"Trip Type",mixed:"Mixed 🚗",womenOnly:"Women Only 💜",submit:"Post Trip",myTrips:"My Trips",noTrips:"You haven't posted any trips yet",cancel:"Cancel",requestTimeEdit:"Request Time Edit",newTime:"New Time",submitRequest:"Submit Request",selectCity:"Select city",fillAll:"Please fill all fields",success:"Trip submitted for review!",notApproved:"Your application is under review. We'll contact you when approved.",limitReached:"You've reached the maximum of 10 trips",dayLimitReached:"Maximum 2 trips per day allowed",timeTooClose:"Trips on the same day must be at least 5 hours apart",noticeRequired:"Trips must be posted at least 2 hours before departure",bookings:"bookings",requestSent:"Time edit request sent for review",pendingApproval:"Pending admin approval"},
+    driver:{title:"Driver Panel",addTrip:"Add a Trip",from:"From",to:"To",date:"Date",time:"Time",pricePerSeat:"Price per Seat ($)",totalSeats:"Total Seats",carType:"Car Type",genderType:"Trip Type",mixed:"Mixed 🚗",womenOnly:"Women Only 💜",submit:"Post Trip",myTrips:"My Trips",noTrips:"You haven't posted any trips yet",cancel:"Cancel",requestTimeEdit:"Request Time Edit",newTime:"New Time",submitRequest:"Submit Request",selectCity:"Select city",fillAll:"Please fill all fields",success:"Trip submitted for review!",notApproved:"Your application is under review. We'll contact you when approved.",limitReached:"You've reached the maximum of 10 trips",dayLimitReached:"Maximum 2 trips per day allowed",timeTooClose:"Trips on the same day must be at least 5 hours apart",noticeRequired:"Trips must be posted at least 2 hours before departure",bookings:"bookings",requestSent:"Time edit request sent for review",pendingApproval:"⏳ Pending admin approval"},
     footer:"All rights reserved",
   },
 };
@@ -99,6 +103,7 @@ export default function App(){
   const [menuOpen,setMenuOpen]=useState(false);
   const [user,setUser]=useState(null);
   const [profile,setProfile]=useState(null);
+  const [driverApproved,setDriverApproved]=useState(false);
   const [loading,setLoading]=useState(true);
   const [form,setForm]=useState({from:"",to:"",type:"car",date:"",time:"",name:"",phone:"",passengers:"1",bags:"0",notes:"",payment:"cash"});
   const [submitted,setSubmitted]=useState(false);
@@ -108,7 +113,7 @@ export default function App(){
   const [searchDate,setSearchDate]=useState("");
   const [searchFrom,setSearchFrom]=useState("");
   const [searchTo,setSearchTo]=useState("");
-  const [searchGender,setSearchGender]=useState("all");
+  const [searchGender,setSearchGender]=useState("mixed");
   const [trips,setTrips]=useState([]);
   const [tripsLoaded,setTripsLoaded]=useState(false);
   const [selectedTrip,setSelectedTrip]=useState(null);
@@ -117,9 +122,6 @@ export default function App(){
   const [lastBookingId,setLastBookingId]=useState(null);
   const [tripRating,setTripRating]=useState(0);
   const [ratingSubmitted,setRatingSubmitted]=useState(false);
-  const [dealForm,setDealForm]=useState({from:"",to:"",dateFrom:"",dateTo:"",name:"",phone:""});
-  const [dealSubmitted,setDealSubmitted]=useState(false);
-  const [dealError,setDealError]=useState("");
   const [authMode,setAuthMode]=useState("login");
   const [authForm,setAuthForm]=useState({email:"",password:"",fullName:"",phone:""});
   const [authError,setAuthError]=useState("");
@@ -144,12 +146,11 @@ export default function App(){
   const [editRequestMsg,setEditRequestMsg]=useState("");
   const [bookingCounts,setBookingCounts]=useState({});
 
-  const t=T[lang];const b=t.b;const dl=t.deal;const adm=t.admin;const drv=t.driver;
+  const t=T[lang];const b=t.b;const adm=t.admin;const drv=t.driver;
   const isRTL=lang==="ar";
   const searchRef=useRef(null);
   const bkRef=useRef(null);
   const isAdmin=user&&ADMIN_EMAILS.includes(user.email);
-  const [driverApproved,setDriverApproved]=useState(false);
   const isDriverApplied=driverApproved||(driverApplication&&(driverApplication.status==="pending"||driverApplication.status==="approved"));
 
   useEffect(()=>{
@@ -161,7 +162,7 @@ export default function App(){
     const{data:{subscription}}=supabase.auth.onAuthStateChange((_,session)=>{
       setUser(session?.user??null);
       if(session?.user) loadProfile(session.user);
-      else{setProfile(null);setLoading(false);}
+      else{setProfile(null);setDriverApproved(false);setLoading(false);}
     });
     return()=>subscription.unsubscribe();
   },[]);
@@ -170,12 +171,14 @@ export default function App(){
 
   const loadProfile=async(u)=>{
     const{data}=await supabase.from("profiles").select("*").eq("id",u.id).single();
-    setProfile(data);setDriverApproved(data?.role==="driver");setLoading(false);
+    setProfile(data);
+    setDriverApproved(data?.role==="driver");
+    setLoading(false);
   };
 
   const checkDriverApplication=async()=>{
     if(!user) return;
-    const{data}=await supabase.from("driver_applications").select("*").eq("user_id",user.id).order("created_at",{ascending:false}).limit(1).maybesingle();
+    const{data}=await supabase.from("driver_applications").select("*").eq("user_id",user.id).order("created_at",{ascending:false}).limit(1).maybeSingle();
     setDriverApplication(data);
   };
 
@@ -198,7 +201,7 @@ export default function App(){
     setAuthLoading(false);
   };
 
-  const handleLogout=async()=>{await supabase.auth.signOut();setUser(null);setProfile(null);setPage("home");};
+  const handleLogout=async()=>{await supabase.auth.signOut();setUser(null);setProfile(null);setDriverApproved(false);setPage("home");};
 
   const handleApply=async()=>{
     if(!applyForm.fullName||!applyForm.phone||!applyForm.city||!applyForm.carType){setApplyError(t.apply.fillAll);return;}
@@ -208,7 +211,6 @@ export default function App(){
   };
 
   const loadAdminData=async()=>{
-    console.log("loading admin data...");
     const{data:apps}=await supabase.from("driver_applications").select("*").order("created_at",{ascending:false});
     setApplications(apps||[]);
     const{data:drivers}=await supabase.from("profiles").select("*").eq("role","driver");
@@ -216,7 +218,6 @@ export default function App(){
     const{data:edits}=await supabase.from("trip_edit_requests").select("*, trips(from_city,to_city,trip_date,trip_time)").eq("status","pending").order("created_at",{ascending:false});
     setEditRequests(edits||[]);
     const{data:allTrips}=await supabase.from("trips").select("*, profiles(full_name,email)").order("trip_date",{ascending:false});
-    console.log("trips loaded:", allTrips);
     setAdminAllTrips(allTrips||[]);
   };
 
@@ -224,7 +225,9 @@ export default function App(){
     await supabase.from("driver_applications").update({status,reviewed_by:user.id}).eq("id",id);
     if(status==="approved"){
       const app=applications.find(a=>a.id===id);
-      if(app?.user_id) await supabase.from("profiles").update({role:"driver"}).eq("id",app.user_id);
+      if(app?.user_id){
+        await supabase.from("profiles").update({role:"driver"}).eq("id",app.user_id);
+      }
     }
     loadAdminData();
   };
@@ -268,6 +271,7 @@ export default function App(){
 
   const loadDriverData=async()=>{
     if(!user) return;
+    await loadProfile(user);
     const{data:myTrips}=await supabase.from("trips").select("*").eq("driver_id",user.id).order("trip_date",{ascending:false});
     setDriverTrips(myTrips||[]);
     if(myTrips){
@@ -302,7 +306,6 @@ export default function App(){
     if(!tripForm.from||!tripForm.to||!tripForm.date||!tripForm.pricePerSeat){setTripError(drv.fillAll);return;}
     const valid=await validateTrip();
     if(!valid) return;
-    // approved=false, status=pending until admin approves
     const{error}=await supabase.from("trips").insert({driver_id:user.id,from_city:tripForm.from,to_city:tripForm.to,trip_date:tripForm.date,trip_time:tripForm.time||null,price_per_seat:parseFloat(tripForm.pricePerSeat),total_seats:parseInt(tripForm.totalSeats),available_seats:parseInt(tripForm.totalSeats),car_type:tripForm.carType,gender_type:tripForm.genderType,approved:false,status:"pending"});
     if(!error){setTripSuccess(true);setTimeout(()=>setTripSuccess(false),3000);setTripForm({from:"",to:"",date:"",time:"",pricePerSeat:"",totalSeats:"4",carType:"",genderType:"mixed"});loadDriverData();}
     else setTripError(drv.fillAll);
@@ -319,11 +322,10 @@ export default function App(){
   const searchTrips=async()=>{
     if(!searchDate) return;
     setTripsLoaded(false);
-    // Only show approved active trips
     let query=supabase.from("trips").select("*").eq("trip_date",searchDate).eq("status","active").eq("approved",true).gt("available_seats",0).order("trip_time");
     if(searchFrom) query=query.eq("from_city",searchFrom);
     if(searchTo) query=query.eq("to_city",searchTo);
-    if(searchGender!=="all") query=query.eq("gender_type",searchGender);
+    query=query.eq("gender_type",searchGender);
     const{data}=await query;
     setTrips(data||[]);
     setTripsLoaded(true);
@@ -338,8 +340,8 @@ export default function App(){
     const from=gc(selectedTrip.from_city);const to=gc(selectedTrip.to_city);
     const isWomen=selectedTrip.gender_type==="women_only";
     const msg=lang==="ar"
-      ?`🚗 *حجز مقعد - سفّرني*${isWomen?" 💜 نساء فقط":""}\n\n📋 رقم الحجز: ${ref}\n📍 المسار: ${from?.[lang]||selectedTrip.from_city} إلى ${to?.[lang]||selectedTrip.to_city}\n📅 التاريخ: ${selectedTrip.trip_date}\n⏰ الوقت: ${selectedTrip.trip_time||"-"}\n💰 السعر: $${selectedTrip.price_per_seat*tripBooking.seats}\n\n👤 الاسم: ${tripBooking.name}\n📞 الهاتف: ${tripBooking.phone}`
-      :`🚗 *Seat Booking - Safferni*${isWomen?" 💜 Women Only":""}\n\n📋 Ref: ${ref}\n📍 Route: ${from?.en||selectedTrip.from_city} to ${to?.en||selectedTrip.to_city}\n📅 Date: ${selectedTrip.trip_date}\n⏰ Time: ${selectedTrip.trip_time||"-"}\n💰 Price: $${selectedTrip.price_per_seat*tripBooking.seats}\n\n👤 Name: ${tripBooking.name}\n📞 Phone: ${tripBooking.phone}`;
+      ?`🚗 *حجز مقعد - سفّرني*${isWomen?" 💜 نساء فقط":""}\n\n📋 رقم الحجز: ${ref}\n📍 المسار: ${from?.[lang]||selectedTrip.from_city} إلى ${to?.[lang]||selectedTrip.to_city}\n📅 التاريخ: ${selectedTrip.trip_date}\n⏰ الوقت: ${formatTime(selectedTrip.trip_time)}\n💰 السعر: $${selectedTrip.price_per_seat*tripBooking.seats}\n\n👤 الاسم: ${tripBooking.name}\n📞 الهاتف: ${tripBooking.phone}`
+      :`🚗 *Seat Booking - Safferni*${isWomen?" 💜 Women Only":""}\n\n📋 Ref: ${ref}\n📍 Route: ${from?.en||selectedTrip.from_city} to ${to?.en||selectedTrip.to_city}\n📅 Date: ${selectedTrip.trip_date}\n⏰ Time: ${formatTime(selectedTrip.trip_time)}\n💰 Price: $${selectedTrip.price_per_seat*tripBooking.seats}\n\n👤 Name: ${tripBooking.name}\n📞 Phone: ${tripBooking.phone}`;
     window.open(`https://wa.me/${WA_PHONE}?text=${encodeURIComponent(msg)}`,"_blank");
     setTripBooked(true);
   };
@@ -357,18 +359,15 @@ export default function App(){
   };
 
   useEffect(()=>{if(page==="admin"&&isAdmin) loadAdminData();},[page,adminTab]);
-  useEffect(()=>{   if(page==="driver"&&user){     loadProfile(user);     loadDriverData();   } },[page,user]);
+  useEffect(()=>{if(page==="driver"&&user){loadProfile(user);loadDriverData();}  },[page,user]);
 
   const toggleLang=()=>setLang(l=>l==="ar"?"en":"ar");
   const availDests=form.from?getDests(form.from).map(id=>gc(id)):[];
-  const dealDests=dealForm.from?getDests(dealForm.from).map(id=>gc(id)):[];
   const route=form.from&&form.to?findRoute(form.from,form.to):null;
   const eType=route?.carOnly&&form.type==="seat"?"car":form.type;
   const price=route?(eType==="seat"?route.seat:eType==="car"?route.car:route.van):null;
   const copyUSDT=()=>{navigator.clipboard.writeText(USDT_ADDRESS).then(()=>{setCopied(true);setTimeout(()=>setCopied(false),2000)})};
   const handleFromChange=(v)=>setForm({...form,from:v,to:""});
-  const handleDealFromChange=(v)=>setDealForm({...dealForm,from:v,to:""});
-
   const scrollToSearch=()=>{setPage("home");setTimeout(()=>searchRef.current?.scrollIntoView({behavior:"smooth"}),100)};
   const scrollToCustomBook=()=>{setPage("home");setTimeout(()=>bkRef.current?.scrollIntoView({behavior:"smooth"}),100)};
 
@@ -384,37 +383,25 @@ export default function App(){
     const pl=form.payment==="cash"?"Cash":form.payment==="crypto"?"Crypto (USDT)":"Sham Cash";
     try{const p=new URLSearchParams({date:form.date,time:form.time||"-",route:rtEn,type:tl,price:`$${price}`,name:form.name,phone:form.phone,passengers:form.passengers,bags:form.bags||"0",notes:form.notes||"-",payment:pl,ref});fetch(`${SHEET_URL}?${p.toString()}`,{method:"GET",mode:"no-cors"})}catch(e){console.log(e)}
     const msg=lang==="ar"
-      ?`🚗 *طلب حجز جديد - سفّرني*\n\n📋 رقم الحجز: ${ref}\n📍 المسار: ${rt}\n🧾 النوع: ${eType==="seat"?"مقعد":eType==="car"?"سيارة كاملة":"فان"}\n💰 السعر: $${price}\n💳 الدفع: ${form.payment==="cash"?"كاش":form.payment==="crypto"?"عملات رقمية (USDT)":"شام كاش"}\n\n📅 التاريخ: ${form.date}\n⏰ الوقت: ${form.time||"-"}\n👥 عدد الركاب: ${form.passengers}\n🧳 الحقائب: ${form.bags||"0"}\n\n👤 الاسم: ${form.name}\n📞 الهاتف: ${form.phone}\n📝 ملاحظات: ${form.notes||"-"}`
-      :`🚗 *New Booking - Safferni*\n\n📋 Ref: ${ref}\n📍 Route: ${rt}\n🧾 Type: ${tl}\n💰 Price: $${price}\n💳 Payment: ${pl}\n\n📅 Date: ${form.date}\n⏰ Time: ${form.time||"-"}\n👥 Passengers: ${form.passengers}\n🧳 Bags: ${form.bags||"0"}\n\n👤 Name: ${form.name}\n📞 Phone: ${form.phone}\n📝 Notes: ${form.notes||"-"}`;
+      ?`🚗 *طلب حجز جديد - سفّرني*\n\n📋 رقم الحجز: ${ref}\n📍 المسار: ${rt}\n🧾 النوع: ${eType==="seat"?"مقعد":eType==="car"?"سيارة كاملة":"فان"}\n💰 السعر: $${price}\n💳 الدفع: ${form.payment==="cash"?"كاش":form.payment==="crypto"?"عملات رقمية (USDT)":"شام كاش"}\n\n📅 التاريخ: ${form.date}\n⏰ الوقت: ${form.time?formatTime(form.time):"-"}\n👥 عدد الركاب: ${form.passengers}\n🧳 الحقائب: ${form.bags||"0"}\n\n👤 الاسم: ${form.name}\n📞 الهاتف: ${form.phone}\n📝 ملاحظات: ${form.notes||"-"}`
+      :`🚗 *New Booking - Safferni*\n\n📋 Ref: ${ref}\n📍 Route: ${rt}\n🧾 Type: ${tl}\n💰 Price: $${price}\n💳 Payment: ${pl}\n\n📅 Date: ${form.date}\n⏰ Time: ${form.time?formatTime(form.time):"-"}\n👥 Passengers: ${form.passengers}\n🧳 Bags: ${form.bags||"0"}\n\n👤 Name: ${form.name}\n📞 Phone: ${form.phone}\n📝 Notes: ${form.notes||"-"}`;
     window.open(`https://wa.me/${WA_PHONE}?text=${encodeURIComponent(msg)}`,"_blank");
     setSubmitted(true);
     setForm({from:"",to:"",type:"car",date:"",time:"",name:"",phone:"",passengers:"1",bags:"0",notes:"",payment:"cash"});
   };
 
-  const handleDealSubmit=()=>{
-    if(!dealForm.from||!dealForm.to||!dealForm.dateFrom||!dealForm.dateTo||!dealForm.name||!dealForm.phone){setDealError(dl.fillAll);return;}
-    setDealError("");
-    const fc=gc(dealForm.from),tc=gc(dealForm.to);
-    const rt=`${fc[lang]} ${lang==="ar"?"إلى":"to"} ${tc[lang]}`;
-    const msg=lang==="ar"
-      ?`🎫 *طلب مقعد مرن - سفّرني*\n\n📍 المسار: ${rt}\n📅 أي وقت بين: ${dealForm.dateFrom} و ${dealForm.dateTo}\n\n👤 الاسم: ${dealForm.name}\n📞 الهاتف: ${dealForm.phone}\n\n⏳ خبروني لما يتوفر!`
-      :`🎫 *Flexible Seat Request - Safferni*\n\n📍 Route: ${rt}\n📅 Anytime between: ${dealForm.dateFrom} and ${dealForm.dateTo}\n\n👤 Name: ${dealForm.name}\n📞 Phone: ${dealForm.phone}\n\n⏳ Notify me!`;
-    window.open(`https://wa.me/${WA_PHONE}?text=${encodeURIComponent(msg)}`,"_blank");
-    setDealSubmitted(true);
-    setDealForm({from:"",to:"",dateFrom:"",dateTo:"",name:"",phone:""});
-  };
-
   const fade={animation:"fadeUp 0.7s ease both"};
   const navLinks=[["home",t.nav.home],["pricing",t.nav.pricing],["contact",t.nav.contact]];
+  const statusBadge=(s)=>({padding:"4px 12px",borderRadius:20,fontSize:11,fontWeight:700,background:s==="active"?"#D1FAE5":s==="pending"?"#FFF3CD":s==="completed"?"#E0F2FE":"#FEE2E2",color:s==="active"?"#065F46":s==="pending"?"#92400E":s==="completed"?"#0369A1":"#991B1B"});
 
-  const statusBadge=(s)=>({padding:"4px 12px",borderRadius:20,fontSize:11,fontWeight:700,
-    background:s==="active"?"#D1FAE5":s==="pending"?"#FFF3CD":s==="completed"?"#E0F2FE":"#FEE2E2",
-    color:s==="active"?"#065F46":s==="pending"?"#92400E":s==="completed"?"#0369A1":"#991B1B"});
-
-  const GenderBadge=({type,lang})=>{
-    const isWomen=type==="women_only";
-    return(<span style={{display:"inline-flex",alignItems:"center",gap:4,padding:"3px 10px",borderRadius:20,fontSize:11,fontWeight:700,background:isWomen?"#F3E8FF":"#F0FDF4",color:isWomen?"#7C3AED":"#065F46",border:`1px solid ${isWomen?"#DDD6FE":"#BBF7D0"}`}}>{isWomen?"💜 "+(lang==="ar"?"نساء فقط":"Women Only"):"🚗 "+(lang==="ar"?"مختلط":"Mixed")}</span>);
-  };
+  // Generate time options every 15 minutes in AM/PM format
+  const timeOptions=Array.from({length:96},(_,i)=>{
+    const h=Math.floor(i/4);const m=(i%4)*15;
+    const ampm=h<12?"AM":"PM";const h12=h===0?12:h>12?h-12:h;
+    const label=`${h12}:${String(m).padStart(2,"0")} ${ampm}`;
+    const value=`${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`;
+    return{label,value};
+  });
 
   if(loading) return <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",fontFamily:"Montserrat,sans-serif",color:"#1B3A2A",fontSize:18,fontWeight:700}}>سفّرني...</div>;
 
@@ -425,7 +412,6 @@ export default function App(){
         @keyframes fadeUp{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:translateY(0)}}
         @keyframes slideDown{from{opacity:0;max-height:0}to{opacity:1;max-height:500px}}
         @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
-        @keyframes shimmer{0%{opacity:0.7}50%{opacity:1}100%{opacity:0.7}}
         *{box-sizing:border-box;margin:0;padding:0}
         input,select,textarea{font-family:'Montserrat',sans-serif;font-size:14px}
         ::selection{background:#1B3A2A;color:white} html{scroll-behavior:smooth}
@@ -439,7 +425,7 @@ export default function App(){
           </div>
           <div style={{display:"flex",alignItems:"center",gap:18}} className="dnav">
             {navLinks.map(([k,l])=>(<span key={k} onClick={()=>setPage(k)} style={{cursor:"pointer",fontSize:13,fontWeight:600,color:page===k?"#1B3A2A":"#999"}}>{l}</span>))}
-            <span onClick={()=>{if(!user){setPage("login");return;}if(!isDriverApplied&&!driverApproved)setPage("apply");}} style={{cursor:isDriverApplied?"not-allowed":"pointer",fontSize:13,fontWeight:600,color:isDriverApplied?"#CCC":page==="apply"?"#1B3A2A":"#999",textDecoration:isDriverApplied?"line-through":"none"}}>{t.nav.apply}</span>
+            <span onClick={()=>{if(!user){setPage("login");return;}if(!isDriverApplied)setPage("apply");}} style={{cursor:isDriverApplied?"not-allowed":"pointer",fontSize:13,fontWeight:600,color:isDriverApplied?"#CCC":page==="apply"?"#1B3A2A":"#999",textDecoration:isDriverApplied?"line-through":"none"}}>{t.nav.apply}</span>
             {isAdmin&&<span onClick={()=>setPage("admin")} style={{cursor:"pointer",fontSize:13,fontWeight:600,color:page==="admin"?"#1B3A2A":"#E8913A"}}>{t.nav.admin}</span>}
             {user&&driverApproved&&<span onClick={()=>setPage("driver")} style={{cursor:"pointer",fontSize:13,fontWeight:600,color:page==="driver"?"#1B3A2A":"#999"}}>{t.nav.driver}</span>}
             {user?(<button onClick={handleLogout} style={{background:"transparent",border:"1.5px solid #DDD",borderRadius:8,padding:"6px 14px",fontSize:12,cursor:"pointer",fontWeight:700,color:"#555",fontFamily:"inherit"}}>{t.nav.logout}</button>):
@@ -456,7 +442,7 @@ export default function App(){
         </div>
         {menuOpen&&(<div style={{animation:"slideDown 0.3s ease",borderTop:"1px solid #E8E6E1",padding:"12px 0 16px"}}>
           {navLinks.map(([k,l])=>(<div key={k} onClick={()=>{setPage(k);setMenuOpen(false)}} style={{padding:"10px 24px",cursor:"pointer",fontSize:15,fontWeight:page===k?700:400,color:page===k?"#1B3A2A":"#444"}}>{l}</div>))}
-          <div onClick={()=>{if(!user){setPage("login");setMenuOpen(false);return;}if(!isDriverApplied&&!driverApproved){setPage("apply");setMenuOpen(false)}}} style={{padding:"10px 24px",cursor:isDriverApplied?"not-allowed":"pointer",fontSize:15,color:isDriverApplied?"#CCC":"#444",textDecoration:isDriverApplied?"line-through":"none"}}>{t.nav.apply}</div>
+          <div onClick={()=>{if(!user){setPage("login");setMenuOpen(false);return;}if(!isDriverApplied){setPage("apply");setMenuOpen(false)}}} style={{padding:"10px 24px",cursor:isDriverApplied?"not-allowed":"pointer",fontSize:15,color:isDriverApplied?"#CCC":"#444",textDecoration:isDriverApplied?"line-through":"none"}}>{t.nav.apply}</div>
           {user?(<div onClick={()=>{handleLogout();setMenuOpen(false)}} style={{padding:"10px 24px",cursor:"pointer",fontSize:15,color:"#444"}}>{t.nav.logout}</div>):(<div onClick={()=>{setPage("login");setMenuOpen(false)}} style={{padding:"10px 24px",cursor:"pointer",fontSize:15,color:"#1B3A2A",fontWeight:700}}>{t.nav.login}</div>)}
           <div style={{padding:"8px 24px"}}><button onClick={()=>{scrollToSearch();setMenuOpen(false)}} style={{background:"#1B3A2A",color:"white",border:"none",padding:"10px 24px",borderRadius:8,fontSize:14,fontWeight:700,cursor:"pointer",width:"100%",fontFamily:"inherit"}}>{t.nav.book}</button></div>
         </div>)}
@@ -543,7 +529,7 @@ export default function App(){
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:12}}>
                   <div>
                     <div style={{fontWeight:800,fontSize:15,color:"#1B3A2A",marginBottom:4}}>{fc?.[lang]||trip?.from_city} {lang==="ar"?"إلى":"to"} {tc?.[lang]||trip?.to_city}</div>
-                    <div style={{fontSize:12,color:"#888"}}>{trip?.trip_date} · {adm.currentTime}: {trip?.trip_time||"-"} → {adm.requestedTime}: <span style={{fontWeight:700,color:"#1B3A2A"}}>{req.requested_time}</span></div>
+                    <div style={{fontSize:12,color:"#888"}}>{trip?.trip_date} · {adm.currentTime}: {formatTime(trip?.trip_time)} → {adm.requestedTime}: <span style={{fontWeight:700,color:"#1B3A2A"}}>{formatTime(req.requested_time)}</span></div>
                   </div>
                   <div style={{display:"flex",gap:8}}>
                     <button onClick={()=>handleEditRequest(req.id,"approved",req.trip_id,req.requested_time)} style={{background:"#1B3A2A",color:"white",border:"none",padding:"8px 16px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{adm.approve}</button>
@@ -568,8 +554,8 @@ export default function App(){
             <div style={{background:"white",borderRadius:14,padding:"20px",border:"1px solid #E8E6E1",marginBottom:20,display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
               <div><label style={lbl}>{adm.filterByDriver}</label><select value={tripFilterDriver} onChange={e=>setTripFilterDriver(e.target.value)} style={inp}><option value="">{adm.allDrivers}</option>{adminDrivers.map(d=><option key={d.id} value={d.id}>{d.full_name}</option>)}</select></div>
               <div><label style={lbl}>{adm.filterByDate}</label><input type="date" value={tripFilterDate} onChange={e=>setTripFilterDate(e.target.value)} style={inp}/></div>
-              <div style={{marginTop:12}}><button onClick={loadAdminData} style={{background:"#1B3A2A",color:"white",border:"none",padding:"11px 28px",borderRadius:10,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>🔍 {lang==="ar"?"تحديث":"Refresh"}</button></div>
             </div>
+            <div style={{marginBottom:16,textAlign:"center"}}><button onClick={loadAdminData} style={{background:"#1B3A2A",color:"white",border:"none",padding:"11px 28px",borderRadius:10,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>🔍 {lang==="ar"?"تحديث":"Refresh"}</button></div>
             {filteredAdminTrips.length===0?<p style={{textAlign:"center",color:"#AAA",padding:"40px"}}>{adm.noTrips}</p>:
             filteredAdminTrips.map((trip,i)=>{
               const fc=gc(trip.from_city);const tc=gc(trip.to_city);
@@ -580,7 +566,7 @@ export default function App(){
                       <span style={{fontWeight:800,fontSize:14,color:"#1B3A2A"}}>{fc?.[lang]||trip.from_city} {lang==="ar"?"إلى":"to"} {tc?.[lang]||trip.to_city}</span>
                       <GenderBadge type={trip.gender_type} lang={lang}/>
                     </div>
-                    <div style={{fontSize:12,color:"#888"}}>{trip.trip_date} {trip.trip_time||""} · ${trip.price_per_seat}/seat · {trip.available_seats}/{trip.total_seats} seats</div>
+                    <div style={{fontSize:12,color:"#888"}}>{trip.trip_date} {formatTime(trip.trip_time)} · ${trip.price_per_seat}/seat · {trip.available_seats}/{trip.total_seats} seats</div>
                     {trip.profiles?.full_name&&<div style={{fontSize:12,color:"#555",marginTop:2}}>{adm.driver}: {trip.profiles.full_name}</div>}
                   </div>
                   <div style={{display:"flex",flexDirection:"column",gap:6,alignItems:"flex-end"}}>
@@ -602,75 +588,75 @@ export default function App(){
       )}
 
       {/* DRIVER PANEL */}
-      {page==="driver"&&user&&(
+      {page==="driver"&&user&&driverApproved&&(
         <section style={{maxWidth:700,margin:"0 auto",padding:"40px 24px 80px",...fade}}>
           <h2 style={{fontSize:28,fontWeight:900,color:"#1B3A2A",marginBottom:24,textAlign:"center"}}>{drv.title}</h2>
-          {!driverApproved?(
-            <div style={{background:"#FFF9E6",border:"1px solid #FFE082",borderRadius:16,padding:"32px",textAlign:"center"}}><div style={{fontSize:40,marginBottom:12}}>⏳</div><p style={{fontSize:15,fontWeight:700,color:"#92400E"}}>{drv.notApproved}</p></div>
-          ):(
-            <div>
-              {editRequestMsg&&<div style={{marginBottom:16,padding:"12px 20px",background:"#F0FDF4",border:"1px solid #BBF7D0",borderRadius:10,color:"#166534",fontSize:13,fontWeight:700,textAlign:"center"}}>{editRequestMsg}</div>}
-              <div style={{background:"white",borderRadius:16,padding:"28px",border:"1px solid #E8E6E1",marginBottom:24}}>
-                <h3 style={{fontSize:18,fontWeight:800,color:"#1B3A2A",marginBottom:20}}>{drv.addTrip}</h3>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:16}}>
-                  <div><label style={lbl}>{drv.from} *</label><select value={tripForm.from} onChange={e=>setTripForm({...tripForm,from:e.target.value,to:""})} style={inp}><option value="">{drv.selectCity}</option>{cities.map(c=><option key={c.id} value={c.id}>{c[lang]}</option>)}</select></div>
-                  <div><label style={lbl}>{drv.to} *</label><select value={tripForm.to} onChange={e=>setTripForm({...tripForm,to:e.target.value})} style={inp} disabled={!tripForm.from}><option value="">{tripForm.from?b.selectDest:b.selectFromFirst}</option>{tripForm.from?getDests(tripForm.from).map(id=>{const c=gc(id);return<option key={id} value={id}>{c[lang]}</option>}):null}</select></div>
-                </div>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:16}}>
-                  <div><label style={lbl}>{drv.date} *</label><input type="date" value={tripForm.date} onChange={e=>setTripForm({...tripForm,date:e.target.value})} style={inp}/></div>
-                  <div><label style={lbl}>{drv.time}</label><input type="time" value={tripForm.time} onChange={e=>setTripForm({...tripForm,time:e.target.value})} style={inp}/></div>
-                </div>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12,marginBottom:16}}>
-                  <div><label style={lbl}>{drv.pricePerSeat} *</label><input type="number" value={tripForm.pricePerSeat} onChange={e=>setTripForm({...tripForm,pricePerSeat:e.target.value})} style={inp} placeholder="0"/></div>
-                  <div><label style={lbl}>{drv.totalSeats}</label><select value={tripForm.totalSeats} onChange={e=>setTripForm({...tripForm,totalSeats:e.target.value})} style={inp}>{[2,3,4,5,6,7,8,9,10].map(n=><option key={n} value={n}>{n}</option>)}</select></div>
-                  <div><label style={lbl}>{drv.carType}</label><input value={tripForm.carType} onChange={e=>setTripForm({...tripForm,carType:e.target.value})} style={inp}/></div>
-                </div>
-                {/* Gender type */}
-                <div style={{marginBottom:16}}>
-                  <label style={lbl}>{drv.genderType} *</label>
-                  <div style={{display:"flex",gap:10}}>
-                    {[["mixed",drv.mixed],["women_only",drv.womenOnly]].map(([k,l])=>(
-                      <button key={k} onClick={()=>setTripForm({...tripForm,genderType:k})} style={{flex:1,padding:"12px",borderRadius:12,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",border:"2px solid",transition:"all 0.2s",borderColor:tripForm.genderType===k?(k==="women_only"?"#7C3AED":"#1B3A2A"):"#E8E6E1",background:tripForm.genderType===k?(k==="women_only"?"#7C3AED":"#1B3A2A"):"white",color:tripForm.genderType===k?"white":"#666"}}>{l}</button>
-                    ))}
-                  </div>
-                </div>
-                {tripError&&<div style={{marginBottom:12,padding:"10px 16px",background:"#FEF2F2",border:"1px solid #FECACA",borderRadius:10,color:"#B91C1C",fontSize:13,fontWeight:700}}>{tripError}</div>}
-                {tripSuccess&&<div style={{marginBottom:12,padding:"10px 16px",background:"#F0FDF4",border:"1px solid #BBF7D0",borderRadius:10,color:"#166534",fontSize:13,fontWeight:700}}>✓ {drv.success}</div>}
-                <button onClick={postTrip} style={{width:"100%",background:"#1B3A2A",color:"white",border:"none",padding:"14px",borderRadius:12,fontSize:15,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>{drv.submit}</button>
+          <div>
+            {editRequestMsg&&<div style={{marginBottom:16,padding:"12px 20px",background:"#F0FDF4",border:"1px solid #BBF7D0",borderRadius:10,color:"#166534",fontSize:13,fontWeight:700,textAlign:"center"}}>{editRequestMsg}</div>}
+            <div style={{background:"white",borderRadius:16,padding:"28px",border:"1px solid #E8E6E1",marginBottom:24}}>
+              <h3 style={{fontSize:18,fontWeight:800,color:"#1B3A2A",marginBottom:20}}>{drv.addTrip}</h3>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:16}}>
+                <div><label style={lbl}>{drv.from} *</label><select value={tripForm.from} onChange={e=>setTripForm({...tripForm,from:e.target.value,to:""})} style={inp}><option value="">{drv.selectCity}</option>{cities.map(c=><option key={c.id} value={c.id}>{c[lang]}</option>)}</select></div>
+                <div><label style={lbl}>{drv.to} *</label><select value={tripForm.to} onChange={e=>setTripForm({...tripForm,to:e.target.value})} style={inp} disabled={!tripForm.from}><option value="">{tripForm.from?b.selectDest:b.selectFromFirst}</option>{tripForm.from?getDests(tripForm.from).map(id=>{const c=gc(id);return<option key={id} value={id}>{c[lang]}</option>}):null}</select></div>
               </div>
-
-              <h3 style={{fontSize:18,fontWeight:800,color:"#1B3A2A",marginBottom:16}}>{drv.myTrips}</h3>
-              {driverTrips.length===0?<p style={{color:"#AAA",textAlign:"center",padding:"24px"}}>{drv.noTrips}</p>:
-              driverTrips.map((trip,i)=>{
-                const fc=gc(trip.from_city);const tc=gc(trip.to_city);
-                const isPast=new Date(trip.trip_date)<new Date(new Date().toDateString());
-                return(<div key={trip.id} style={{background:"white",borderRadius:14,padding:"18px 20px",border:"1px solid #E8E6E1",marginBottom:10,animation:`fadeUp 0.4s ease ${0.05*i}s both`}}>
-                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:10}}>
-                    <div style={{flex:1}}>
-                      <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
-                        <span style={{fontWeight:800,fontSize:14,color:"#1B3A2A"}}>{fc?.[lang]||trip.from_city} {lang==="ar"?"إلى":"to"} {tc?.[lang]||trip.to_city}</span>
-                        <GenderBadge type={trip.gender_type} lang={lang}/>
-                      </div>
-                      <div style={{fontSize:12,color:"#888"}}>{trip.trip_date} {trip.trip_time||""} · ${trip.price_per_seat}/seat</div>
-                      <div style={{display:"flex",gap:12,marginTop:6,alignItems:"center"}}>
-                        <span style={{fontSize:12,color:"#555"}}>💺 {trip.available_seats}/{trip.total_seats}</span>
-                        <span style={{fontSize:12,color:"#1B3A2A",fontWeight:700}}>📋 {bookingCounts[trip.id]||0} {drv.bookings}</span>
-                        {trip.avg_rating>0&&<span style={{fontSize:12,color:"#F59E0B",fontWeight:700}}>★ {trip.avg_rating?.toFixed(1)}</span>}
-                      </div>
-                      {!trip.approved&&<div style={{marginTop:6,fontSize:11,fontWeight:700,color:"#92400E"}}>⏳ {drv.pendingApproval}</div>}
-                    </div>
-                    <div style={{display:"flex",flexDirection:"column",gap:6,alignItems:"flex-end"}}>
-                      <span style={statusBadge(trip.status)}>{trip.status}</span>
-                      {(trip.status==="active"||trip.status==="pending")&&!isPast&&(<div style={{display:"flex",gap:6}}>
-                        <button onClick={()=>{setEditRequestForm({tripId:trip.id,newTime:""});setShowEditModal(true)}} style={{background:"#F0F7F3",color:"#1B3A2A",border:"1px solid #1B3A2A",padding:"5px 12px",borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{drv.requestTimeEdit}</button>
-                        <button onClick={()=>cancelDriverTrip(trip.id)} style={{background:"#EF4444",color:"white",border:"none",padding:"5px 12px",borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{drv.cancel}</button>
-                      </div>)}
-                    </div>
-                  </div>
-                </div>);
-              })}
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:16}}>
+                <div><label style={lbl}>{drv.date} *</label><input type="date" value={tripForm.date} onChange={e=>setTripForm({...tripForm,date:e.target.value})} style={inp}/></div>
+                <div><label style={lbl}>{drv.time}</label>
+                  <select value={tripForm.time} onChange={e=>setTripForm({...tripForm,time:e.target.value})} style={inp}>
+                    <option value="">--</option>
+                    {timeOptions.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12,marginBottom:16}}>
+                <div><label style={lbl}>{drv.pricePerSeat} *</label><input type="number" value={tripForm.pricePerSeat} onChange={e=>setTripForm({...tripForm,pricePerSeat:e.target.value})} style={inp} placeholder="0"/></div>
+                <div><label style={lbl}>{drv.totalSeats}</label><select value={tripForm.totalSeats} onChange={e=>setTripForm({...tripForm,totalSeats:e.target.value})} style={inp}>{[2,3,4,5,6,7,8,9,10].map(n=><option key={n} value={n}>{n}</option>)}</select></div>
+                <div><label style={lbl}>{drv.carType}</label><input value={tripForm.carType} onChange={e=>setTripForm({...tripForm,carType:e.target.value})} style={inp}/></div>
+              </div>
+              <div style={{marginBottom:16}}>
+                <label style={lbl}>{drv.genderType} *</label>
+                <div style={{display:"flex",gap:10}}>
+                  {[["mixed",drv.mixed],["women_only",drv.womenOnly]].map(([k,l])=>(
+                    <button key={k} onClick={()=>setTripForm({...tripForm,genderType:k})} style={{flex:1,padding:"12px",borderRadius:12,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",border:"2px solid",transition:"all 0.2s",borderColor:tripForm.genderType===k?(k==="women_only"?"#7C3AED":"#1B3A2A"):"#E8E6E1",background:tripForm.genderType===k?(k==="women_only"?"#7C3AED":"#1B3A2A"):"white",color:tripForm.genderType===k?"white":"#666"}}>{l}</button>
+                  ))}
+                </div>
+              </div>
+              {tripError&&<div style={{marginBottom:12,padding:"10px 16px",background:"#FEF2F2",border:"1px solid #FECACA",borderRadius:10,color:"#B91C1C",fontSize:13,fontWeight:700}}>{tripError}</div>}
+              {tripSuccess&&<div style={{marginBottom:12,padding:"10px 16px",background:"#F0FDF4",border:"1px solid #BBF7D0",borderRadius:10,color:"#166534",fontSize:13,fontWeight:700}}>✓ {drv.success}</div>}
+              <button onClick={postTrip} style={{width:"100%",background:"#1B3A2A",color:"white",border:"none",padding:"14px",borderRadius:12,fontSize:15,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>{drv.submit}</button>
             </div>
-          )}
+
+            <h3 style={{fontSize:18,fontWeight:800,color:"#1B3A2A",marginBottom:16}}>{drv.myTrips}</h3>
+            {driverTrips.length===0?<p style={{color:"#AAA",textAlign:"center",padding:"24px"}}>{drv.noTrips}</p>:
+            driverTrips.map((trip,i)=>{
+              const fc=gc(trip.from_city);const tc=gc(trip.to_city);
+              const isPast=new Date(trip.trip_date)<new Date(new Date().toDateString());
+              return(<div key={trip.id} style={{background:"white",borderRadius:14,padding:"18px 20px",border:"1px solid #E8E6E1",marginBottom:10,animation:`fadeUp 0.4s ease ${0.05*i}s both`}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:10}}>
+                  <div style={{flex:1}}>
+                    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
+                      <span style={{fontWeight:800,fontSize:14,color:"#1B3A2A"}}>{fc?.[lang]||trip.from_city} {lang==="ar"?"إلى":"to"} {tc?.[lang]||trip.to_city}</span>
+                      <GenderBadge type={trip.gender_type} lang={lang}/>
+                    </div>
+                    <div style={{fontSize:12,color:"#888"}}>{trip.trip_date} {formatTime(trip.trip_time)} · ${trip.price_per_seat}/seat</div>
+                    <div style={{display:"flex",gap:12,marginTop:6,alignItems:"center"}}>
+                      <span style={{fontSize:12,color:"#555"}}>💺 {trip.available_seats}/{trip.total_seats}</span>
+                      <span style={{fontSize:12,color:"#1B3A2A",fontWeight:700}}>📋 {bookingCounts[trip.id]||0} {drv.bookings}</span>
+                      {trip.avg_rating>0&&<span style={{fontSize:12,color:"#F59E0B",fontWeight:700}}>★ {trip.avg_rating?.toFixed(1)}</span>}
+                    </div>
+                    {!trip.approved&&<div style={{marginTop:6,fontSize:11,fontWeight:700,color:"#92400E"}}>{drv.pendingApproval}</div>}
+                  </div>
+                  <div style={{display:"flex",flexDirection:"column",gap:6,alignItems:"flex-end"}}>
+                    <span style={statusBadge(trip.status)}>{trip.status}</span>
+                    {(trip.status==="active"||trip.status==="pending")&&!isPast&&(<div style={{display:"flex",gap:6}}>
+                      {trip.status==="active"&&<button onClick={()=>{setEditRequestForm({tripId:trip.id,newTime:""});setShowEditModal(true)}} style={{background:"#F0F7F3",color:"#1B3A2A",border:"1px solid #1B3A2A",padding:"5px 12px",borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{drv.requestTimeEdit}</button>}
+                      <button onClick={()=>cancelDriverTrip(trip.id)} style={{background:"#EF4444",color:"white",border:"none",padding:"5px 12px",borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{drv.cancel}</button>
+                    </div>)}
+                  </div>
+                </div>
+              </div>);
+            })}
+          </div>
         </section>
       )}
 
@@ -679,7 +665,12 @@ export default function App(){
         <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,0.5)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center",padding:"24px"}}>
           <div style={{background:"white",borderRadius:20,padding:"32px",maxWidth:360,width:"100%",animation:"fadeUp 0.3s ease"}}>
             <h3 style={{fontSize:18,fontWeight:900,color:"#1B3A2A",marginBottom:16}}>{drv.requestTimeEdit}</h3>
-            <div style={{marginBottom:20}}><label style={lbl}>{drv.newTime} *</label><input type="time" value={editRequestForm.newTime} onChange={e=>setEditRequestForm({...editRequestForm,newTime:e.target.value})} style={inp}/></div>
+            <div style={{marginBottom:20}}><label style={lbl}>{drv.newTime} *</label>
+              <select value={editRequestForm.newTime} onChange={e=>setEditRequestForm({...editRequestForm,newTime:e.target.value})} style={inp}>
+                <option value="">--</option>
+                {timeOptions.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+            </div>
             <div style={{display:"flex",gap:10}}>
               <button onClick={()=>setShowEditModal(false)} style={{flex:1,background:"white",color:"#666",border:"1.5px solid #DDD",padding:"12px",borderRadius:10,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>✕</button>
               <button onClick={requestTimeEdit} style={{flex:2,background:"#1B3A2A",color:"white",border:"none",padding:"12px",borderRadius:10,fontSize:14,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>{drv.submitRequest}</button>
@@ -705,36 +696,28 @@ export default function App(){
         </section>
 
         {/* TWO CARDS BANNER */}
-<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:0}}>
-  {/* Women Only Card */}
-  <div onClick={()=>searchRef.current?.scrollIntoView({behavior:"smooth"})} style={{background:"linear-gradient(135deg,#C9717A,#D4848C)",padding:"28px 20px",cursor:"pointer",position:"relative",overflow:"hidden",transition:"filter 0.2s"}} onMouseEnter={e=>e.currentTarget.style.filter="brightness(1.08)"} onMouseLeave={e=>e.currentTarget.style.filter="brightness(1)"}>
-    <div style={{position:"absolute",top:"-10px",right:"-10px",fontSize:60,opacity:0.1}}>💜</div>
-    <div style={{textAlign:"center",position:"relative",zIndex:1}}>
-      <div style={{width:44,height:44,borderRadius:"50%",background:"rgba(255,255,255,0.25)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 10px",fontSize:20}}>🤍</div>
-      <div style={{fontSize:"clamp(13px,3vw,17px)",fontWeight:900,color:"white",marginBottom:8}}>{lang==="ar"?"سافري بأمان وراحة 💜":"Travel safe & comfortable 💜"}</div>
-      <div style={{display:"inline-block",background:"rgba(255,255,255,0.25)",borderRadius:20,padding:"3px 14px",fontSize:11,fontWeight:700,color:"white",marginBottom:10}}>{lang==="ar"?"نساء فقط":"Women Only"}</div>
-      <div style={{fontSize:11,color:"rgba(255,255,255,0.85)",lineHeight:1.6,marginBottom:14}}>{lang==="ar"?"بيئة مخصصة للسيدات فقط — سافري براحة بال 💅":"A safe space for women travelers only 💅"}</div>
-      <div style={{background:"rgba(255,255,255,0.2)",border:"1px solid rgba(255,255,255,0.4)",borderRadius:20,padding:"6px 16px",fontSize:11,fontWeight:700,color:"white",display:"inline-block"}}>{lang==="ar"?"اضغطي هنا للبحث 💜":"Tap to search 💜"}</div>
-    </div>
-  </div>
-  {/* Mixed Card */}
-  <div onClick={()=>searchRef.current?.scrollIntoView({behavior:"smooth"})} style={{background:"linear-gradient(135deg,#4A5C45,#5C7055)",padding:"28px 20px",cursor:"pointer",position:"relative",overflow:"hidden",transition:"filter 0.2s"}} onMouseEnter={e=>e.currentTarget.style.filter="brightness(1.08)"} onMouseLeave={e=>e.currentTarget.style.filter="brightness(1)"}>
-    <div style={{position:"absolute",top:"-10px",left:"-10px",fontSize:60,opacity:0.1}}>🚗</div>
-    <div style={{textAlign:"center",position:"relative",zIndex:1}}>
-      <div style={{width:44,height:44,borderRadius:"50%",background:"rgba(255,255,255,0.25)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 10px",fontSize:20}}>🤍</div>
-      <div style={{fontSize:"clamp(13px,3vw,17px)",fontWeight:900,color:"white",marginBottom:8}}>{lang==="ar"?"سافر بأمان وراحة 🚗":"Travel safe & comfortable 🚗"}</div>
-      <div style={{display:"inline-block",background:"rgba(255,255,255,0.25)",borderRadius:20,padding:"3px 14px",fontSize:11,fontWeight:700,color:"white",marginBottom:10}}>{lang==="ar"?"للجميع":"For Everyone"}</div>
-      <div style={{fontSize:11,color:"rgba(255,255,255,0.85)",lineHeight:1.6,marginBottom:14}}>{lang==="ar"?"رحلات مريحة وآمنة لجميع المسافرين — خدمة موثوقة وسعر مناسب":"Comfortable rides for all travelers — trusted service & fair prices"}</div>
-      <div style={{background:"rgba(255,255,255,0.2)",border:"1px solid rgba(255,255,255,0.4)",borderRadius:20,padding:"6px 16px",fontSize:11,fontWeight:700,color:"white",display:"inline-block"}}>{lang==="ar"?"اضغط هنا للبحث 🚗":"Tap to search 🚗"}</div>
-    </div>
-  </div>
-</div>
-
-        {/* $10 DEAL BANNER */}
-        <div onClick={()=>setPage("deal")} style={{background:"linear-gradient(135deg,#C8941A,#D4A842)",cursor:"pointer",padding:"18px 24px",textAlign:"center"}} onMouseEnter={e=>e.currentTarget.style.filter="brightness(1.05)"} onMouseLeave={e=>e.currentTarget.style.filter="brightness(1)"}>
-          <div style={{maxWidth:600,margin:"0 auto"}}>
-            <div style={{fontSize:"clamp(18px,4vw,26px)",fontWeight:900,color:"white",marginBottom:4}}>🎫 {dl.banner}</div>
-            <div style={{fontSize:12,fontWeight:600,color:"rgba(255,255,255,0.8)"}}>{dl.bannerSub}</div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:0}}>
+          {/* Women Only Card */}
+          <div onClick={()=>{setSearchGender("women_only");searchRef.current?.scrollIntoView({behavior:"smooth"})}} style={{background:"linear-gradient(135deg,#C9717A,#D4848C)",padding:"28px 20px",cursor:"pointer",position:"relative",overflow:"hidden",transition:"filter 0.2s"}} onMouseEnter={e=>e.currentTarget.style.filter="brightness(1.08)"} onMouseLeave={e=>e.currentTarget.style.filter="brightness(1)"}>
+            <div style={{position:"absolute",top:"-10px",right:"-10px",fontSize:60,opacity:0.1}}>💜</div>
+            <div style={{textAlign:"center",position:"relative",zIndex:1}}>
+              <div style={{width:44,height:44,borderRadius:"50%",background:"rgba(255,255,255,0.25)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 10px",fontSize:20}}>🤍</div>
+              <div style={{fontSize:"clamp(13px,3vw,17px)",fontWeight:900,color:"white",marginBottom:8}}>{lang==="ar"?"سافري بأمان وراحة 💜":"Travel safe & comfortable 💜"}</div>
+              <div style={{display:"inline-block",background:"rgba(255,255,255,0.25)",borderRadius:20,padding:"3px 14px",fontSize:11,fontWeight:700,color:"white",marginBottom:10}}>{lang==="ar"?"نساء فقط":"Women Only"}</div>
+              <div style={{fontSize:11,color:"rgba(255,255,255,0.85)",lineHeight:1.6,marginBottom:14}}>{lang==="ar"?"بيئة مخصصة للسيدات فقط — سافري براحة بال 💅":"A safe space for women travelers only 💅"}</div>
+              <div style={{background:"rgba(255,255,255,0.2)",border:"1px solid rgba(255,255,255,0.4)",borderRadius:20,padding:"6px 16px",fontSize:11,fontWeight:700,color:"white",display:"inline-block"}}>{lang==="ar"?"اضغطي هنا للبحث 💜":"Tap to search 💜"}</div>
+            </div>
+          </div>
+          {/* Everyone Card */}
+          <div onClick={()=>{setSearchGender("mixed");searchRef.current?.scrollIntoView({behavior:"smooth"})}} style={{background:"linear-gradient(135deg,#4A5C45,#5C7055)",padding:"28px 20px",cursor:"pointer",position:"relative",overflow:"hidden",transition:"filter 0.2s"}} onMouseEnter={e=>e.currentTarget.style.filter="brightness(1.08)"} onMouseLeave={e=>e.currentTarget.style.filter="brightness(1)"}>
+            <div style={{position:"absolute",top:"-10px",left:"-10px",fontSize:60,opacity:0.1}}>🚗</div>
+            <div style={{textAlign:"center",position:"relative",zIndex:1}}>
+              <div style={{width:44,height:44,borderRadius:"50%",background:"rgba(255,255,255,0.25)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 10px",fontSize:20}}>🤍</div>
+              <div style={{fontSize:"clamp(13px,3vw,17px)",fontWeight:900,color:"white",marginBottom:8}}>{lang==="ar"?"سافر بأمان وراحة 🚗":"Travel safe & comfortable 🚗"}</div>
+              <div style={{display:"inline-block",background:"rgba(255,255,255,0.25)",borderRadius:20,padding:"3px 14px",fontSize:11,fontWeight:700,color:"white",marginBottom:10}}>{lang==="ar"?"للجميع":"For Everyone"}</div>
+              <div style={{fontSize:11,color:"rgba(255,255,255,0.85)",lineHeight:1.6,marginBottom:14}}>{lang==="ar"?"رحلات مريحة وآمنة لجميع المسافرين — خدمة موثوقة وسعر مناسب":"Comfortable rides for all travelers — trusted service & fair prices"}</div>
+              <div style={{background:"rgba(255,255,255,0.2)",border:"1px solid rgba(255,255,255,0.4)",borderRadius:20,padding:"6px 16px",fontSize:11,fontWeight:700,color:"white",display:"inline-block"}}>{lang==="ar"?"اضغط هنا للبحث 🚗":"Tap to search 🚗"}</div>
+            </div>
           </div>
         </div>
 
@@ -768,12 +751,11 @@ export default function App(){
               <div><label style={lbl}>{b.from}</label><select value={searchFrom} onChange={e=>{setSearchFrom(e.target.value);setSearchTo("")}} style={inp}><option value="">{b.selectCity}</option>{cities.map(c=><option key={c.id} value={c.id}>{c[lang]}</option>)}</select></div>
               <div><label style={lbl}>{b.to}</label><select value={searchTo} onChange={e=>setSearchTo(e.target.value)} style={inp} disabled={!searchFrom}><option value="">{searchFrom?b.selectDest:b.selectFromFirst}</option>{searchFrom?getDests(searchFrom).map(id=>{const c=gc(id);return<option key={id} value={id}>{c[lang]}</option>}):null}</select></div>
             </div>
-            {/* Gender filter */}
             <div style={{marginBottom:12}}>
               <label style={lbl}>{b.filterGender}</label>
               <div style={{display:"flex",gap:8}}>
-                {[["all",b.allTrips],["mixed",b.mixedOnly],["women_only",b.womenOnly]].map(([k,l])=>(
-                  <button key={k} onClick={()=>setSearchGender(k)} style={{flex:1,padding:"9px",borderRadius:10,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",border:"2px solid",transition:"all 0.2s",borderColor:searchGender===k?(k==="women_only"?"#7C3AED":"#1B3A2A"):"#E8E6E1",background:searchGender===k?(k==="women_only"?"#7C3AED":"#1B3A2A"):"white",color:searchGender===k?"white":"#666"}}>{k==="women_only"?"💜 ":k==="mixed"?"🚗 ":""}{l}</button>
+                {[["mixed",b.mixedOnly],["women_only",b.womenOnly]].map(([k,l])=>(
+                  <button key={k} onClick={()=>setSearchGender(k)} style={{flex:1,padding:"9px",borderRadius:10,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",border:"2px solid",transition:"all 0.2s",borderColor:searchGender===k?(k==="women_only"?"#7C3AED":"#1B3A2A"):"#E8E6E1",background:searchGender===k?(k==="women_only"?"#7C3AED":"#1B3A2A"):"white",color:searchGender===k?"white":"#666"}}>{k==="women_only"?"💜 ":"🚗 "}{l}</button>
                 ))}
               </div>
             </div>
@@ -783,33 +765,30 @@ export default function App(){
             </div>
 
             {tripsLoaded&&(<div style={{marginTop:20}}>
-              {trips.length===0?(
-                <div style={{textAlign:"center",padding:"24px 0"}}><p style={{color:"#AAA",fontSize:14,marginBottom:16}}>{b.noTrips}</p></div>
-              ):(
-                <div>
-                  <p style={{fontSize:13,fontWeight:700,color:"#1B3A2A",marginBottom:12}}>{b.availableTrips}:</p>
-                  {trips.map((trip,i)=>{
-                    const fc=gc(trip.from_city);const tc=gc(trip.to_city);
-                    const isWomen=trip.gender_type==="women_only";
-                    return(<div key={trip.id} style={{border:`1px solid ${isWomen?"#DDD6FE":"#E8E6E1"}`,borderRadius:12,padding:"16px",marginBottom:10,background:isWomen?"#FAFAFF":"#FAFAF8",animation:`fadeUp 0.3s ease ${0.05*i}s both`}}>
-                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10}}>
-                        <div style={{flex:1}}>
-                          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
-                            <span style={{fontWeight:800,fontSize:14,color:isWomen?"#6D28D9":"#1B3A2A"}}>{fc?.[lang]||trip.from_city} {lang==="ar"?"إلى":"to"} {tc?.[lang]||trip.to_city}</span>
-                            <GenderBadge type={trip.gender_type} lang={lang}/>
-                          </div>
-                          <div style={{fontSize:12,color:"#888"}}>{trip.trip_time||"—"} · {trip.available_seats} {b.seatsLeft} · {trip.car_type||""}</div>
-                          {trip.avg_rating>0&&<div style={{marginTop:4}}><StarRating value={Math.round(trip.avg_rating)} readOnly/></div>}
+              {trips.length===0?(<div style={{textAlign:"center",padding:"24px 0"}}><p style={{color:"#AAA",fontSize:14,marginBottom:16}}>{b.noTrips}</p></div>)
+              :(<div>
+                <p style={{fontSize:13,fontWeight:700,color:"#1B3A2A",marginBottom:12}}>{b.availableTrips}:</p>
+                {trips.map((trip,i)=>{
+                  const fc=gc(trip.from_city);const tc=gc(trip.to_city);
+                  const isWomen=trip.gender_type==="women_only";
+                  return(<div key={trip.id} style={{border:`1px solid ${isWomen?"#DDD6FE":"#E8E6E1"}`,borderRadius:12,padding:"16px",marginBottom:10,background:isWomen?"#FAFAFF":"#FAFAF8",animation:`fadeUp 0.3s ease ${0.05*i}s both`}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10}}>
+                      <div style={{flex:1}}>
+                        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
+                          <span style={{fontWeight:800,fontSize:14,color:isWomen?"#6D28D9":"#1B3A2A"}}>{fc?.[lang]||trip.from_city} {lang==="ar"?"إلى":"to"} {tc?.[lang]||trip.to_city}</span>
+                          <GenderBadge type={trip.gender_type} lang={lang}/>
                         </div>
-                        <div style={{display:"flex",alignItems:"center",gap:12}}>
-                          <span style={{fontSize:20,fontWeight:900,color:isWomen?"#6D28D9":"#1B3A2A"}}>${trip.price_per_seat}</span>
-                          <button onClick={()=>{setSelectedTrip(trip);setTripBooked(false);setRatingSubmitted(false);setTripRating(0)}} style={{background:isWomen?"#7C3AED":"#1B3A2A",color:"white",border:"none",padding:"8px 16px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{b.bookSeat}</button>
-                        </div>
+                        <div style={{fontSize:12,color:"#888"}}>{formatTime(trip.trip_time)} · {trip.available_seats} {b.seatsLeft} · {trip.car_type||""}</div>
+                        {trip.avg_rating>0&&<div style={{marginTop:4}}><StarRating value={Math.round(trip.avg_rating)} readOnly/></div>}
                       </div>
-                    </div>);
-                  })}
-                </div>
-              )}
+                      <div style={{display:"flex",alignItems:"center",gap:12}}>
+                        <span style={{fontSize:20,fontWeight:900,color:isWomen?"#6D28D9":"#1B3A2A"}}>${trip.price_per_seat}</span>
+                        <button onClick={()=>{setSelectedTrip(trip);setTripBooked(false);setRatingSubmitted(false);setTripRating(0)}} style={{background:isWomen?"#7C3AED":"#1B3A2A",color:"white",border:"none",padding:"8px 16px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{b.bookSeat}</button>
+                      </div>
+                    </div>
+                  </div>);
+                })}
+              </div>)}
               <div style={{marginTop:16,paddingTop:16,borderTop:"1px solid #E8E6E1",textAlign:"center"}}>
                 <span style={{fontSize:13,color:"#888"}}>{b.customBook} → </span>
                 <span onClick={scrollToCustomBook} style={{fontSize:13,color:"#1B3A2A",fontWeight:700,cursor:"pointer"}}>{b.title}</span>
@@ -884,7 +863,7 @@ export default function App(){
             {form.payment==="shamcash"&&<div style={{background:"#F0F0F0",borderRadius:12,padding:"16px",marginBottom:18,textAlign:"center"}}><p style={{fontSize:13,fontWeight:700,color:"#888"}}>{b.shamcashSoon}</p></div>}
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:18}}>
               <div><label style={lbl}>{b.date} *</label><input type="date" value={form.date} onChange={e=>setForm({...form,date:e.target.value})} style={inp}/></div>
-              <div><label style={lbl}>{b.time}</label><input type="time" value={form.time} onChange={e=>setForm({...form,time:e.target.value})} style={inp}/></div>
+              <div><label style={lbl}>{b.time}</label><select value={form.time} onChange={e=>setForm({...form,time:e.target.value})} style={inp}><option value="">--</option>{timeOptions.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}</select></div>
             </div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:18}}>
               <div><label style={lbl}>{b.passengers} *</label><select value={form.passengers} onChange={e=>setForm({...form,passengers:e.target.value})} style={inp}>{[1,2,3,4,5,6,7,8,9,10].map(n=><option key={n} value={n}>{n}</option>)}</select></div>
@@ -900,41 +879,6 @@ export default function App(){
           </div>)}
         </section>
       </div>)}
-
-      {/* DEAL */}
-      {page==="deal"&&(<section style={{maxWidth:550,margin:"0 auto",padding:"40px 24px 80px",...fade}}>
-        {dealSubmitted?(<div style={{background:"white",borderRadius:20,padding:"44px 28px",border:"1px solid #E8E6E1",textAlign:"center"}}>
-          <div style={{width:64,height:64,borderRadius:"50%",background:"#FFF3E0",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 20px",fontSize:30}}>🎫</div>
-          <h3 style={{fontSize:22,fontWeight:900,color:"#FF6B35",marginBottom:12}}>{dl.confirmTitle}</h3>
-          <p style={{fontSize:14,color:"#555",lineHeight:1.8,maxWidth:420,margin:"0 auto 24px"}}>{dl.confirmMsg}</p>
-          <button onClick={()=>{setDealSubmitted(false);setPage("home")}} style={{background:"#FF6B35",color:"white",border:"none",padding:"12px 36px",borderRadius:10,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{dl.confirmClose}</button>
-        </div>)
-        :(<div>
-          <div style={{textAlign:"center",marginBottom:32}}>
-            <div style={{fontSize:48,marginBottom:12}}>🎫</div>
-            <h2 style={{fontSize:"clamp(24px,5vw,32px)",fontWeight:900,color:"#FF6B35",marginBottom:10}}>{dl.title}</h2>
-            <p style={{fontSize:14,color:"#666",lineHeight:1.8,maxWidth:460,margin:"0 auto"}}>{dl.desc}</p>
-          </div>
-          <div style={{background:"white",borderRadius:20,padding:"36px 28px",border:"1px solid #E8E6E1",boxShadow:"0 8px 40px rgba(0,0,0,0.05)"}}>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:18}}>
-              <div><label style={lbl}>{dl.from} *</label><select value={dealForm.from} onChange={e=>handleDealFromChange(e.target.value)} style={inp}><option value="">{dl.selectCity}</option>{cities.map(c=><option key={c.id} value={c.id}>{c[lang]}</option>)}</select></div>
-              <div><label style={lbl}>{dl.to} *</label><select value={dealForm.to} onChange={e=>setDealForm({...dealForm,to:e.target.value})} style={inp} disabled={!dealForm.from}><option value="">{dealForm.from?dl.selectDest:dl.selectFromFirst}</option>{dealDests.map(c=><option key={c.id} value={c.id}>{c[lang]}</option>)}</select></div>
-            </div>
-            <div style={{marginBottom:18}}><label style={lbl}>{dl.dateRange} *</label>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-                <div><label style={{...lbl,fontSize:10,color:"#AAA"}}>{dl.dateFrom}</label><input type="date" value={dealForm.dateFrom} onChange={e=>setDealForm({...dealForm,dateFrom:e.target.value})} style={inp}/></div>
-                <div><label style={{...lbl,fontSize:10,color:"#AAA"}}>{dl.dateTo}</label><input type="date" value={dealForm.dateTo} onChange={e=>setDealForm({...dealForm,dateTo:e.target.value})} style={inp}/></div>
-              </div>
-            </div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:20}}>
-              <div><label style={lbl}>{dl.name} *</label><input value={dealForm.name} onChange={e=>setDealForm({...dealForm,name:e.target.value})} style={inp}/></div>
-              <div><label style={lbl}>{dl.phone} *</label><input type="tel" value={dealForm.phone} onChange={e=>setDealForm({...dealForm,phone:e.target.value})} style={inp} placeholder="+963..."/></div>
-            </div>
-            {dealError&&<div style={{marginBottom:14,padding:"10px 16px",background:"#FEF2F2",border:"1px solid #FECACA",borderRadius:10,color:"#B91C1C",fontSize:13,fontWeight:700}}>{dealError}</div>}
-            <button onClick={handleDealSubmit} style={{width:"100%",background:"linear-gradient(135deg,#FF6B35,#FF8C42)",color:"white",border:"none",padding:"15px",borderRadius:12,fontSize:16,fontWeight:800,cursor:"pointer",fontFamily:"inherit",transition:"transform 0.2s"}} onMouseEnter={e=>e.target.style.transform="scale(1.02)"} onMouseLeave={e=>e.target.style.transform="scale(1)"}>{dl.submit}</button>
-          </div>
-        </div>)}
-      </section>)}
 
       {/* PRICING */}
       {page==="pricing"&&(<section style={{maxWidth:800,margin:"0 auto",padding:"60px 24px 80px",...fade}}>
