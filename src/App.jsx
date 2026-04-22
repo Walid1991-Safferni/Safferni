@@ -731,7 +731,7 @@ export default function App(){
 </div>
 
         {/* $10 DEAL BANNER */}
-        <div onClick={()=>setPage("deal")} style={{background:"linear-gradient(135deg,#FF6B35,#FF8C42)",cursor:"pointer",padding:"18px 24px",textAlign:"center"}} onMouseEnter={e=>e.currentTarget.style.filter="brightness(1.05)"} onMouseLeave={e=>e.currentTarget.style.filter="brightness(1)"}>
+        <div onClick={()=>setPage("deal")} style={{background:"linear-gradient(135deg,#C8941A,#D4A842)",cursor:"pointer",padding:"18px 24px",textAlign:"center"}} onMouseEnter={e=>e.currentTarget.style.filter="brightness(1.05)"} onMouseLeave={e=>e.currentTarget.style.filter="brightness(1)"}>
           <div style={{maxWidth:600,margin:"0 auto"}}>
             <div style={{fontSize:"clamp(18px,4vw,26px)",fontWeight:900,color:"white",marginBottom:4}}>🎫 {dl.banner}</div>
             <div style={{fontSize:12,fontWeight:600,color:"rgba(255,255,255,0.8)"}}>{dl.bannerSub}</div>
