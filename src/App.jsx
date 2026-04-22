@@ -150,7 +150,7 @@ export default function App(){
   const bkRef=useRef(null);
   const isAdmin=user&&ADMIN_EMAILS.includes(user.email);
   const [driverApproved,setDriverApproved]=useState(false);
-  const isDriverApplied=driverApplication&&(driverApplication.status==="pending"||driverApplication.status==="approved");
+  const isDriverApplied=driverApproved||(driverApplication&&(driverApplication.status==="pending"||driverApplication.status==="approved"));
 
   useEffect(()=>{
     supabase.auth.getSession().then(({data:{session}})=>{
