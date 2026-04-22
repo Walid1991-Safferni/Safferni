@@ -149,7 +149,7 @@ export default function App(){
   const searchRef=useRef(null);
   const bkRef=useRef(null);
   const isAdmin=user&&ADMIN_EMAILS.includes(user.email);
-  const isDriverApproved=profile?.role==="driver";
+  const [driverApproved,setDriverApproved]=useState(false);
   const isDriverApplied=driverApplication&&(driverApplication.status==="pending"||driverApplication.status==="approved");
 
   useEffect(()=>{
@@ -170,7 +170,7 @@ export default function App(){
 
   const loadProfile=async(u)=>{
     const{data}=await supabase.from("profiles").select("*").eq("id",u.id).single();
-    setProfile(data);setLoading(false);
+    setProfile(data);setDriverApproved(data?.role==="driver");setLoading(false);
   };
 
   const checkDriverApplication=async()=>{
@@ -439,7 +439,7 @@ export default function App(){
             {navLinks.map(([k,l])=>(<span key={k} onClick={()=>setPage(k)} style={{cursor:"pointer",fontSize:13,fontWeight:600,color:page===k?"#1B3A2A":"#999"}}>{l}</span>))}
             <span onClick={()=>!isDriverApplied&&setPage("apply")} style={{cursor:isDriverApplied?"not-allowed":"pointer",fontSize:13,fontWeight:600,color:isDriverApplied?"#CCC":page==="apply"?"#1B3A2A":"#999",textDecoration:isDriverApplied?"line-through":"none"}}>{t.nav.apply}</span>
             {isAdmin&&<span onClick={()=>setPage("admin")} style={{cursor:"pointer",fontSize:13,fontWeight:600,color:page==="admin"?"#1B3A2A":"#E8913A"}}>{t.nav.admin}</span>}
-            {user&&isDriverApproved&&<span onClick={()=>setPage("driver")} style={{cursor:"pointer",fontSize:13,fontWeight:600,color:page==="driver"?"#1B3A2A":"#999"}}>{t.nav.driver}</span>}
+            {user&&driverApproved&&<span onClick={()=>setPage("driver")} style={{cursor:"pointer",fontSize:13,fontWeight:600,color:page==="driver"?"#1B3A2A":"#999"}}>{t.nav.driver}</span>}
             {user?(<button onClick={handleLogout} style={{background:"transparent",border:"1.5px solid #DDD",borderRadius:8,padding:"6px 14px",fontSize:12,cursor:"pointer",fontWeight:700,color:"#555",fontFamily:"inherit"}}>{t.nav.logout}</button>):
             (<button onClick={()=>setPage("login")} style={{background:"#1B3A2A",color:"white",border:"none",padding:"8px 18px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{t.nav.login}</button>)}
             <button onClick={scrollToSearch} style={{background:"#1B3A2A",color:"white",border:"none",padding:"8px 18px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{t.nav.book}</button>
@@ -603,7 +603,7 @@ export default function App(){
       {page==="driver"&&user&&(
         <section style={{maxWidth:700,margin:"0 auto",padding:"40px 24px 80px",...fade}}>
           <h2 style={{fontSize:28,fontWeight:900,color:"#1B3A2A",marginBottom:24,textAlign:"center"}}>{drv.title}</h2>
-          {!isDriverApproved?(
+          {!driverApproved?(
             <div style={{background:"#FFF9E6",border:"1px solid #FFE082",borderRadius:16,padding:"32px",textAlign:"center"}}><div style={{fontSize:40,marginBottom:12}}>⏳</div><p style={{fontSize:15,fontWeight:700,color:"#92400E"}}>{drv.notApproved}</p></div>
           ):(
             <div>
