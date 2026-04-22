@@ -252,8 +252,9 @@ export default function App(){
   };
 
   const adminRevokeDriver=async(driverId)=>{
-    await supabase.from("trips").update({status:"cancelled"}).eq("driver_id",driverId);
+    await supabase.from("trips").update({status:"cancelled",approved:false}).eq("driver_id",driverId).eq("status","active");
     await supabase.from("profiles").update({role:"passenger"}).eq("id",driverId);
+    await supabase.from("driver_applications").update({status:"denied"}).eq("user_id",driverId);
     loadAdminData();
   };
 
@@ -523,7 +524,7 @@ export default function App(){
                   <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
                     <span style={statusBadge(app.status==="approved"?"active":app.status==="denied"?"cancelled":"pending")}>{adm[app.status]}</span>
                     {app.status==="pending"&&(<>
-                      <button onClick={()=>updateApplication(app.id,"approved")} style={{background:"#1B3A2A",color:"white",border:"none",padding:"8px 16px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{adm.approve}</button>
+                      <button onClick={()=>{if(window.confirm(lang==="ar"?"هل أنت متأكد من قبول هذا السائق؟":"Are you sure you want to approve this driver?")) updateApplication(app.id,"approved")}} style={{background:"#1B3A2A",color:"white",border:"none",padding:"8px 16px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{adm.approve}</button>
                       <button onClick={()=>updateApplication(app.id,"denied")} style={{background:"#EF4444",color:"white",border:"none",padding:"8px 16px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{adm.deny}</button>
                     </>)}
                   </div>
@@ -556,7 +557,7 @@ export default function App(){
             adminDrivers.map((d,i)=>(
               <div key={d.id} style={{background:"white",borderRadius:14,padding:"20px 24px",border:"1px solid #E8E6E1",marginBottom:12,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:12,animation:`fadeUp 0.4s ease ${0.05*i}s both`}}>
                 <div><div style={{fontWeight:800,fontSize:15,color:"#1B3A2A"}}>{d.full_name}</div><div style={{fontSize:12,color:"#888"}}>{d.email} · {d.phone}</div></div>
-                <button onClick={()=>adminRevokeDriver(d.id)} style={{background:"#EF4444",color:"white",border:"none",padding:"8px 16px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{adm.revokeAndDelete}</button>
+                <button onClick={()=>{if(window.confirm(lang==="ar"?"هل أنت متأكد؟ سيتم إلغاء جميع رحلاته وإمكانية التقديم مجدداً متاحة.":"Are you sure? All their trips will be cancelled. They can reapply.")) adminRevokeDriver(d.id)}} style={{background:"#EF4444",color:"white",border:"none",padding:"8px 16px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{adm.revokeAndDelete}</button>
               </div>
             ))}</div>
           )}
