@@ -792,7 +792,7 @@ export default function App(){
                           <span style={{fontWeight:800,fontSize:14,color:isWomen?"#6D28D9":"#1B3A2A"}}>{fc?.[lang]||trip.from_city} {lang==="ar"?"إلى":"to"} {tc?.[lang]||trip.to_city}</span>
                           <GenderBadge type={trip.gender_type} lang={lang}/>
                         </div>
-                        <div style={{fontSize:12,color:"#888"}}>{formatTime(trip.trip_time)} · {trip.available_seats} {b.seatsLeft} · {trip.car_type||""}</div>
+                        <div style={{fontSize:12,color:"#888"}}>{formatTime(trip.trip_time)} · {trip.car_type||""}</div> {trip.available_seats<=2&&trip.available_seats>0&&<div style={{fontSize:11,fontWeight:700,color:"#DC2626",marginTop:3}}>🔴 {lang==="ar"?`${trip.available_seats===1?"مقعد واحد متبقي فقط!":"مقعدان متبقيان فقط!"}`:trip.available_seats===1?"Only 1 seat left!":"Only 2 seats left!"}</div>} <div style={{fontSize:12,color:"#888"}}>{trip.available_seats} {b.seatsLeft}</div>
                         {trip.avg_rating>0&&<div style={{marginTop:4}}><StarRating value={Math.round(trip.avg_rating)} readOnly/></div>}
                       </div>
                       <div style={{display:"flex",alignItems:"center",gap:12}}>
