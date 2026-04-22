@@ -355,7 +355,7 @@ export default function App(){
   };
 
   useEffect(()=>{if(page==="admin"&&isAdmin) loadAdminData();},[page,adminTab]);
-  useEffect(()=>{if(page==="driver"&&user) loadDriverData();},[page,user]);
+  useEffect(()=>{   if(page==="driver"&&user){     loadProfile(user);     loadDriverData();   } },[page,user]);
 
   const toggleLang=()=>setLang(l=>l==="ar"?"en":"ar");
   const availDests=form.from?getDests(form.from).map(id=>gc(id)):[];
