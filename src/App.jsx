@@ -53,9 +53,9 @@ const T = {
       {icon:"🛣️",t:"٧ مسارات",d:"رحلات بين المحافظات الرئيسية والمطارات"},
       {icon:"🚗",t:"سيارة أو فان",d:"سيارة لحد ٤ ركاب أو فان لحد ١٠ ركاب"},
       {icon:"💺",t:"مقعد واحد",d:"مو لازم تحجز سيارة كاملة — احجز مقعد بس"},
-      {icon:"💜",t:"رحلات للنساء فقط",d:"سيارات مخصصة للنساء مع سائقات محترفات"},
+      {icon:"💜",t:"رحلات للنساء فقط",d:"بيئة آمنة للسيدات فقط 💅"},
     ],
-    womenBanner:{title:"سافري بأمان وراحة 💜",desc:"عندنا رحلات مخصصة للنساء فقط — سائقات محترفات وبيئة آمنة ومريحة.",badge:"نساء فقط"},
+    womenBanner:{title:"سافري بأمان وراحة 💜",desc:"عندنا رحلات مخصصة للنساء فقط — بيئة آمنة ومريحة للسيدات فقط — سافري براحة بال 💅.",badge:"نساء فقط"},
     deal:{banner:"سافر بـ 10$ لأي مكان!",bannerSub:"مقاعد محدودة — لا تفوّت الفرصة",title:"سافر ابتداءً من 10$",desc:"إذا عندك مرونة بالوقت، شاركنا خطتك وبنخبرك لما يتوفر مقعد فاضي.",from:"من",to:"إلى",selectCity:"اختر المحافظة",selectDest:"اختر الوجهة",selectFromFirst:"اختر نقطة الانطلاق أولاً",dateRange:"أي وقت بين",dateFrom:"من تاريخ",dateTo:"إلى تاريخ",name:"الاسم",phone:"رقم الهاتف",submit:"خبرني!",fillAll:"يرجى ملء جميع الحقول",confirmTitle:"تم تسجيل طلبك!",confirmMsg:"سنخبرك عبر واتساب لما يتوفر مقعد فاضي.",confirmClose:"تمام"},
     b:{title:"احجز رحلة خاصة",searchTitle:"ابحث عن رحلة",searchDate:"تاريخ السفر",searchBtn:"ابحث",noTrips:"لا توجد رحلات متاحة",customBook:"احجز رحلة خاصة",availableTrips:"الرحلات المتاحة",bookSeat:"احجز مقعد",seatsLeft:"مقاعد متبقية",from:"من",to:"إلى",filterGender:"نوع الرحلة",allTrips:"الكل",mixedOnly:"مختلط",womenOnly:"نساء فقط",type:"نوع الحجز",seat:"مقعد واحد",car:"سيارة كاملة (حتى ٤ ركاب)",van:"فان (حتى ١٠ ركاب)",date:"التاريخ",time:"الوقت",name:"الاسم الكامل",phone:"رقم الهاتف",passengers:"عدد الركاب",bags:"عدد الحقائب",notes:"ملاحظات إضافية",submit:"تأكيد الحجز",selectCity:"اختر المحافظة",selectDest:"اختر الوجهة",selectFromFirst:"اختر نقطة الانطلاق أولاً",price:"السعر",fillAll:"يرجى ملء جميع الحقول المطلوبة",carOnlyNote:"هذا المسار متاح للسيارة الكاملة فقط",formNote:"عبّي المعلومات وبنتواصل معك",payment:"طريقة الدفع",cash:"كاش",crypto:"عملات رقمية",shamcash:"شام كاش",shamcashSoon:"قريباً...",cryptoNote:"أرسل المبلغ بـ USDT على شبكة BEP20 إلى العنوان التالي:",copied:"تم النسخ!",copyAddress:"نسخ العنوان",confirmTitle:"تم الحجز بنجاح!",confirmRef:"رقم الحجز",confirmMsg:"سيتم إرسال تأكيد الحجز عبر واتساب مع تعليمات التواصل مع السائق.",confirmClose:"إغلاق",rateTrip:"قيّم رحلتك",submitRating:"إرسال التقييم",ratingThanks:"شكراً على تقييمك!"},
     pricing:{title:"الأسعار",desc:"أسعار واضحة وثابتة — بدون مفاجآت",route:"المسار",seat:"مقعد",car:"سيارة (٤ ركاب)",van:"فان (١٠ ركاب)",note:"الأسعار بالدولار الأمريكي — نفس الأسعار بالاتجاهين",carOnly:"سيارة فقط"},
@@ -76,9 +76,9 @@ const T = {
       {icon:"🛣️",t:"7 routes",d:"Trips between major cities and airports"},
       {icon:"🚗",t:"Car or van",d:"Car up to 4 passengers or van up to 10"},
       {icon:"💺",t:"Single seat",d:"No need to book a whole car — just a seat"},
-      {icon:"💜",t:"Women-only rides",d:"Dedicated cars for women with professional female drivers"},
+      {icon:"💜",t:"Women-only rides",d:"A safe space for women travelers only 💅"},
     ],
-    womenBanner:{title:"Travel safe & comfortable 💜",desc:"We offer women-only rides with professional female drivers in a safe and comfortable environment.",badge:"Women Only"},
+    womenBanner:{title:"Travel safe & comfortable 💜",desc:"We offer women-only rides A safe space for women travelers only 💅.",badge:"Women Only"},
     deal:{banner:"Travel for $10 anywhere!",bannerSub:"Limited seats — don't miss out",title:"Travel starting from $10",desc:"If you're flexible with your travel dates, share your plan and we'll notify you when a seat opens up.",from:"From",to:"To",selectCity:"Select city",selectDest:"Select destination",selectFromFirst:"Select origin first",dateRange:"Anytime between",dateFrom:"From date",dateTo:"To date",name:"Name",phone:"Phone number",submit:"Let me know!",fillAll:"Please fill all fields",confirmTitle:"You're on the list!",confirmMsg:"We'll notify you via WhatsApp when a seat is available.",confirmClose:"Got it"},
     b:{title:"Book a Custom Ride",searchTitle:"Find a Trip",searchDate:"Travel Date",searchBtn:"Search",noTrips:"No trips available",customBook:"Book a custom ride",availableTrips:"Available Trips",bookSeat:"Book a Seat",seatsLeft:"seats left",from:"From",to:"To",filterGender:"Trip Type",allTrips:"All",mixedOnly:"Mixed",womenOnly:"Women Only",type:"Booking Type",seat:"Single Seat",car:"Full Car (up to 4 pax)",van:"Van (up to 10 pax)",date:"Date",time:"Time",name:"Full Name",phone:"Phone Number",passengers:"Passengers",bags:"Bags",notes:"Additional Notes",submit:"Confirm Booking",selectCity:"Select city",selectDest:"Select destination",selectFromFirst:"Select origin first",price:"Price",fillAll:"Please fill all required fields",carOnlyNote:"This route is available for whole car only",formNote:"Fill in the details and we'll get back to you",payment:"Payment Method",cash:"Cash",crypto:"Crypto",shamcash:"Sham Cash",shamcashSoon:"Coming soon...",cryptoNote:"Send the amount in USDT on BEP20 network to the following address:",copied:"Copied!",copyAddress:"Copy Address",confirmTitle:"Booking Confirmed!",confirmRef:"Booking Reference",confirmMsg:"Your booking confirmation will be sent to you via WhatsApp along with instructions on how to connect with the driver.",confirmClose:"Close",rateTrip:"Rate Your Trip",submitRating:"Submit Rating",ratingThanks:"Thanks for your rating!"},
     pricing:{title:"Pricing",desc:"Clear, fixed prices — no surprises",route:"Route",seat:"Seat",car:"Car (4 pax)",van:"Van (10 pax)",note:"Prices in USD — same prices both directions",carOnly:"Car only"},
@@ -702,12 +702,14 @@ export default function App(){
 
         {/* WOMEN ONLY BANNER */}
         <div style={{background:"linear-gradient(135deg,#4C1D95,#7C3AED,#6D28D9)",padding:"22px 24px",textAlign:"center",position:"relative",overflow:"hidden",cursor:"pointer"}} onClick={()=>{setSearchGender("women_only");searchRef.current?.scrollIntoView({behavior:"smooth"})}}>
+          <div style={{position:"absolute",bottom:0,left:0,right:0,height:3,background:"linear-gradient(90deg,#EC4899,#A855F7,#EC4899)",backgroundSize:"200% 100%",animation:"shimmer 2s linear infinite"}}/>
           <div style={{position:"absolute",top:"-20px",right:"10%",fontSize:80,opacity:0.08,animation:"shimmer 3s ease infinite"}}>💜</div>
           <div style={{position:"absolute",top:"-20px",left:"10%",fontSize:80,opacity:0.08,animation:"shimmer 3s ease infinite",animationDelay:"1.5s"}}>💜</div>
           <div style={{maxWidth:600,margin:"0 auto",position:"relative",zIndex:1}}>
             <div style={{display:"inline-block",background:"rgba(255,255,255,0.15)",borderRadius:20,padding:"3px 14px",fontSize:11,fontWeight:700,color:"rgba(255,255,255,0.9)",marginBottom:8,letterSpacing:1}}>{t.womenBanner.badge}</div>
             <div style={{fontSize:"clamp(16px,3.5vw,22px)",fontWeight:900,color:"white",marginBottom:6}}>{t.womenBanner.title}</div>
             <p style={{fontSize:13,color:"rgba(255,255,255,0.8)",maxWidth:420,margin:"0 auto"}}>{t.womenBanner.desc}</p>
+            <div style={{marginTop:12,display:"inline-flex",alignItems:"center",gap:6,background:"rgba(255,255,255,0.2)",borderRadius:20,padding:"6px 18px",fontSize:12,fontWeight:700,color:"white",border:"1px solid rgba(255,255,255,0.3)"}}>{lang==="ar"?"اضغطي هنا للبحث 💜":"Tap to search 💜"}</div>
           </div>
         </div>
 
