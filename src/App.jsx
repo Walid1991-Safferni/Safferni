@@ -439,7 +439,7 @@ export default function App(){
           </div>
           <div style={{display:"flex",alignItems:"center",gap:18}} className="dnav">
             {navLinks.map(([k,l])=>(<span key={k} onClick={()=>setPage(k)} style={{cursor:"pointer",fontSize:13,fontWeight:600,color:page===k?"#1B3A2A":"#999"}}>{l}</span>))}
-            <span onClick={()=>{if(!user){setPage("login");return;}if(!isDriverApplied)setPage("apply");}} style={{cursor:isDriverApplied?"not-allowed":"pointer",fontSize:13,fontWeight:600,color:isDriverApplied?"#CCC":page==="apply"?"#1B3A2A":"#999",textDecoration:isDriverApplied?"line-through":"none"}}>{t.nav.apply}</span>
+            <span onClick={()=>{if(!user){setPage("login");return;}if(!isDriverApplied&&!driverApproved)setPage("apply");}} style={{cursor:isDriverApplied?"not-allowed":"pointer",fontSize:13,fontWeight:600,color:isDriverApplied?"#CCC":page==="apply"?"#1B3A2A":"#999",textDecoration:isDriverApplied?"line-through":"none"}}>{t.nav.apply}</span>
             {isAdmin&&<span onClick={()=>setPage("admin")} style={{cursor:"pointer",fontSize:13,fontWeight:600,color:page==="admin"?"#1B3A2A":"#E8913A"}}>{t.nav.admin}</span>}
             {user&&driverApproved&&<span onClick={()=>setPage("driver")} style={{cursor:"pointer",fontSize:13,fontWeight:600,color:page==="driver"?"#1B3A2A":"#999"}}>{t.nav.driver}</span>}
             {user?(<button onClick={handleLogout} style={{background:"transparent",border:"1.5px solid #DDD",borderRadius:8,padding:"6px 14px",fontSize:12,cursor:"pointer",fontWeight:700,color:"#555",fontFamily:"inherit"}}>{t.nav.logout}</button>):
@@ -456,7 +456,7 @@ export default function App(){
         </div>
         {menuOpen&&(<div style={{animation:"slideDown 0.3s ease",borderTop:"1px solid #E8E6E1",padding:"12px 0 16px"}}>
           {navLinks.map(([k,l])=>(<div key={k} onClick={()=>{setPage(k);setMenuOpen(false)}} style={{padding:"10px 24px",cursor:"pointer",fontSize:15,fontWeight:page===k?700:400,color:page===k?"#1B3A2A":"#444"}}>{l}</div>))}
-          <div onClick={()=>{if(!user){setPage("login");setMenuOpen(false);return;}if(!isDriverApplied){setPage("apply");setMenuOpen(false)}}} style={{padding:"10px 24px",cursor:isDriverApplied?"not-allowed":"pointer",fontSize:15,color:isDriverApplied?"#CCC":"#444",textDecoration:isDriverApplied?"line-through":"none"}}>{t.nav.apply}</div>
+          <div onClick={()=>{if(!user){setPage("login");setMenuOpen(false);return;}if(!isDriverApplied&&!driverApproved){setPage("apply");setMenuOpen(false)}}} style={{padding:"10px 24px",cursor:isDriverApplied?"not-allowed":"pointer",fontSize:15,color:isDriverApplied?"#CCC":"#444",textDecoration:isDriverApplied?"line-through":"none"}}>{t.nav.apply}</div>
           {user?(<div onClick={()=>{handleLogout();setMenuOpen(false)}} style={{padding:"10px 24px",cursor:"pointer",fontSize:15,color:"#444"}}>{t.nav.logout}</div>):(<div onClick={()=>{setPage("login");setMenuOpen(false)}} style={{padding:"10px 24px",cursor:"pointer",fontSize:15,color:"#1B3A2A",fontWeight:700}}>{t.nav.login}</div>)}
           <div style={{padding:"8px 24px"}}><button onClick={()=>{scrollToSearch();setMenuOpen(false)}} style={{background:"#1B3A2A",color:"white",border:"none",padding:"10px 24px",borderRadius:8,fontSize:14,fontWeight:700,cursor:"pointer",width:"100%",fontFamily:"inherit"}}>{t.nav.book}</button></div>
         </div>)}
@@ -481,7 +481,7 @@ export default function App(){
       {/* APPLY */}
       {page==="apply"&&(
         <section style={{maxWidth:550,margin:"0 auto",padding:"60px 24px 80px",...fade}}>
-          {isDriverApplied?(<div style={{background:"#F0F0F0",borderRadius:20,padding:"44px 28px",textAlign:"center"}}><div style={{fontSize:48,marginBottom:12}}>🔒</div><p style={{fontSize:16,fontWeight:700,color:"#888"}}>{t.apply.alreadyApplied}</p></div>)
+          {(isDriverApplied||driverApproved)?(<div style={{background:"#F0F0F0",borderRadius:20,padding:"44px 28px",textAlign:"center"}}><div style={{fontSize:48,marginBottom:12}}>🔒</div><p style={{fontSize:16,fontWeight:700,color:"#888"}}>{t.apply.alreadyApplied}</p></div>)
           :applySubmitted?(<div style={{background:"white",borderRadius:20,padding:"44px 28px",border:"1px solid #E8E6E1",textAlign:"center"}}><div style={{fontSize:48,marginBottom:16}}>🚗</div><h3 style={{fontSize:22,fontWeight:900,color:"#1B3A2A",marginBottom:12}}>{t.apply.success}</h3><button onClick={()=>{setApplySubmitted(false);setPage("home")}} style={{background:"#1B3A2A",color:"white",border:"none",padding:"12px 36px",borderRadius:10,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>OK</button></div>)
           :(<div style={{background:"white",borderRadius:20,padding:"40px 28px",border:"1px solid #E8E6E1",boxShadow:"0 8px 40px rgba(0,0,0,0.05)"}}>
             <h2 style={{fontSize:24,fontWeight:900,marginBottom:8,color:"#1B3A2A",textAlign:"center"}}>{t.apply.title}</h2>
