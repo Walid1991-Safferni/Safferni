@@ -500,9 +500,10 @@ export default function App(){
           </div>
 
           {adminTab==="applications"&&(<div>
+            <div style={{display:"flex",gap:20,alignItems:"flex-start",flexWrap:"wrap"}}>
             {["pending","approved","denied"].map(status=>{
               const filtered=applications.filter(a=>a.status===status);
-              return(<div key={status} style={{marginBottom:28}}>
+              return(<div key={status} style={{flex:1,minWidth:280}}>
                 <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12}}>
                   <h3 style={{fontSize:15,fontWeight:800,color:status==="approved"?"#065F46":status==="denied"?"#991B1B":"#92400E"}}>{adm[status]} ({filtered.length})</h3>
                   <div style={{flex:1,height:1,background:"#E8E6E1"}}/>
@@ -527,6 +528,7 @@ export default function App(){
                 ))}
               </div>);
             })}
+            </div>
           </div>)}
 
           {adminTab==="editRequests"&&(<div>
@@ -564,9 +566,10 @@ export default function App(){
               <div><label style={lbl}>{adm.filterByDate}</label><input type="date" value={tripFilterDate} onChange={e=>setTripFilterDate(e.target.value)} style={inp}/></div>
             </div>
             <div style={{marginBottom:16,textAlign:"center"}}><button onClick={loadAdminData} style={{background:"#1B3A2A",color:"white",border:"none",padding:"11px 28px",borderRadius:10,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>🔍 {lang==="ar"?"تحديث":"Refresh"}</button></div>
+            <div style={{display:"flex",gap:20,alignItems:"flex-start",flexWrap:"wrap"}}>
             {["pending","active","cancelled"].map(status=>{
               const filtered=filteredAdminTrips.filter(t=>t.status===status);
-              return(<div key={status} style={{marginBottom:28}}>
+              return(<div key={status} style={{flex:1,minWidth:280}}>
                 <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12}}>
                   <h3 style={{fontSize:15,fontWeight:800,color:status==="active"?"#065F46":status==="cancelled"?"#991B1B":"#92400E"}}>{status==="pending"?adm.notApprovedYet:status==="active"?(lang==="ar"?"نشط":"Active"):(lang==="ar"?"ملغى":"Cancelled")} ({filtered.length})</h3>
                   <div style={{flex:1,height:1,background:"#E8E6E1"}}/>
@@ -592,8 +595,9 @@ export default function App(){
                   </div>);
                 })}
               </div>);
-            })}</div>
-          )}
+            })}
+            </div>
+          </div>)}
         </section>
       )}
 
