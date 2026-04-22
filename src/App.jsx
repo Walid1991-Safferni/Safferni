@@ -354,7 +354,7 @@ export default function App(){
     setTimeout(()=>{setRatingSubmitted(false);setTripBooked(false);setSelectedTrip(null);setTripRating(0);setLastBookingId(null);},2000);
   };
 
-  useEffect(()=>{if(page==="admin"&&isAdmin) loadAdminData();},[page]);
+  useEffect(()=>{if(page==="admin"&&isAdmin) loadAdminData();},[page,adminTab]);
   useEffect(()=>{if(page==="driver"&&user) loadDriverData();},[page,user]);
 
   const toggleLang=()=>setLang(l=>l==="ar"?"en":"ar");
