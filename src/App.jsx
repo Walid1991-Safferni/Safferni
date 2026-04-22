@@ -917,25 +917,7 @@ setDashStats({activeTrips:activeCount,totalDrivers:(drivers||[]).length,bookings
         </section>
       </div>)}
 
-      {/* PRICING */}
-      {page==="pricing"&&(<section style={{maxWidth:800,margin:"0 auto",padding:"60px 24px 80px",...fade}}>
-        <h2 style={{fontSize:32,fontWeight:900,marginBottom:10,textAlign:"center",color:"#1B3A2A"}}>{t.pricing.title}</h2>
-        <p style={{textAlign:"center",color:"#888",marginBottom:36,fontSize:15}}>{t.pricing.desc}</p>
-        <div style={{background:"white",borderRadius:16,border:"1px solid #E8E6E1",overflow:"hidden",boxShadow:"0 2px 12px rgba(0,0,0,0.03)"}}>
-          <div style={{display:"grid",gridTemplateColumns:"1.8fr 1fr 1fr 1fr",padding:"14px 20px",background:"#1B3A2A",fontSize:11,fontWeight:700,color:"rgba(255,255,255,0.85)",textTransform:"uppercase"}}>
-            <div>{t.pricing.route}</div><div style={{textAlign:"center"}}>{t.pricing.seat}</div><div style={{textAlign:"center"}}>{t.pricing.car}</div><div style={{textAlign:"center"}}>{t.pricing.van}</div>
-          </div>
-          {pricingRoutes.map((r,i)=>(<div key={i} style={{display:"grid",gridTemplateColumns:"1.8fr 1fr 1fr 1fr",padding:"14px 20px",borderBottom:i<pricingRoutes.length-1?"1px solid #F0EEEA":"none",fontSize:13,transition:"background 0.15s"}} onMouseEnter={e=>e.currentTarget.style.background="#FAFAF8"} onMouseLeave={e=>e.currentTarget.style.background="white"}>
-            <div style={{fontWeight:800,color:"#1B3A2A"}}>{r.from[lang]} {lang==="ar"?"ذهاباً وإياباً":"↔"} {r.to[lang]}</div>
-            <div style={{textAlign:"center",fontWeight:700}}>{r.carOnly?<span style={{fontSize:10,color:"#BBB"}}>{t.pricing.carOnly}</span>:`$${r.seat}`}</div>
-            <div style={{textAlign:"center",fontWeight:700}}>${r.car}</div>
-            <div style={{textAlign:"center",fontWeight:700}}>${r.van}</div>
-          </div>))}
-        </div>
-        <p style={{marginTop:20,fontSize:12,color:"#999",textAlign:"center",fontStyle:"italic"}}>{t.pricing.note}</p>
-        <div style={{textAlign:"center",marginTop:36}}><button onClick={scrollToSearch} style={{background:"#1B3A2A",color:"white",border:"none",padding:"14px 40px",borderRadius:12,fontSize:16,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{t.nav.book}</button></div>
-      </section>)}
-
+    
       {/* CONTACT */}
       {page==="contact"&&(<section style={{maxWidth:550,margin:"0 auto",padding:"60px 24px 80px",...fade}}>
         <h2 style={{fontSize:32,fontWeight:900,marginBottom:10,textAlign:"center",color:"#1B3A2A"}}>{t.contact.title}</h2>
