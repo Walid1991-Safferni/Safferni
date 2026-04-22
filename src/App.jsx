@@ -206,7 +206,7 @@ export default function App(){
 
   const handleApply=async()=>{
     if(!applyForm.fullName||!applyForm.phone||!applyForm.city||!applyForm.carType){setApplyError(t.apply.fillAll);return;}
-    const{error}=await supabase.from("driver_applications").insert({user_id:user?.id||null,full_name:applyForm.fullName,phone:applyForm.phone,city:applyForm.city,car_type:applyForm.carType,notes:applyForm.notes});
+    const{error}=await supabase.from("driver_applications").insert({user_id:user?.id||null,full_name:applyForm.fullName,phone:applyForm.phone,city:applyForm.city,car_type:applyForm.carType,notes:applyForm.notes,date_of_birth:applyForm.dob,id_number:applyForm.idNumber,car_plate:applyForm.carPlate,transport_license:applyForm.transportLicense});
     if(!error){setApplySubmitted(true);checkDriverApplication();setApplyForm({fullName:"",phone:"",dob:"",city:"",idNumber:"",carType:"",carPlate:"",transportLicense:"",notes:""});}
     else setApplyError(t.apply.fillAll);
   };
