@@ -215,7 +215,7 @@ export default function App(){
     setAdminDrivers(drivers||[]);
     const{data:edits}=await supabase.from("trip_edit_requests").select("*, trips(from_city,to_city,trip_date,trip_time)").eq("status","pending").order("created_at",{ascending:false});
     setEditRequests(edits||[]);
-    const{data:allTrips}=await supabase.from("trips").select("*").order("trip_date",{ascending:false});
+    const{data:allTrips}=await supabase.from("trips").select("*, profiles(full_name,email)").order("trip_date",{ascending:false});
     console.log("trips loaded:", allTrips);
     setAdminAllTrips(allTrips||[]);
   };
