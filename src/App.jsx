@@ -208,6 +208,7 @@ export default function App(){
   };
 
   const loadAdminData=async()=>{
+    console.log("loading admin data...");
     const{data:apps}=await supabase.from("driver_applications").select("*").order("created_at",{ascending:false});
     setApplications(apps||[]);
     const{data:drivers}=await supabase.from("profiles").select("*").eq("role","driver");
@@ -215,6 +216,7 @@ export default function App(){
     const{data:edits}=await supabase.from("trip_edit_requests").select("*, trips(from_city,to_city,trip_date,trip_time)").eq("status","pending").order("created_at",{ascending:false});
     setEditRequests(edits||[]);
     const{data:allTrips}=await supabase.from("trips").select("*, profiles(full_name,email)").order("trip_date",{ascending:false});
+    console.log("trips loaded:", allTrips);
     setAdminAllTrips(allTrips||[]);
   };
 
