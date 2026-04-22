@@ -235,7 +235,9 @@ setDashStats({activeTrips:activeCount,totalDrivers:(drivers||[]).length,bookings
     if(status==="approved"){
       const app=applications.find(a=>a.id===id);
       if(app?.user_id){
-        await supabase.from("profiles").update({role:"driver"}).eq("id",app.user_id);
+       console.log("updating profile for user:", app.user_id);
+       const{error}=await supabase.from("profiles").update({role:"driver"}).eq("id",app.user_id);
+        console.log("update result:", error);
       }
     }
     loadAdminData();
