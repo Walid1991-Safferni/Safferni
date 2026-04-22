@@ -658,7 +658,7 @@ export default function App(){
                     </div>
                     <div style={{display:"flex",flexDirection:"column",gap:6,alignItems:"flex-end"}}>
                       <span style={statusBadge(trip.status)}>{trip.status}</span>
-                      {trip.status==="active"&&!isPast&&(<div style={{display:"flex",gap:6}}>
+                      {(trip.status==="active"||trip.status==="pending")&&!isPast&&(<div style={{display:"flex",gap:6}}>
                         <button onClick={()=>{setEditRequestForm({tripId:trip.id,newTime:""});setShowEditModal(true)}} style={{background:"#F0F7F3",color:"#1B3A2A",border:"1px solid #1B3A2A",padding:"5px 12px",borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{drv.requestTimeEdit}</button>
                         <button onClick={()=>cancelDriverTrip(trip.id)} style={{background:"#EF4444",color:"white",border:"none",padding:"5px 12px",borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{drv.cancel}</button>
                       </div>)}
