@@ -704,18 +704,31 @@ export default function App(){
           </div>
         </section>
 
-        {/* WOMEN ONLY BANNER */}
-        <div style={{background:"linear-gradient(135deg,#4C1D95,#7C3AED,#6D28D9)",padding:"22px 24px",textAlign:"center",position:"relative",overflow:"hidden",cursor:"pointer"}} onClick={()=>{setSearchGender("women_only");searchRef.current?.scrollIntoView({behavior:"smooth"})}}>
-          <div style={{position:"absolute",bottom:0,left:0,right:0,height:3,background:"linear-gradient(90deg,#EC4899,#A855F7,#EC4899)",backgroundSize:"200% 100%",animation:"shimmer 2s linear infinite"}}/>
-          <div style={{position:"absolute",top:"-20px",right:"10%",fontSize:80,opacity:0.08,animation:"shimmer 3s ease infinite"}}>💜</div>
-          <div style={{position:"absolute",top:"-20px",left:"10%",fontSize:80,opacity:0.08,animation:"shimmer 3s ease infinite",animationDelay:"1.5s"}}>💜</div>
-          <div style={{maxWidth:600,margin:"0 auto",position:"relative",zIndex:1}}>
-            <div style={{display:"inline-block",background:"rgba(255,255,255,0.15)",borderRadius:20,padding:"3px 14px",fontSize:11,fontWeight:700,color:"rgba(255,255,255,0.9)",marginBottom:8,letterSpacing:1}}>{t.womenBanner.badge}</div>
-            <div style={{fontSize:"clamp(16px,3.5vw,22px)",fontWeight:900,color:"white",marginBottom:6}}>{t.womenBanner.title}</div>
-            <p style={{fontSize:13,color:"rgba(255,255,255,0.8)",maxWidth:420,margin:"0 auto"}}>{t.womenBanner.desc}</p>
-            <div style={{marginTop:12,display:"inline-flex",alignItems:"center",gap:6,background:"rgba(255,255,255,0.2)",borderRadius:20,padding:"6px 18px",fontSize:12,fontWeight:700,color:"white",border:"1px solid rgba(255,255,255,0.3)"}}>{lang==="ar"?"اضغطي هنا للبحث 💜":"Tap to search 💜"}</div>
-          </div>
-        </div>
+        {/* TWO CARDS BANNER */}
+<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:0}}>
+  {/* Women Only Card */}
+  <div onClick={()=>searchRef.current?.scrollIntoView({behavior:"smooth"})} style={{background:"linear-gradient(135deg,#C9717A,#D4848C)",padding:"28px 20px",cursor:"pointer",position:"relative",overflow:"hidden",transition:"filter 0.2s"}} onMouseEnter={e=>e.currentTarget.style.filter="brightness(1.08)"} onMouseLeave={e=>e.currentTarget.style.filter="brightness(1)"}>
+    <div style={{position:"absolute",top:"-10px",right:"-10px",fontSize:60,opacity:0.1}}>💜</div>
+    <div style={{textAlign:"center",position:"relative",zIndex:1}}>
+      <div style={{width:44,height:44,borderRadius:"50%",background:"rgba(255,255,255,0.25)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 10px",fontSize:20}}>🤍</div>
+      <div style={{fontSize:"clamp(13px,3vw,17px)",fontWeight:900,color:"white",marginBottom:8}}>{lang==="ar"?"سافري بأمان وراحة 💜":"Travel safe & comfortable 💜"}</div>
+      <div style={{display:"inline-block",background:"rgba(255,255,255,0.25)",borderRadius:20,padding:"3px 14px",fontSize:11,fontWeight:700,color:"white",marginBottom:10}}>{lang==="ar"?"نساء فقط":"Women Only"}</div>
+      <div style={{fontSize:11,color:"rgba(255,255,255,0.85)",lineHeight:1.6,marginBottom:14}}>{lang==="ar"?"بيئة مخصصة للسيدات فقط — سافري براحة بال 💅":"A safe space for women travelers only 💅"}</div>
+      <div style={{background:"rgba(255,255,255,0.2)",border:"1px solid rgba(255,255,255,0.4)",borderRadius:20,padding:"6px 16px",fontSize:11,fontWeight:700,color:"white",display:"inline-block"}}>{lang==="ar"?"اضغطي هنا للبحث 💜":"Tap to search 💜"}</div>
+    </div>
+  </div>
+  {/* Mixed Card */}
+  <div onClick={()=>searchRef.current?.scrollIntoView({behavior:"smooth"})} style={{background:"linear-gradient(135deg,#4A5C45,#5C7055)",padding:"28px 20px",cursor:"pointer",position:"relative",overflow:"hidden",transition:"filter 0.2s"}} onMouseEnter={e=>e.currentTarget.style.filter="brightness(1.08)"} onMouseLeave={e=>e.currentTarget.style.filter="brightness(1)"}>
+    <div style={{position:"absolute",top:"-10px",left:"-10px",fontSize:60,opacity:0.1}}>🚗</div>
+    <div style={{textAlign:"center",position:"relative",zIndex:1}}>
+      <div style={{width:44,height:44,borderRadius:"50%",background:"rgba(255,255,255,0.25)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 10px",fontSize:20}}>🤍</div>
+      <div style={{fontSize:"clamp(13px,3vw,17px)",fontWeight:900,color:"white",marginBottom:8}}>{lang==="ar"?"سافر بأمان وراحة 🚗":"Travel safe & comfortable 🚗"}</div>
+      <div style={{display:"inline-block",background:"rgba(255,255,255,0.25)",borderRadius:20,padding:"3px 14px",fontSize:11,fontWeight:700,color:"white",marginBottom:10}}>{lang==="ar"?"للجميع":"For Everyone"}</div>
+      <div style={{fontSize:11,color:"rgba(255,255,255,0.85)",lineHeight:1.6,marginBottom:14}}>{lang==="ar"?"رحلات مريحة وآمنة لجميع المسافرين — خدمة موثوقة وسعر مناسب":"Comfortable rides for all travelers — trusted service & fair prices"}</div>
+      <div style={{background:"rgba(255,255,255,0.2)",border:"1px solid rgba(255,255,255,0.4)",borderRadius:20,padding:"6px 16px",fontSize:11,fontWeight:700,color:"white",display:"inline-block"}}>{lang==="ar"?"اضغط هنا للبحث 🚗":"Tap to search 🚗"}</div>
+    </div>
+  </div>
+</div>
 
         {/* $10 DEAL BANNER */}
         <div onClick={()=>setPage("deal")} style={{background:"linear-gradient(135deg,#FF6B35,#FF8C42)",cursor:"pointer",padding:"18px 24px",textAlign:"center"}} onMouseEnter={e=>e.currentTarget.style.filter="brightness(1.05)"} onMouseLeave={e=>e.currentTarget.style.filter="brightness(1)"}>
