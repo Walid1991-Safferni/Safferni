@@ -400,7 +400,7 @@ setDashStats({activeTrips:activeCount,totalDrivers:(drivers||[]).length,bookings
   };
 
   const fade={animation:"fadeUp 0.7s ease both"};
-  const navLinks=[["home",t.nav.home],["pricing",t.nav.pricing],["contact",t.nav.contact]];
+  const navLinks=[["home",t.nav.home],["contact",t.nav.contact]];
   const statusBadge=(s)=>({padding:"4px 12px",borderRadius:20,fontSize:11,fontWeight:700,background:s==="active"?"#D1FAE5":s==="pending"?"#FFF3CD":s==="completed"?"#E0F2FE":"#FEE2E2",color:s==="active"?"#065F46":s==="pending"?"#92400E":s==="completed"?"#0369A1":"#991B1B"});
 
   // Generate time options every 15 minutes in AM/PM format
