@@ -269,7 +269,7 @@ setDashStats({activeTrips:activeCount,totalDrivers:(drivers||[]).length,bookings
     await supabase.from("trips").update({status:"cancelled",approved:false}).eq("driver_id",driverId).eq("status","active");
     await supabase.from("profiles").update({role:"passenger"}).eq("id",driverId);
     await supabase.from("driver_applications").update({status:"denied"}).eq("user_id",driverId);
-    loadAdminData();
+    await loadAdminData();
   };
 
   const filteredAdminTrips=adminAllTrips.filter(trip=>{
