@@ -500,25 +500,33 @@ export default function App(){
           </div>
 
           {adminTab==="applications"&&(<div>
-            {applications.length===0?<p style={{textAlign:"center",color:"#AAA",padding:"40px"}}>{adm.noApps}</p>:
-            applications.map((app,i)=>(
-              <div key={app.id} style={{background:"white",borderRadius:14,padding:"20px 24px",border:"1px solid #E8E6E1",marginBottom:12,animation:`fadeUp 0.4s ease ${0.05*i}s both`}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:12}}>
-                  <div>
-                    <div style={{fontWeight:800,fontSize:16,color:"#1B3A2A",marginBottom:4}}>{app.full_name}</div>
-                    <div style={{fontSize:12,color:"#888"}}>{adm.phone}: {app.phone} · {adm.city}: {gc(app.city)?.[lang]||app.city} · {adm.car}: {app.car_type} {app.car_model}</div>
-                    {app.notes&&<div style={{fontSize:12,color:"#AAA",marginTop:4}}>{app.notes}</div>}
-                  </div>
-                  <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
-                    <span style={statusBadge(app.status==="approved"?"active":app.status==="denied"?"cancelled":"pending")}>{adm[app.status]}</span>
-                    {app.status==="pending"&&(<>
-                      <button onClick={()=>{if(window.confirm(lang==="ar"?"هل أنت متأكد من قبول هذا السائق؟":"Are you sure you want to approve this driver?")) updateApplication(app.id,"approved")}} style={{background:"#1B3A2A",color:"white",border:"none",padding:"8px 16px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{adm.approve}</button>
-                      <button onClick={()=>updateApplication(app.id,"denied")} style={{background:"#EF4444",color:"white",border:"none",padding:"8px 16px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{adm.deny}</button>
-                    </>)}
-                  </div>
-                </div>
-              </div>
-            ))}</div>
+            {["pending","approved","denied"].map(status=>{
+  const filtered=applications.filter(a=>a.status===status);
+  return(<div key={status} style={{marginBottom:28}}>
+    <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12}}>
+      <h3 style={{fontSize:15,fontWeight:800,color:status==="approved"?"#065F46":status==="denied"?"#991B1B":"#92400E"}}>{adm[status]} ({filtered.length})</h3>
+      <div style={{flex:1,height:1,background:"#E8E6E1"}}/>
+    </div>
+    {filtered.length===0?<p style={{color:"#CCC",fontSize:13,paddingInlineStart:8}}>{adm.noApps}</p>:
+    filtered.map((app,i)=>(
+      <div key={app.id} style={{background:"white",borderRadius:14,padding:"20px 24px",border:"1px solid #E8E6E1",marginBottom:12,animation:`fadeUp 0.4s ease ${0.05*i}s both`}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:12}}>
+          <div>
+            <div style={{fontWeight:800,fontSize:16,color:"#1B3A2A",marginBottom:4}}>{app.full_name}</div>
+            <div style={{fontSize:12,color:"#888"}}>{adm.phone}: {app.phone} · {adm.city}: {gc(app.city)?.[lang]||app.city} · {adm.car}: {app.car_type} {app.car_model}</div>
+            {app.notes&&<div style={{fontSize:12,color:"#AAA",marginTop:4}}>{app.notes}</div>}
+          </div>
+          <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+            {app.status==="pending"&&(<>
+              <button onClick={()=>{if(window.confirm(lang==="ar"?"هل أنت متأكد من قبول هذا السائق؟":"Are you sure you want to approve this driver?")) updateApplication(app.id,"approved")}} style={{background:"#1B3A2A",color:"white",border:"none",padding:"8px 16px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{adm.approve}</button>
+              <button onClick={()=>updateApplication(app.id,"denied")} style={{background:"#EF4444",color:"white",border:"none",padding:"8px 16px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{adm.deny}</button>
+            </>)}
+          </div>
+        </div>
+      </div>
+    ))}
+  </div>);
+})}</div>
           )}
 
           {adminTab==="editRequests"&&(<div>
@@ -556,34 +564,35 @@ export default function App(){
               <div><label style={lbl}>{adm.filterByDate}</label><input type="date" value={tripFilterDate} onChange={e=>setTripFilterDate(e.target.value)} style={inp}/></div>
             </div>
             <div style={{marginBottom:16,textAlign:"center"}}><button onClick={loadAdminData} style={{background:"#1B3A2A",color:"white",border:"none",padding:"11px 28px",borderRadius:10,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>🔍 {lang==="ar"?"تحديث":"Refresh"}</button></div>
-            {filteredAdminTrips.length===0?<p style={{textAlign:"center",color:"#AAA",padding:"40px"}}>{adm.noTrips}</p>:
-            filteredAdminTrips.map((trip,i)=>{
-              const fc=gc(trip.from_city);const tc=gc(trip.to_city);
-              return(<div key={trip.id} style={{background:"white",borderRadius:14,padding:"18px 20px",border:"1px solid #E8E6E1",marginBottom:10,animation:`fadeUp 0.3s ease ${0.03*i}s both`}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:10}}>
-                  <div style={{flex:1}}>
-                    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
-                      <span style={{fontWeight:800,fontSize:14,color:"#1B3A2A"}}>{fc?.[lang]||trip.from_city} {lang==="ar"?"إلى":"to"} {tc?.[lang]||trip.to_city}</span>
-                      <GenderBadge type={trip.gender_type} lang={lang}/>
-                    </div>
-                    <div style={{fontSize:12,color:"#888"}}>{trip.trip_date} {formatTime(trip.trip_time)} · ${trip.price_per_seat}/seat · {trip.available_seats}/{trip.total_seats} seats</div>
-                    {trip.profiles?.full_name&&<div style={{fontSize:12,color:"#555",marginTop:2}}>{adm.driver}: {trip.profiles.full_name}</div>}
-                  </div>
-                  <div style={{display:"flex",flexDirection:"column",gap:6,alignItems:"flex-end"}}>
-                    <div style={{display:"flex",gap:6,alignItems:"center"}}>
-                      <span style={statusBadge(trip.status)}>{trip.status}</span>
-                      {!trip.approved&&trip.status==="pending"&&<span style={{fontSize:10,fontWeight:700,padding:"3px 8px",borderRadius:20,background:"#FFF3CD",color:"#92400E"}}>{adm.notApprovedYet}</span>}
-                    </div>
-                    <div style={{display:"flex",gap:6}}>
-                      {!trip.approved&&trip.status==="pending"&&<button onClick={()=>adminApproveTrip(trip.id)} style={{background:"#1B3A2A",color:"white",border:"none",padding:"6px 12px",borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{adm.approveTrip}</button>}
-                      {trip.status==="active"&&<button onClick={()=>adminCancelTrip(trip.id)} style={{background:"#F59E0B",color:"white",border:"none",padding:"6px 12px",borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{adm.cancelTrip}</button>}
-                      <button onClick={()=>{if(window.confirm("Delete this trip?")) adminDeleteTrip(trip.id)}} style={{background:"#EF4444",color:"white",border:"none",padding:"6px 12px",borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{adm.deleteTrip}</button>
-                    </div>
-                  </div>
-                </div>
-              </div>);
-            })}</div>
-          )}
+           {["pending","active","cancelled"].map(status=>{
+  const filtered=filteredAdminTrips.filter(t=>t.status===status);
+  return(<div key={status} style={{marginBottom:28}}>
+    <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12}}>
+      <h3 style={{fontSize:15,fontWeight:800,color:status==="active"?"#065F46":status==="cancelled"?"#991B1B":"#92400E"}}>{status==="pending"?adm.notApprovedYet:status} ({filtered.length})</h3>
+      <div style={{flex:1,height:1,background:"#E8E6E1"}}/>
+    </div>
+    {filtered.length===0?<p style={{color:"#CCC",fontSize:13,paddingInlineStart:8}}>{adm.noTrips}</p>:
+    filtered.map((trip,i)=>{
+      const fc=gc(trip.from_city);const tc=gc(trip.to_city);
+      return(<div key={trip.id} style={{background:"white",borderRadius:14,padding:"18px 20px",border:"1px solid #E8E6E1",marginBottom:10,animation:`fadeUp 0.3s ease ${0.03*i}s both`}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:10}}>
+          <div style={{flex:1}}>
+            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
+              <span style={{fontWeight:800,fontSize:14,color:"#1B3A2A"}}>{fc?.[lang]||trip.from_city} {lang==="ar"?"إلى":"to"} {tc?.[lang]||trip.to_city}</span>
+              <GenderBadge type={trip.gender_type} lang={lang}/>
+            </div>
+            <div style={{fontSize:12,color:"#888"}}>{trip.trip_date} {formatTime(trip.trip_time)} · ${trip.price_per_seat}/seat · {trip.available_seats}/{trip.total_seats} seats</div>
+            {trip.profiles?.full_name&&<div style={{fontSize:12,color:"#555",marginTop:2}}>{adm.driver}: {trip.profiles.full_name}</div>}
+          </div>
+          <div style={{display:"flex",gap:6}}>
+            {status==="pending"&&<button onClick={()=>adminApproveTrip(trip.id)} style={{background:"#1B3A2A",color:"white",border:"none",padding:"6px 12px",borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{adm.approveTrip}</button>}
+            <button onClick={()=>{if(window.confirm("Delete this trip?")) adminDeleteTrip(trip.id)}} style={{background:"#EF4444",color:"white",border:"none",padding:"6px 12px",borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{adm.deleteTrip}</button>
+          </div>
+        </div>
+      </div>);
+    })}
+  </div>);
+})}          )}
         </section>
       )}
 
