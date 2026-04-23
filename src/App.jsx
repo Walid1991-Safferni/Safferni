@@ -56,9 +56,9 @@ const T={
     nav:{home:"الرئيسية",pricing:"الأسعار",contact:"تواصل معنا",book:"احجز الآن",login:"تسجيل الدخول",logout:"خروج",admin:"لوحة الإدارة",driver:"لوحة السائق",apply:"سجّل كسائق"},
     about:{title:"من نحن",p1:"سفّرني هي خدمة نقل بين المحافظات تربط سوريا بعمّان وبيروت.",p2:"سائقونا محترفون وذوو خبرة، ونلتزم بالمواعيد المحددة.",p3:"سواء كنت مسافراً لوحدك أو مع عائلتك، عندنا الخيار المناسب لك."},
     features:[
-      {icon:"🛣️",t:"٧ مسارات",d:"رحلات بين المحافظات الرئيسية والمطارات"},
-      {icon:"🚗",t:"سيارة أو فان",d:"سيارة لحد ٤ ركاب أو فان لحد ١٠ ركاب"},
-      {icon:"💺",t:"مقعد واحد",d:"مو لازم تحجز سيارة كاملة — احجز مقعد بس"},
+      {icon:"🛣️",t:"٧ مسارات",d:"دمشق ↔ بيروت · دمشق ↔ حمص · دمشق ↔ حلب · دمشق ↔ عمّان · دمشق ↔ مطار الملكة علياء · دمشق ↔ مطار دمشق · حلب ↔ حمص"},
+      {icon:"🚗",t:"سيارة أو فان",d:"احجز مقعد واحد في سيارة مشتركة، أو استأجر سيارة كاملة لحد ٤ ركاب، أو فان لحد ١٠ ركاب — الخيار بيدك"},
+    
       {icon:"💜",t:"رحلات للنساء فقط",d:"بيئة آمنة للسيدات فقط 💅"},
     ],
     deal:{from:"من",to:"إلى",selectCity:"اختر المحافظة",selectDest:"اختر الوجهة",selectFromFirst:"اختر نقطة الانطلاق أولاً",dateRange:"أي وقت بين",dateFrom:"من تاريخ",dateTo:"إلى تاريخ",name:"الاسم",phone:"رقم الهاتف",submit:"خبرني!",fillAll:"يرجى ملء جميع الحقول",confirmTitle:"تم تسجيل طلبك!",confirmMsg:"سنخبرك عبر واتساب لما يتوفر مقعد فاضي.",confirmClose:"تمام"},
@@ -78,10 +78,10 @@ const T={
     nav:{home:"Home",pricing:"Pricing",contact:"Contact",book:"Book Now",login:"Login",logout:"Logout",admin:"Admin Panel",driver:"Driver Panel",apply:"Become a Driver"},
     about:{title:"About Us",p1:"Safferni is an intercity transport service connecting Syria with Amman and Beirut.",p2:"Our drivers are experienced professionals, and we stick to our schedules.",p3:"Whether you're traveling solo or with family, we have the right option for you."},
     features:[
-      {icon:"🛣️",t:"7 routes",d:"Trips between major cities and airports"},
-      {icon:"🚗",t:"Car or van",d:"Car up to 4 passengers or van up to 10"},
-      {icon:"💺",t:"Single seat",d:"No need to book a whole car — just a seat"},
-      {icon:"💜",t:"Women-only rides",d:"A safe space for women travelers only 💅"},
+      {icon:"🛣️",t:"7 routes",d:"Damascus ↔ Beirut · Damascus ↔ Homs · Damascus ↔ Aleppo · Damascus ↔ Amman · Damascus ↔ Queen Alia Airport · Damascus ↔ Damascus Airport · Aleppo ↔ Homs"},
+      {icon:"🚗",t:"Car or van",d:"Book a single seat in a shared car, rent a full car for up to 4, or a van for up to 10 — your choice"},
+      
+      {icon:"💜",t:"Women-only rides",d:"Not comfortable riding with men? We have dedicated cars for women only — travel with peace of mind 💅"},
     ],
     deal:{from:"From",to:"To",selectCity:"Select city",selectDest:"Select destination",selectFromFirst:"Select origin first",dateRange:"Anytime between",dateFrom:"From date",dateTo:"To date",name:"Name",phone:"Phone number",submit:"Let me know!",fillAll:"Please fill all fields",confirmTitle:"You're on the list!",confirmMsg:"We'll notify you via WhatsApp when a seat is available.",confirmClose:"Got it"},
     b:{title:"Book a Custom Ride",searchTitle:"Find a Trip",searchDate:"Travel Date",searchBtn:"Search",noTrips:"No trips available",customBook:"Book a custom ride",availableTrips:"Available Trips",bookSeat:"Book a Seat",seatsLeft:"seats left",from:"From",to:"To",filterGender:"Trip Type",mixedOnly:"Mixed",womenOnly:"Women Only",type:"Booking Type",seat:"Single Seat",car:"Full Car (up to 4 pax)",van:"Van (up to 10 pax)",date:"Date",time:"Time",name:"Full Name",phone:"Phone Number",passengers:"Passengers",bags:"Bags",notes:"Additional Notes",submit:"Confirm Booking",selectCity:"Select city",selectDest:"Select destination",selectFromFirst:"Select origin first",price:"Price",fillAll:"Please fill all required fields",carOnlyNote:"This route is available for whole car only",formNote:"Fill in the details and we'll get back to you",payment:"Payment Method",cash:"Cash",crypto:"Crypto",shamcash:"Sham Cash",shamcashSoon:"Coming soon...",cryptoNote:"Send the amount in USDT on BEP20 network to the following address:",copied:"Copied!",copyAddress:"Copy Address",confirmTitle:"Booking Confirmed!",confirmRef:"Booking Reference",confirmMsg:"Your booking confirmation will be sent to you via WhatsApp along with instructions on how to connect with the driver.",confirmClose:"Close",rateTrip:"Rate Your Trip",submitRating:"Submit Rating",ratingThanks:"Thanks for your rating!"},
@@ -847,7 +847,7 @@ const saveDriverProfile=async()=>{
           <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(190px,1fr))",gap:14}}>
             {t.features.map((f,i)=>{
               const isWomenFeature=f.icon==="💜";
-              return(<div key={i} style={{background:isWomenFeature?"linear-gradient(135deg,#F5F3FF,#EDE9FE)":"white",border:`1px solid ${isWomenFeature?"#DDD6FE":"#ECEAE6"}`,borderRadius:14,padding:"28px 20px",textAlign:"center",animation:`fadeUp 0.6s ease ${0.15*i+0.3}s both`,transition:"transform 0.2s,box-shadow 0.2s"}} onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.boxShadow=`0 8px 24px ${isWomenFeature?"rgba(124,58,237,0.15)":"rgba(0,0,0,0.06)"}`}} onMouseLeave={e=>{e.currentTarget.style.transform="translateY(0)";e.currentTarget.style.boxShadow="none"}}>
+              return(<div key={i} style={{background:isWomenFeature?"linear-gradient(135deg,#F5F3FF,#EDE9FE)":"white",border:`1px solid ${isWomenFeature?"#DDD6FE":"#ECEAE6"}`,borderRadius:14,padding:"28px 20px",textAlign:"center",animation:`fadeUp 0.6s ease ${0.15*i+0.3}s both`,transition:"transform 0.2s,box-shadow 0.2s,z-index 0s",position:"relative",cursor:"default"}} onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-4px) scale(1.03)";e.currentTarget.style.boxShadow=`0 12px 32px ${isWomenFeature?"rgba(124,58,237,0.2)":"rgba(0,0,0,0.1)"}`;e.currentTarget.style.zIndex="10";}} onMouseLeave={e=>{e.currentTarget.style.transform="translateY(0) scale(1)";e.currentTarget.style.boxShadow="none";e.currentTarget.style.zIndex="1";}}>
                 <div style={{fontSize:28,marginBottom:10}}>{f.icon}</div>
                 <div style={{fontWeight:800,fontSize:14,color:isWomenFeature?"#6D28D9":"#1B3A2A",marginBottom:5}}>{f.t}</div>
                 <div style={{fontSize:12,color:isWomenFeature?"#7C3AED99":"#999",lineHeight:1.5}}>{f.d}</div>
