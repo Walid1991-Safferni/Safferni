@@ -32,7 +32,7 @@ const routeMap = [
 const getDests=(f)=>{const d=[];routeMap.forEach(r=>{if(r.from===f)d.push(r.to);if(r.to===f)d.push(r.from)});return[...new Set(d)]};
 const findRoute=(a,b)=>routeMap.find(r=>(r.from===a&&r.to===b)||(r.from===b&&r.to===a));
 const gc=(id)=>cities.find(c=>c.id===id);
-const genRef=()=>{const d=new Date();return`SAF-${d.getFullYear().toString().slice(-2)}${String(d.getMonth()+1).padStart(2,"0")}-${Math.floor(Math.random()*9000)+1000}`};
+const genAppRef=()=>{const d=new Date();return`DRV-${String(d.getDate()).padStart(2,"0")}${String(d.getMonth()+1).padStart(2,"0")}-${Math.floor(Math.random()*9000)+1000}`};
 const pricingRoutes=routeMap.map(r=>({from:gc(r.from),to:gc(r.to),car:r.car,van:r.van,seat:r.seat,carOnly:r.carOnly}));
 const timeToMinutes=(t)=>{if(!t)return 0;const[h,m]=t.split(":").map(Number);return h*60+m};
 const formatTime=(t)=>{if(!t)return"—";const h=parseInt(t.slice(0,2));const m=t.slice(3,5);const ampm=h>=12?"PM":"AM";const h12=h===0?12:h>12?h-12:h;return`${h12}:${m} ${ampm}`};
@@ -136,6 +136,7 @@ export default function App(){
   const [applyForm,setApplyForm]=useState({fullName:"",phone:"",city:"",carType:"",carModel:"",licensePlate:"",notes:""});
   const [applySubmitted,setApplySubmitted]=useState(false);
   const [applyError,setApplyError]=useState("");
+  const [appRef,setAppRef]=useState("");
   const [driverApplication,setDriverApplication]=useState(null);
   const [applications,setApplications]=useState([]);
   const [adminDrivers,setAdminDrivers]=useState([]);
@@ -229,7 +230,7 @@ export default function App(){
   const handleApply=async()=>{
     if(!applyForm.fullName||!applyForm.phone||!applyForm.city||!applyForm.carType){setApplyError(t.apply.fillAll);return;}
     const{error}=await supabase.from("driver_applications").insert({user_id:user?.id||null,full_name:applyForm.fullName,phone:applyForm.phone,city:applyForm.city,car_type:applyForm.carType,car_model:applyForm.carModel,license_plate:applyForm.licensePlate,notes:applyForm.notes});
-    if(!error){setApplySubmitted(true);checkDriverApplication();setApplyForm({fullName:"",phone:"",city:"",carType:"",carModel:"",licensePlate:"",notes:""});}
+    const ref=genAppRef();setAppRef(ref); if(!error){setApplySubmitted(true);checkDriverApplication();setApplyForm({fullName:"",phone:"",city:"",carType:"",carModel:"",licensePlate:"",notes:""});}
     else setApplyError(t.apply.fillAll);
   };
 
@@ -576,7 +577,23 @@ export default function App(){
       {page==="apply"&&(
         <section style={{maxWidth:550,margin:"0 auto",padding:"60px 24px 80px",...fade}}>
           {(isDriverApplied||driverApproved)?(<div style={{background:"#F0F0F0",borderRadius:20,padding:"44px 28px",textAlign:"center"}}><div style={{fontSize:48,marginBottom:12}}>🔒</div><p style={{fontSize:16,fontWeight:700,color:"#888"}}>{t.apply.alreadyApplied}</p></div>)
-          :applySubmitted?(<div style={{background:"white",borderRadius:20,padding:"44px 28px",border:"1px solid #E8E6E1",textAlign:"center"}}><div style={{fontSize:48,marginBottom:16}}>🚗</div><h3 style={{fontSize:22,fontWeight:900,color:"#1B3A2A",marginBottom:12}}>{t.apply.success}</h3><button onClick={()=>{setApplySubmitted(false);setPage("home")}} style={{background:"#1B3A2A",color:"white",border:"none",padding:"12px 36px",borderRadius:10,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>OK</button></div>)
+          :applySubmitted?(<div style={{background:"white",borderRadius:20,padding:"44px 28px",border:"1px solid #E8E6E1",textAlign:"center"}}><div style={{fontSize:48,marginBottom:16}}>🚗</div>
+              <h3 style={{fontSize:20,fontWeight:900,color:"#1B3A2A",marginBottom:8}}>{lang==="ar"?"تم استلام طلبك!":"Application Received!"}</h3>
+              <div style={{background:"#F0F7F3",borderRadius:12,padding:"12px 24px",display:"inline-block",marginBottom:16}}>
+                <div style={{fontSize:11,color:"#888",fontWeight:700,marginBottom:2}}>{lang==="ar"?"رقم الطلب":"Application Number"}</div>
+                <div style={{fontSize:22,fontWeight:900,color:"#1B3A2A",letterSpacing:2}}>{appRef}</div>
+              </div>
+              <p style={{fontSize:13,color:"#555",marginBottom:20,maxWidth:360,margin:"0 auto 20px"}}>{lang==="ar"?"احتفظ برقم طلبك، ثم أكمل التسجيل عبر واتساب":"Keep your application number then complete registration via WhatsApp"}</p>
+              <button onClick={()=>{
+                const msg=lang==="ar"
+                  ?`🚗 *طلب تسجيل سائق - سفّرني*\n\n📋 رقم الطلب: ${appRef}\n👤 الاسم: ${applyForm.fullName}\n📞 الهاتف: ${applyForm.phone}\n🏙️ المدينة: ${gc(applyForm.city)?.[lang]||applyForm.city}\n🚗 السيارة: ${applyForm.carType}\n🔢 اللوحة: ${applyForm.carPlate}\n📄 رخصة النقل: ${applyForm.transportLicense}\n🪪 الهوية: ${applyForm.idNumber}\n📅 تاريخ الميلاد: ${applyForm.dob}`
+                  :`🚗 *Driver Registration - Safferni*\n\n📋 App Ref: ${appRef}\n👤 Name: ${applyForm.fullName}\n📞 Phone: ${applyForm.phone}\n🏙️ City: ${gc(applyForm.city)?.en||applyForm.city}\n🚗 Car: ${applyForm.carType}\n🔢 Plate: ${applyForm.carPlate}\n📄 Transport License: ${applyForm.transportLicense}\n🪪 ID: ${applyForm.idNumber}\n📅 DOB: ${applyForm.dob}`;
+                window.open(`https://wa.me/${WA_PHONE}?text=${encodeURIComponent(msg)}`,"_blank");
+              }} style={{background:"#25D366",color:"white",border:"none",padding:"14px 28px",borderRadius:12,fontSize:14,fontWeight:800,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:8,margin:"0 auto 12px"}}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                {lang==="ar"?"أكمل التسجيل عبر واتساب":"Complete Registration via WhatsApp"}
+              </button>
+              <button onClick={()=>{setApplySubmitted(false);setPage("home")}} style={{background:"transparent",color:"#888",border:"none",padding:"8px",fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>{lang==="ar"?"رجوع للرئيسية":"Back to Home"}</button></div>)
           :(<div style={{background:"white",borderRadius:20,padding:"40px 28px",border:"1px solid #E8E6E1",boxShadow:"0 8px 40px rgba(0,0,0,0.05)"}}>
             <h2 style={{fontSize:24,fontWeight:900,marginBottom:8,color:"#1B3A2A",textAlign:"center"}}>{t.apply.title}</h2>
             <p style={{fontSize:13,color:"#AAA",textAlign:"center",marginBottom:28}}>{t.apply.desc}</p>
