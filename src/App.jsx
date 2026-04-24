@@ -234,7 +234,6 @@ export default function App(){
     if(!error){setAppRef(ref);setApplySubmitted(true);checkDriverApplication();setApplyForm({fullName:"",phone:"",city:"",carType:"",carModel:"",licensePlate:"",notes:""});}
     else setApplyError(t.apply.fillAll);
   };
-  };
 
   const loadAdminData=async()=>{
     const{data:apps}=await supabase.from("driver_applications").select("*").order("created_at",{ascending:false});
