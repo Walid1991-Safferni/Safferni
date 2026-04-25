@@ -315,6 +315,7 @@ export default function App(){
   useEffect(()=>{
     if(page==="profile"&&user){
       setProfileEdit({fullName:profile?.full_name||"",phone:profile?.phone||"",email:profile?.email||user.email||""});
+      setApplyForm(f=>({...f,fullName:profile?.full_name||"",phone:profile?.phone||""}));
       loadPassengerBookings();
     }
   },[page,user,profile]);
