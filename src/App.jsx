@@ -435,16 +435,14 @@ export default function App(){
     if(!user) return;
     setProfileLoading(true);
     const today=new Date().toISOString().split("T")[0];
-    const{data:upcoming}=await supabase
-      .from("bookings").select("*, trips(trip_date,trip_time,from_city,to_city,driver_id,gender_type,price_per_seat)")
-      .eq("user_id",user.id).neq("status","cancelled")
-      .gte("trips.trip_date",today).order("created_at",{ascending:false});
-    const{data:past}=await supabase
-      .from("bookings").select("*, trips(trip_date,trip_time,from_city,to_city,driver_id,gender_type,price_per_seat)")
-      .eq("user_id",user.id).neq("status","cancelled")
-      .lt("trips.trip_date",today).order("created_at",{ascending:false});
-    setUpcomingBookings(upcoming||[]);
-    setPastBookings(past||[]);
+    const{data:all}=await supabase
+    .from("bookings").select("*, trips(trip_date,trip_time,from_city,to_city,driver_id,gender_type,price_per_seat,status)")
+    .eq("user_id",user.id).neq("status","cancelled")
+    .order("created_at",{ascending:false});
+  const upcoming=(all||[]).filter(b=>b.trips?.trip_date>=today);
+  const past=(all||[]).filter(b=>b.trips?.trip_date<today);
+  setUpcomingBookings(upcoming);
+  setPastBookings(past);
     setProfileLoading(false);
   };
 
