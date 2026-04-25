@@ -410,6 +410,28 @@ export default function App(){
       const now=new Date();
       if((tripDateTime-now)<2*60*60*1000){setTripError(drv.noticeRequired);return false;}
     }
+    const routeLimits={
+      "dam-bei":{min:35,max:40},"bei-dam":{min:35,max:40},
+      "dam-hom":{min:15,max:25},"hom-dam":{min:15,max:25},
+      "dam-ale":{min:35,max:50},"ale-dam":{min:35,max:50},
+      "dam-amm":{min:60,max:70},"amm-dam":{min:60,max:70},
+      "dam-qaa":{min:65,max:75},"qaa-dam":{min:65,max:75},
+      "dam-daa":{min:20,max:30},"daa-dam":{min:20,max:30},
+      "ale-hom":{min:25,max:30},"hom-ale":{min:25,max:30},
+    };
+    const routeKey=`${tripForm.from}-${tripForm.to}`;
+    const limits=routeLimits[routeKey];
+    if(limits){
+      const p=parseFloat(tripForm.pricePerSeat);
+      if(p<limits.min||p>limits.max){
+        setTripError(lang==="ar"?`السعر يجب أن يكون بين $${limits.min} و $${limits.max} لهذا المسار`:`Price must be between $${limits.min} and $${limits.max} for this route`);
+        return false;
+      }
+    }
+    return true;
+  };
+
+  const postTrip=async()=>{
     return true;
   };
 
