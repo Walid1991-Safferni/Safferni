@@ -133,7 +133,10 @@ export default function App(){
   const [authMode,setAuthMode]=useState("login");
   const [authForm,setAuthForm]=useState({email:"",password:"",fullName:"",phone:""});
   const [authError,setAuthError]=useState("");
-  const [authLoading,setAuthLoading]=useState(false);
+const [otpSent,setOtpSent]=useState(false);
+const [otpCode,setOtpCode]=useState("");
+const [otpPhone,setOtpPhone]=useState("");
+const [otpError,setOtpError]=useState("");
   const [applyForm,setApplyForm]=useState({fullName:"",phone:"",city:"",carType:"",carModel:"",licensePlate:"",notes:""});
   const [applySubmitted,setApplySubmitted]=useState(false);
   const [applyError,setApplyError]=useState("");
@@ -215,11 +218,24 @@ export default function App(){
         if(error) setAuthError(t.auth.error);
         else setPage("home");
       } else {
-        const{data,error}=await supabase.auth.signUp({email:authForm.email,password:authForm.password});
-        if(error){setAuthError(t.auth.error);}
-        else if(data.user){
-          await supabase.from("profiles").insert({id:data.user.id,email:authForm.email,full_name:authForm.fullName,phone:authForm.phone,role:ADMIN_EMAILS.includes(authForm.email)?"admin":"passenger"});
-          setPage("home");
+        if(!otpSent){
+          // Step 1: Send OTP to phone
+          const{error}=await supabase.auth.signInWithOtp({phone:authForm.phone});
+          if(error){setAuthError(t.auth.error);}
+          else{setOtpSent(true);setOtpPhone(authForm.phone);}
+        } else {
+          // Step 2: Verify OTP then create account
+          const{error:otpError}=await supabase.auth.verifyOtp({phone:otpPhone,token:otpCode,type:"sms"});
+          if(otpError){setOtpError(lang==="ar"?"الكود غير صحيح، حاول مرة أخرى":"Incorrect code, try again");}
+          else{
+            // OTP verified - now sign up properly
+            const{data,error}=await supabase.auth.signUp({email:authForm.email,password:authForm.password});
+            if(error){setAuthError(t.auth.error);}
+            else if(data.user){
+              await supabase.from("profiles").insert({id:data.user.id,email:authForm.email,full_name:authForm.fullName,phone:authForm.phone,role:ADMIN_EMAILS.includes(authForm.email)?"admin":"passenger"});
+              setPage("home");
+            }
+          }
         }
       }
     }catch(e){setAuthError(t.auth.error);}
@@ -587,12 +603,12 @@ export default function App(){
         <section style={{maxWidth:420,margin:"0 auto",padding:"60px 24px 80px",...fade}}>
           <div style={{background:"white",borderRadius:20,padding:"40px 28px",border:"1px solid #E8E6E1",boxShadow:"0 8px 40px rgba(0,0,0,0.05)"}}>
             <div style={{textAlign:"center",marginBottom:28}}><LogoSVG/><h2 style={{fontSize:22,fontWeight:900,color:"#1B3A2A",marginTop:12}}>{authMode==="login"?t.auth.login:t.auth.signup}</h2></div>
-            {authMode==="signup"&&(<><div style={{marginBottom:16}}><label style={lbl}>{t.auth.fullName}</label><input value={authForm.fullName} onChange={e=>setAuthForm({...authForm,fullName:e.target.value})} style={inp}/></div><div style={{marginBottom:16}}><label style={lbl}>{t.auth.phone}</label><input value={authForm.phone} onChange={e=>setAuthForm({...authForm,phone:e.target.value})} style={inp} placeholder="+963..."/></div></>)}
+            {authMode==="signup"&&!otpSent&&(<>   <div style={{marginBottom:16}}><label style={lbl}>{t.auth.fullName}</label><input value={authForm.fullName} onChange={e=>setAuthForm({...authForm,fullName:e.target.value})} style={inp}/></div>   <div style={{marginBottom:16}}><label style={lbl}>{t.auth.phone}</label><input value={authForm.phone} onChange={e=>setAuthForm({...authForm,phone:e.target.value})} style={inp} placeholder="+963..."/></div> </>)} {authMode==="signup"&&otpSent&&(<>   <div style={{background:"#F0FDF4",border:"1px solid #BBF7D0",borderRadius:12,padding:"16px",marginBottom:16,textAlign:"center"}}>     <p style={{fontSize:13,color:"#166534",fontWeight:700,marginBottom:4}}>{lang==="ar"?`تم إرسال كود التحقق إلى ${otpPhone}`:`Verification code sent to ${otpPhone}`}</p>   </div>   <div style={{marginBottom:16}}><label style={lbl}>{lang==="ar"?"كود التحقق":"Verification Code"}</label><input value={otpCode} onChange={e=>setOtpCode(e.target.value)} style={inp} placeholder="123456" maxLength={6}/></div>   {otpError&&<div style={{marginBottom:14,padding:"10px 16px",background:"#FEF2F2",border:"1px solid #FECACA",borderRadius:10,color:"#B91C1C",fontSize:13,fontWeight:700}}>{otpError}</div>} </>)} {(!otpSent||authMode==="login")&&(<>   <div style={{marginBottom:16}}><label style={lbl}>{t.auth.email}</label><input type="email" value={authForm.email} onChange={e=>setAuthForm({...authForm,email:e.target.value})} style={inp}/></div>   <div style={{marginBottom:24}}><label style={lbl}>{t.auth.password}</label><input type="password" value={authForm.password} onChange={e=>setAuthForm({...authForm,password:e.target.value})} style={inp}/></div> </>)}<input value={authForm.fullName} onChange={e=>setAuthForm({...authForm,fullName:e.target.value})} style={inp}/></div><div style={{marginBottom:16}}><label style={lbl}>{t.auth.phone}</label><input value={authForm.phone} onChange={e=>setAuthForm({...authForm,phone:e.target.value})} style={inp} placeholder="+963..."/></div></>)}
             <div style={{marginBottom:16}}><label style={lbl}>{t.auth.email}</label><input type="email" value={authForm.email} onChange={e=>setAuthForm({...authForm,email:e.target.value})} style={inp}/></div>
             <div style={{marginBottom:24}}><label style={lbl}>{t.auth.password}</label><input type="password" value={authForm.password} onChange={e=>setAuthForm({...authForm,password:e.target.value})} style={inp}/></div>
             {authError&&<div style={{marginBottom:14,padding:"10px 16px",background:"#FEF2F2",border:"1px solid #FECACA",borderRadius:10,color:"#B91C1C",fontSize:13,fontWeight:700}}>{authError}</div>}
             <button onClick={handleAuth} disabled={authLoading} style={{width:"100%",background:"#1B3A2A",color:"white",border:"none",padding:"14px",borderRadius:12,fontSize:15,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>{authLoading?"...":authMode==="login"?t.auth.loginBtn:t.auth.signupBtn}</button>
-            <p style={{textAlign:"center",marginTop:16,fontSize:13,color:"#888"}}>{authMode==="login"?t.auth.noAccount:t.auth.haveAccount}{" "}<span onClick={()=>setAuthMode(authMode==="login"?"signup":"login")} style={{color:"#1B3A2A",fontWeight:700,cursor:"pointer"}}>{authMode==="login"?t.auth.signupBtn:t.auth.loginBtn}</span></p>
+            <p {otpSent&&<p onClick={()=>{setOtpSent(false);setOtpCode("");setOtpError("");}} style={{textAlign:"center",marginTop:12,fontSize:13,color:"#1B3A2A",cursor:"pointer",fontWeight:700}}>{lang==="ar"?"← تغيير رقم الهاتف":"← Change phone number"}</p>} style={{textAlign:"center",marginTop:16,fontSize:13,color:"#888"}}>{authMode==="login"?t.auth.noAccount:t.auth.haveAccount}{" "}<span onClick={()=>setAuthMode(authMode==="login"?"signup":"login")} style={{color:"#1B3A2A",fontWeight:700,cursor:"pointer"}}>{authMode==="login"?t.auth.signupBtn:t.auth.loginBtn}</span></p>
           </div>
         </section>
       )}
