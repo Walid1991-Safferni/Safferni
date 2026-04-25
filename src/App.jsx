@@ -131,7 +131,7 @@ export default function App(){
   const [tripRating,setTripRating]=useState(0);
   const [ratingSubmitted,setRatingSubmitted]=useState(false);
   const [authMode,setAuthMode]=useState("login");
-  const [authForm,setAuthForm]=useState({email:"",password:"",fullName:"",phone:""});
+  const [authForm,setAuthForm]=useState({email:"",password:"",fullName:"",phone:"+"});
   const [authError,setAuthError]=useState("");
   const [authLoading,setAuthLoading]=useState(false);
   const [otpSent,setOtpSent]=useState(false);
@@ -597,7 +597,7 @@ export default function App(){
         <section style={{maxWidth:420,margin:"0 auto",padding:"60px 24px 80px",...fade}}>
           <div style={{background:"white",borderRadius:20,padding:"40px 28px",border:"1px solid #E8E6E1",boxShadow:"0 8px 40px rgba(0,0,0,0.05)"}}>
             <div style={{textAlign:"center",marginBottom:28}}><LogoSVG/><h2 style={{fontSize:22,fontWeight:900,color:"#1B3A2A",marginTop:12}}>{authMode==="login"?t.auth.login:t.auth.signup}</h2></div>
-            {authMode==="signup"&&!otpSent&&(<><div style={{marginBottom:16}}><label style={lbl}>{t.auth.fullName}</label><input value={authForm.fullName} onChange={e=>setAuthForm({...authForm,fullName:e.target.value})} style={inp}/></div><div style={{marginBottom:16}}><label style={lbl}>{t.auth.phone}</label><input value={authForm.phone} onChange={e=>setAuthForm({...authForm,phone:e.target.value})} style={{...inp,direction:"ltr",textAlign:"left"}} placeholder="+963..."/></div></>)}
+            {authMode==="signup"&&!otpSent&&(<><div style={{marginBottom:16}}><label style={lbl}>{t.auth.fullName}</label><input value={authForm.fullName} onChange={e=>setAuthForm({...authForm,fullName:e.target.value})} style={inp}/></div><div style={{marginBottom:16}}><label style={lbl}>{t.auth.phone}</label><input value={authForm.phone} onChange={e=>{const v=e.target.value;setAuthForm({...authForm,phone:v.startsWith("+")?v:"+"+v})}} style={{...inp,direction:"ltr",textAlign:"left"}} placeholder="+963..."/></div></>)}
             {authMode==="signup"&&otpSent&&(<><div style={{background:"#F0FDF4",border:"1px solid #BBF7D0",borderRadius:12,padding:"16px",marginBottom:16,textAlign:"center"}}><p style={{fontSize:13,color:"#166534",fontWeight:700}}>{lang==="ar"?`تم إرسال كود التحقق إلى ${otpPhone}`:`Verification code sent to ${otpPhone}`}</p></div><div style={{marginBottom:16}}><label style={lbl}>{lang==="ar"?"كود التحقق":"Verification Code"}</label><input value={otpCode} onChange={e=>setOtpCode(e.target.value)} style={inp} placeholder="123456" maxLength={6}/></div>{otpError&&<div style={{marginBottom:14,padding:"10px 16px",background:"#FEF2F2",border:"1px solid #FECACA",borderRadius:10,color:"#B91C1C",fontSize:13,fontWeight:700}}>{otpError}</div>}</>)}
             {(!otpSent||authMode==="login")&&(<><div style={{marginBottom:16}}><label style={lbl}>{t.auth.email}</label><input type="email" value={authForm.email} onChange={e=>setAuthForm({...authForm,email:e.target.value})} style={inp}/></div><div style={{marginBottom:24}}><label style={lbl}>{t.auth.password}</label><input type="password" value={authForm.password} onChange={e=>setAuthForm({...authForm,password:e.target.value})} style={inp}/></div></>)}
             {authError&&<div style={{marginBottom:14,padding:"10px 16px",background:"#FEF2F2",border:"1px solid #FECACA",borderRadius:10,color:"#B91C1C",fontSize:13,fontWeight:700}}>{authError}</div>}
