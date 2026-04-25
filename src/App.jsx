@@ -311,7 +311,7 @@ export default function App(){
 
   useEffect(()=>{if(user) checkDriverApplication();},[user]);
   useEffect(()=>{if(page==="admin"&&isAdmin){loadAdminData();if(adminTab==="promoCodes") loadPromoCodes();}},[page,adminTab]);
-  useEffect(()=>{if(page==="driver"&&user){loadProfile(user);loadDriverData();}},[page,user]);
+  useEffect(()=>{if(page==="driver"&&user){setSelectedDriver(null);loadProfile(user);loadDriverData();}},[page,user]);
   useEffect(()=>{
     if(page==="profile"&&user){
       setProfileEdit({fullName:profile?.full_name||"",phone:profile?.phone||"",email:profile?.email||user.email||""});
@@ -1316,7 +1316,7 @@ export default function App(){
       )}
 
       {/* DRIVER PROFILE MODAL (admin) */}
-      {selectedDriver&&(
+      {selectedDriver&&page==="admin"&&(
         <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,0.5)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center",padding:"24px",overflowY:"auto"}}>
           <div style={{background:"white",borderRadius:20,padding:"32px",maxWidth:520,width:"100%",animation:"fadeUp 0.3s ease",maxHeight:"90vh",overflowY:"auto"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24}}>
