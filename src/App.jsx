@@ -231,7 +231,7 @@ export default function App(){
     if(!applyForm.fullName||!applyForm.phone||!applyForm.city||!applyForm.carType){setApplyError(t.apply.fillAll);return;}
     const ref=genAppRef();
     const{error}=await supabase.from("driver_applications").insert({user_id:user?.id||null,full_name:applyForm.fullName,phone:applyForm.phone,city:applyForm.city,car_type:applyForm.carType,car_model:applyForm.carModel,license_plate:applyForm.licensePlate,notes:applyForm.notes,app_ref:ref});
-    if(!error){setAppRef(ref);setApplySubmitted(true);checkDriverApplication();setApplyForm({fullName:"",phone:"",city:"",carType:"",carModel:"",licensePlate:"",notes:""});}
+    if(!error){setAppRef(ref);setApplySubmitted(true);setApplyForm({fullName:"",phone:"",city:"",carType:"",carModel:"",licensePlate:"",notes:""});}
     else setApplyError(t.apply.fillAll);
   };
 
