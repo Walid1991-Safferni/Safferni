@@ -311,7 +311,7 @@ export default function App(){
 
   useEffect(()=>{if(user) checkDriverApplication();},[user]);
   useEffect(()=>{if(page==="admin"&&isAdmin){loadAdminData();if(adminTab==="promoCodes") loadPromoCodes();}},[page,adminTab]);
-  useEffect(()=>{if(page==="driver"&&user){loadProfile(user);loadDriverData();openDriverProfile({id:user.id,full_name:profile?.full_name||""});}},[page,user]);
+  useEffect(()=>{if(page==="driver"&&user){loadProfile(user);loadDriverData();}},[page,user]);
   useEffect(()=>{
     if(page==="profile"&&user){
       setProfileEdit({fullName:profile?.full_name||"",phone:profile?.phone||"",email:profile?.email||user.email||""});
