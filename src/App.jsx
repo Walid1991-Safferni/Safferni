@@ -133,14 +133,14 @@ export default function App(){
   const [authMode,setAuthMode]=useState("login");
   const [authForm,setAuthForm]=useState({email:"",password:"",fullName:"",phone:""});
   const [authError,setAuthError]=useState("");
-const [otpSent,setOtpSent]=useState(false);
-const [otpCode,setOtpCode]=useState("");
-const [otpPhone,setOtpPhone]=useState("");
-const [otpError,setOtpError]=useState("");
+  const [authLoading,setAuthLoading]=useState(false);
+  const [otpSent,setOtpSent]=useState(false);
+  const [otpCode,setOtpCode]=useState("");
+  const [otpPhone,setOtpPhone]=useState("");
+  const [otpError,setOtpError]=useState("");
   const [applyForm,setApplyForm]=useState({fullName:"",phone:"",city:"",carType:"",carModel:"",licensePlate:"",notes:""});
   const [applySubmitted,setApplySubmitted]=useState(false);
   const [applyError,setApplyError]=useState("");
-  const [appRef,setAppRef]=useState("");
   const [driverApplication,setDriverApplication]=useState(null);
   const [applications,setApplications]=useState([]);
   const [adminDrivers,setAdminDrivers]=useState([]);
@@ -161,6 +161,7 @@ const [otpError,setOtpError]=useState("");
   const [selectedDriver,setSelectedDriver]=useState(null);
   const [driverProfile,setDriverProfile]=useState({fullName:"",dob:"",idNumber:"",carType:"",carModel:"",carPlate:"",transportLicense:"",driverLicense:""});
   const [driverProfileMsg,setDriverProfileMsg]=useState("");
+  const [appRef,setAppRef]=useState("");
   const [reviewSidebarDriver,setReviewSidebarDriver]=useState(null);
   const [driverReviews,setDriverReviews]=useState([]);
   const [reviewForm,setReviewForm]=useState({rating:0,text:""});
@@ -211,7 +212,7 @@ const [otpError,setOtpError]=useState("");
   };
 
   const handleAuth=async()=>{
-    setAuthLoading(true);setAuthError("");
+    setAuthLoading(true);setAuthError("");setOtpError("");
     try{
       if(authMode==="login"){
         const{error}=await supabase.auth.signInWithPassword({email:authForm.email,password:authForm.password});
@@ -219,16 +220,13 @@ const [otpError,setOtpError]=useState("");
         else setPage("home");
       } else {
         if(!otpSent){
-          // Step 1: Send OTP to phone
           const{error}=await supabase.auth.signInWithOtp({phone:authForm.phone});
           if(error){setAuthError(t.auth.error);}
           else{setOtpSent(true);setOtpPhone(authForm.phone);}
         } else {
-          // Step 2: Verify OTP then create account
-          const{error:otpError}=await supabase.auth.verifyOtp({phone:otpPhone,token:otpCode,type:"sms"});
-          if(otpError){setOtpError(lang==="ar"?"الكود غير صحيح، حاول مرة أخرى":"Incorrect code, try again");}
+          const{error:verifyError}=await supabase.auth.verifyOtp({phone:otpPhone,token:otpCode,type:"sms"});
+          if(verifyError){setOtpError(lang==="ar"?"الكود غير صحيح، حاول مرة أخرى":"Incorrect code, try again");}
           else{
-            // OTP verified - now sign up properly
             const{data,error}=await supabase.auth.signUp({email:authForm.email,password:authForm.password});
             if(error){setAuthError(t.auth.error);}
             else if(data.user){
@@ -448,10 +446,6 @@ const [otpError,setOtpError]=useState("");
   };
 
   const postTrip=async()=>{
-    return true;
-  };
-
-  const postTrip=async()=>{
     if(!tripForm.from||!tripForm.to||!tripForm.date||!tripForm.pricePerSeat){setTripError(drv.fillAll);return;}
     const valid=await validateTrip();
     if(!valid) return;
@@ -603,12 +597,13 @@ const [otpError,setOtpError]=useState("");
         <section style={{maxWidth:420,margin:"0 auto",padding:"60px 24px 80px",...fade}}>
           <div style={{background:"white",borderRadius:20,padding:"40px 28px",border:"1px solid #E8E6E1",boxShadow:"0 8px 40px rgba(0,0,0,0.05)"}}>
             <div style={{textAlign:"center",marginBottom:28}}><LogoSVG/><h2 style={{fontSize:22,fontWeight:900,color:"#1B3A2A",marginTop:12}}>{authMode==="login"?t.auth.login:t.auth.signup}</h2></div>
-            {authMode==="signup"&&!otpSent&&(<>   <div style={{marginBottom:16}}><label style={lbl}>{t.auth.fullName}</label><input value={authForm.fullName} onChange={e=>setAuthForm({...authForm,fullName:e.target.value})} style={inp}/></div>   <div style={{marginBottom:16}}><label style={lbl}>{t.auth.phone}</label><input value={authForm.phone} onChange={e=>setAuthForm({...authForm,phone:e.target.value})} style={inp} placeholder="+963..."/></div> </>)} {authMode==="signup"&&otpSent&&(<>   <div style={{background:"#F0FDF4",border:"1px solid #BBF7D0",borderRadius:12,padding:"16px",marginBottom:16,textAlign:"center"}}>     <p style={{fontSize:13,color:"#166534",fontWeight:700,marginBottom:4}}>{lang==="ar"?`تم إرسال كود التحقق إلى ${otpPhone}`:`Verification code sent to ${otpPhone}`}</p>   </div>   <div style={{marginBottom:16}}><label style={lbl}>{lang==="ar"?"كود التحقق":"Verification Code"}</label><input value={otpCode} onChange={e=>setOtpCode(e.target.value)} style={inp} placeholder="123456" maxLength={6}/></div>   {otpError&&<div style={{marginBottom:14,padding:"10px 16px",background:"#FEF2F2",border:"1px solid #FECACA",borderRadius:10,color:"#B91C1C",fontSize:13,fontWeight:700}}>{otpError}</div>} </>)} {(!otpSent||authMode==="login")&&(<>   <div style={{marginBottom:16}}><label style={lbl}>{t.auth.email}</label><input type="email" value={authForm.email} onChange={e=>setAuthForm({...authForm,email:e.target.value})} style={inp}/></div>   <div style={{marginBottom:24}}><label style={lbl}>{t.auth.password}</label><input type="password" value={authForm.password} onChange={e=>setAuthForm({...authForm,password:e.target.value})} style={inp}/></div> </>)}<input value={authForm.fullName} onChange={e=>setAuthForm({...authForm,fullName:e.target.value})} style={inp}/></div><div style={{marginBottom:16}}><label style={lbl}>{t.auth.phone}</label><input value={authForm.phone} onChange={e=>setAuthForm({...authForm,phone:e.target.value})} style={inp} placeholder="+963..."/></div></>)}
-            <div style={{marginBottom:16}}><label style={lbl}>{t.auth.email}</label><input type="email" value={authForm.email} onChange={e=>setAuthForm({...authForm,email:e.target.value})} style={inp}/></div>
-            <div style={{marginBottom:24}}><label style={lbl}>{t.auth.password}</label><input type="password" value={authForm.password} onChange={e=>setAuthForm({...authForm,password:e.target.value})} style={inp}/></div>
+            {authMode==="signup"&&!otpSent&&(<><div style={{marginBottom:16}}><label style={lbl}>{t.auth.fullName}</label><input value={authForm.fullName} onChange={e=>setAuthForm({...authForm,fullName:e.target.value})} style={inp}/></div><div style={{marginBottom:16}}><label style={lbl}>{t.auth.phone}</label><input value={authForm.phone} onChange={e=>setAuthForm({...authForm,phone:e.target.value})} style={inp} placeholder="+963..."/></div></>)}
+            {authMode==="signup"&&otpSent&&(<><div style={{background:"#F0FDF4",border:"1px solid #BBF7D0",borderRadius:12,padding:"16px",marginBottom:16,textAlign:"center"}}><p style={{fontSize:13,color:"#166534",fontWeight:700}}>{lang==="ar"?`تم إرسال كود التحقق إلى ${otpPhone}`:`Verification code sent to ${otpPhone}`}</p></div><div style={{marginBottom:16}}><label style={lbl}>{lang==="ar"?"كود التحقق":"Verification Code"}</label><input value={otpCode} onChange={e=>setOtpCode(e.target.value)} style={inp} placeholder="123456" maxLength={6}/></div>{otpError&&<div style={{marginBottom:14,padding:"10px 16px",background:"#FEF2F2",border:"1px solid #FECACA",borderRadius:10,color:"#B91C1C",fontSize:13,fontWeight:700}}>{otpError}</div>}</>)}
+            {(!otpSent||authMode==="login")&&(<><div style={{marginBottom:16}}><label style={lbl}>{t.auth.email}</label><input type="email" value={authForm.email} onChange={e=>setAuthForm({...authForm,email:e.target.value})} style={inp}/></div><div style={{marginBottom:24}}><label style={lbl}>{t.auth.password}</label><input type="password" value={authForm.password} onChange={e=>setAuthForm({...authForm,password:e.target.value})} style={inp}/></div></>)}
             {authError&&<div style={{marginBottom:14,padding:"10px 16px",background:"#FEF2F2",border:"1px solid #FECACA",borderRadius:10,color:"#B91C1C",fontSize:13,fontWeight:700}}>{authError}</div>}
-            <button onClick={handleAuth} disabled={authLoading} style={{width:"100%",background:"#1B3A2A",color:"white",border:"none",padding:"14px",borderRadius:12,fontSize:15,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>{authLoading?"...":authMode==="login"?t.auth.loginBtn:t.auth.signupBtn}</button>
-            <p {otpSent&&<p onClick={()=>{setOtpSent(false);setOtpCode("");setOtpError("");}} style={{textAlign:"center",marginTop:12,fontSize:13,color:"#1B3A2A",cursor:"pointer",fontWeight:700}}>{lang==="ar"?"← تغيير رقم الهاتف":"← Change phone number"}</p>} style={{textAlign:"center",marginTop:16,fontSize:13,color:"#888"}}>{authMode==="login"?t.auth.noAccount:t.auth.haveAccount}{" "}<span onClick={()=>setAuthMode(authMode==="login"?"signup":"login")} style={{color:"#1B3A2A",fontWeight:700,cursor:"pointer"}}>{authMode==="login"?t.auth.signupBtn:t.auth.loginBtn}</span></p>
+            <button onClick={handleAuth} disabled={authLoading} style={{width:"100%",background:"#1B3A2A",color:"white",border:"none",padding:"14px",borderRadius:12,fontSize:15,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>{authLoading?"...":authMode==="login"?t.auth.loginBtn:otpSent?(lang==="ar"?"تحقق وإنشاء الحساب":"Verify & Create Account"):(lang==="ar"?"إرسال كود التحقق":"Send Verification Code")}</button>
+            {otpSent&&<p onClick={()=>{setOtpSent(false);setOtpCode("");setOtpError("");}} style={{textAlign:"center",marginTop:12,fontSize:13,color:"#1B3A2A",cursor:"pointer",fontWeight:700}}>{lang==="ar"?"← تغيير رقم الهاتف":"← Change phone number"}</p>}
+            <p style={{textAlign:"center",marginTop:16,fontSize:13,color:"#888"}}>{authMode==="login"?t.auth.noAccount:t.auth.haveAccount}{" "}<span onClick={()=>{setAuthMode(authMode==="login"?"signup":"login");setOtpSent(false);setOtpCode("");}} style={{color:"#1B3A2A",fontWeight:700,cursor:"pointer"}}>{authMode==="login"?t.auth.signupBtn:t.auth.loginBtn}</span></p>
           </div>
         </section>
       )}
@@ -617,7 +612,8 @@ const [otpError,setOtpError]=useState("");
       {page==="apply"&&(
         <section style={{maxWidth:550,margin:"0 auto",padding:"60px 24px 80px",...fade}}>
           {(isDriverApplied||driverApproved)?(<div style={{background:"#F0F0F0",borderRadius:20,padding:"44px 28px",textAlign:"center"}}><div style={{fontSize:48,marginBottom:12}}>🔒</div><p style={{fontSize:16,fontWeight:700,color:"#888"}}>{t.apply.alreadyApplied}</p></div>)
-          :applySubmitted?(<div style={{background:"white",borderRadius:20,padding:"44px 28px",border:"1px solid #E8E6E1",textAlign:"center"}}><div style={{fontSize:48,marginBottom:16}}>🚗</div>
+          :applySubmitted?(<div style={{background:"white",borderRadius:20,padding:"44px 28px",border:"1px solid #E8E6E1",textAlign:"center"}}>
+              <div style={{fontSize:48,marginBottom:16}}>🚗</div>
               <h3 style={{fontSize:20,fontWeight:900,color:"#1B3A2A",marginBottom:8}}>{lang==="ar"?"تم استلام طلبك!":"Application Received!"}</h3>
               <div style={{background:"#F0F7F3",borderRadius:12,padding:"12px 24px",display:"inline-block",marginBottom:16}}>
                 <div style={{fontSize:11,color:"#888",fontWeight:700,marginBottom:2}}>{lang==="ar"?"رقم الطلب":"Application Number"}</div>
@@ -625,15 +621,31 @@ const [otpError,setOtpError]=useState("");
               </div>
               <p style={{fontSize:13,color:"#555",marginBottom:20,maxWidth:360,margin:"0 auto 20px"}}>{lang==="ar"?"احتفظ برقم طلبك، ثم أكمل التسجيل عبر واتساب":"Keep your application number then complete registration via WhatsApp"}</p>
               <button onClick={()=>{
+                const city=gc(applyForm.city)?.[lang]||applyForm.city;
                 const msg=lang==="ar"
-                  ?`🚗 *طلب تسجيل سائق - سفّرني*\n\n📋 رقم الطلب: ${appRef}\n👤 الاسم: ${applyForm.fullName}\n📞 الهاتف: ${applyForm.phone}\n🏙️ المدينة: ${gc(applyForm.city)?.[lang]||applyForm.city}\n🚗 السيارة: ${applyForm.carType}\n🔢 اللوحة: ${applyForm.carPlate}\n📄 رخصة النقل: ${applyForm.transportLicense}\n🪪 الهوية: ${applyForm.idNumber}\n📅 تاريخ الميلاد: ${applyForm.dob}`
-                  :`🚗 *Driver Registration - Safferni*\n\n📋 App Ref: ${appRef}\n👤 Name: ${applyForm.fullName}\n📞 Phone: ${applyForm.phone}\n🏙️ City: ${gc(applyForm.city)?.en||applyForm.city}\n🚗 Car: ${applyForm.carType}\n🔢 Plate: ${applyForm.carPlate}\n📄 Transport License: ${applyForm.transportLicense}\n🪪 ID: ${applyForm.idNumber}\n📅 DOB: ${applyForm.dob}`;
+                  ?`🚗 *طلب تسجيل سائق - سفّرني*
+
+📋 رقم الطلب: ${appRef}
+👤 الاسم: ${applyForm.fullName}
+📞 الهاتف: ${applyForm.phone}
+🏙️ المدينة: ${city}
+🚗 السيارة: ${applyForm.carType}
+🔢 اللوحة: ${applyForm.licensePlate}`
+                  :`🚗 *Driver Registration - Safferni*
+
+📋 App Ref: ${appRef}
+👤 Name: ${applyForm.fullName}
+📞 Phone: ${applyForm.phone}
+🏙️ City: ${city}
+🚗 Car: ${applyForm.carType}
+🔢 Plate: ${applyForm.licensePlate}`;
                 window.open(`https://wa.me/${WA_PHONE}?text=${encodeURIComponent(msg)}`,"_blank");
               }} style={{background:"#25D366",color:"white",border:"none",padding:"14px 28px",borderRadius:12,fontSize:14,fontWeight:800,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:8,margin:"0 auto 12px"}}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
                 {lang==="ar"?"أكمل التسجيل عبر واتساب":"Complete Registration via WhatsApp"}
               </button>
-              <button onClick={()=>{setApplySubmitted(false);setPage("home")}} style={{background:"transparent",color:"#888",border:"none",padding:"8px",fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>{lang==="ar"?"رجوع للرئيسية":"Back to Home"}</button></div>)
+              <button onClick={()=>{setApplySubmitted(false);setPage("home")}} style={{background:"transparent",color:"#888",border:"none",padding:"8px",fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>{lang==="ar"?"رجوع للرئيسية":"Back to Home"}</button>
+            </div>)
           :(<div style={{background:"white",borderRadius:20,padding:"40px 28px",border:"1px solid #E8E6E1",boxShadow:"0 8px 40px rgba(0,0,0,0.05)"}}>
             <h2 style={{fontSize:24,fontWeight:900,marginBottom:8,color:"#1B3A2A",textAlign:"center"}}>{t.apply.title}</h2>
             <p style={{fontSize:13,color:"#AAA",textAlign:"center",marginBottom:28}}>{t.apply.desc}</p>
@@ -1258,5 +1270,6 @@ const [otpError,setOtpError]=useState("");
     </div>
   );
 }
+
 const lbl={display:"block",fontSize:12,fontWeight:700,color:"#666",marginBottom:6};
 const inp={width:"100%",padding:"11px 14px",border:"1.5px solid #E0DDD8",borderRadius:10,background:"#FAFAF8",outline:"none",transition:"border-color 0.2s"};
