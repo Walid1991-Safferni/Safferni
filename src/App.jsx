@@ -59,6 +59,15 @@ const SeatMap=({total,available})=>(
   </div>
 );
 
+const PhoneInput=({cc,setCC,num,setNum,lang,inp})=>(
+  <div style={{display:"flex",gap:8}}>
+    <select value={cc} onChange={e=>setCC(e.target.value)} style={{...inp,width:"120px",direction:"ltr",padding:"11px 6px",flexShrink:0}}>
+      {COUNTRY_CODES.map(c=><option key={c.v} value={c.v}>{c.f} {c.v}</option>)}
+    </select>
+    <input value={num} onChange={e=>setNum(e.target.value)} style={{...inp,flex:1,direction:"ltr",textAlign:"left"}} placeholder={lang==="ar"?"رقم الهاتف":"Phone number"} type="tel"/>
+  </div>
+);
+
 const COUNTRY_CODES = [
   {v:"+963",f:"🇸🇾"},{v:"+962",f:"🇯🇴"},{v:"+961",f:"🇱🇧"},{v:"+966",f:"🇸🇦"},{v:"+971",f:"🇦🇪"},
   {v:"+965",f:"🇰🇼"},{v:"+974",f:"🇶🇦"},{v:"+973",f:"🇧🇭"},{v:"+968",f:"🇴🇲"},{v:"+967",f:"🇾🇪"},
@@ -740,15 +749,6 @@ export default function App(){
     return{label,value};
   });
 
-  const PhoneInput=({cc,setCC,num,setNum})=>(
-    <div style={{display:"flex",gap:8}}>
-      <select value={cc} onChange={e=>setCC(e.target.value)} style={{...inp,width:"120px",direction:"ltr",padding:"11px 6px",flexShrink:0}}>
-        {COUNTRY_CODES.map(c=><option key={c.v} value={c.v}>{c.f} {c.v}</option>)}
-      </select>
-      <input value={num} onChange={e=>setNum(e.target.value)} style={{...inp,flex:1,direction:"ltr",textAlign:"left"}} placeholder={lang==="ar"?"رقم الهاتف":"Phone number"} type="tel"/>
-    </div>
-  );
-
   if(loading) return <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",fontFamily:"Montserrat,sans-serif",color:"#1B3A2A",fontSize:18,fontWeight:700}}>سفّرني...</div>;
 
   return(
@@ -843,7 +843,7 @@ export default function App(){
               <div style={{marginBottom:14}}><label style={lbl}>{t.auth.email} *</label><input type="email" value={authForm.email} onChange={e=>setAuthForm(f=>({...f,email:e.target.value}))} style={inp}/></div>
               <div style={{marginBottom:14}}>
                 <label style={lbl}>{t.auth.phone} *</label>
-                <PhoneInput cc={authForm.countryCode} setCC={v=>setAuthForm(f=>({...f,countryCode:v}))} num={authForm.phoneNumber} setNum={v=>setAuthForm(f=>({...f,phoneNumber:v}))}/>
+                <PhoneInput cc={authForm.countryCode} setCC={v=>setAuthForm(f=>({...f,countryCode:v}))} num={authForm.phoneNumber} setNum={v=>setAuthForm(f=>({...f,phoneNumber:v}))} lang={lang} inp={inp}/>
                 <p style={{fontSize:11,color:"#AAA",marginTop:4}}>{lang==="ar"?"سيتم إرسال كود التحقق على هذا الرقم":"A verification code will be sent to this number"}</p>
               </div>
               <div style={{marginBottom:8}}><label style={lbl}>{t.auth.password} *</label><input type="password" value={authForm.password} onChange={e=>setAuthForm(f=>({...f,password:e.target.value}))} style={inp}/></div>
@@ -867,7 +867,7 @@ export default function App(){
               <p style={{fontSize:13,color:"#888",marginBottom:20,textAlign:"center"}}>{lang==="ar"?"أدخل رقم هاتفك المسجل وسنرسل لك كود التحقق":"Enter your registered phone number and we'll send you a code"}</p>
               <div style={{marginBottom:20}}>
                 <label style={lbl}>{t.auth.phone} *</label>
-                <PhoneInput cc={authForm.countryCode} setCC={v=>setAuthForm(f=>({...f,countryCode:v}))} num={authForm.phoneNumber} setNum={v=>setAuthForm(f=>({...f,phoneNumber:v}))}/>
+                <PhoneInput cc={authForm.countryCode} setCC={v=>setAuthForm(f=>({...f,countryCode:v}))} num={authForm.phoneNumber} setNum={v=>setAuthForm(f=>({...f,phoneNumber:v}))} lang={lang} inp={inp}/>
               </div>
               <button onClick={handleForgotSendOtp} disabled={authLoading} style={{width:"100%",background:"#1B3A2A",color:"white",border:"none",padding:"14px",borderRadius:12,fontSize:15,fontWeight:800,cursor:"pointer",fontFamily:"inherit",marginBottom:12}}>{authLoading?"...":t.auth.sendOtp}</button>
               <p onClick={()=>{setAuthStep("login");setAuthError("");}} style={{textAlign:"center",fontSize:13,color:"#888",cursor:"pointer"}}>{t.auth.backToLogin}</p>
