@@ -426,8 +426,12 @@ const [driverEditing,setDriverEditing]=useState(false);
     if(!authForm.password||authForm.password.length<6){setAuthError(lang==="ar"?"كلمة المرور يجب أن تكون ٦ أحرف على الأقل":"Password must be at least 6 characters");return;}
     setAuthLoading(true);setAuthError("");
     const{error}=await supabase.auth.updateUser({password:authForm.password});
-    if(error){setAuthError(t.auth.error);}
-    else{setAuthSuccess(t.auth.passwordUpdated);setTimeout(()=>{resetAuth();setPage("home");},1500);}
+    if(error){setAuthError(t.auth.error);setAuthLoading(false);return;}
+    await supabase.auth.signOut();
+    const{error:loginErr}=await supabase.auth.signInWithPassword({email:authForm.email,password:authForm.password});
+    if(loginErr){setAuthError(t.auth.error);setAuthLoading(false);return;}
+    setAuthSuccess(t.auth.passwordUpdated);
+    setTimeout(()=>{resetAuth();setPage("home");},1500);
     setAuthLoading(false);
   };
 
