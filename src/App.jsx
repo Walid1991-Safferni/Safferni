@@ -770,7 +770,7 @@ const [driverEditing,setDriverEditing]=useState(false);
           <div onClick={()=>setPage("home")} style={{display:"flex",alignItems:"center",gap:10,cursor:"pointer"}}>
             <LogoSVG/><span style={{fontSize:20,fontWeight:900,color:"#1B3A2A"}}>{t.brand}</span>
           </div>
-          <div style={{display:"flex",alignItems:"center",gap:18}} className="dnav">
+          <div style={{display:"flex",alignItems:"center",gap:18,position:"absolute",left:"50%",transform:"translateX(-50%)"}} className="dnav">
             {navLinks.map(([k,l])=>(<span key={k} onClick={()=>setPage(k)} style={{cursor:"pointer",fontSize:13,fontWeight:600,color:page===k?"#1B3A2A":"#999"}}>{l}</span>))}
             {!isDriverApplied&&user&&<span onClick={()=>setPage("apply")} style={{cursor:"pointer",fontSize:13,fontWeight:600,color:page==="apply"?"#1B3A2A":"#999"}}>{t.nav.apply}</span>}
           
