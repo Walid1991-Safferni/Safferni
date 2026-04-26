@@ -614,7 +614,7 @@ const [driverEditing,setDriverEditing]=useState(false);
     await loadProfile(user);
     const{data:myApp}=await supabase.from("driver_applications").select("*").eq("user_id",user.id).order("created_at",{ascending:false}).limit(1).maybeSingle();
     const{data:myProfileData}=await supabase.from("profiles").select("*").eq("id",user.id).single();
-    setDriverProfile({fullName:myProfileData?.full_name||"",dob:myApp?.date_of_birth||myProfileData?.date_of_birth||"",idNumber:myApp?.id_number||myProfileData?.id_number||"",carType:myApp?.car_type||myProfileData?.car_type||"",carModel:myApp?.car_model||myProfileData?.car_model||"",carPlate:myApp?.car_plate||myProfileData?.car_plate||"",transportLicense:myApp?.transport_license||myProfileData?.transport_license||"",driverLicense:myApp?.driver_license||myProfileData?.driver_license||""});
+    setDriverProfile({fullName:myProfileData?.full_name||"",dob:myProfileData?.date_of_birth||"",idNumber:myProfileData?.id_number||"",carType:myProfileData?.car_type||myApp?.car_type||"",carModel:myProfileData?.car_model||myApp?.car_model||"",carPlate:myProfileData?.car_plate||"",transportLicense:myProfileData?.transport_license||"",driverLicense:myProfileData?.driver_license||""});
     const{data:myTrips}=await supabase.from("trips").select("*").eq("driver_id",user.id).order("trip_date",{ascending:false});
     setDriverTrips(myTrips||[]);
     if(myTrips){
