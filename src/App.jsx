@@ -280,8 +280,9 @@ export default function App(){
   // Passenger profile page
   const [profileTab,setProfileTab]=useState("profile");
   const [profileEdit,setProfileEdit]=useState({fullName:"",phone:"",email:""});
-  const [profileSaved,setProfileSaved]=useState(false);
-  const [profileEditing,setProfileEditing]=useState(false);
+ const [profileSaved,setProfileSaved]=useState(false);
+const [profileEditing,setProfileEditing]=useState(false);
+const [driverEditing,setDriverEditing]=useState(false);
   const [upcomingBookings,setUpcomingBookings]=useState([]);
   const [pastBookings,setPastBookings]=useState([]);
   const [profileLoading,setProfileLoading]=useState(false);
@@ -1279,22 +1280,28 @@ export default function App(){
             {/* Driver profile quick edit */}
             <div style={{background:"white",borderRadius:16,padding:"28px",border:"1px solid #E8E6E1",marginBottom:24}}>
               <h3 style={{fontSize:18,fontWeight:800,color:"#1B3A2A",marginBottom:20}}>{lang==="ar"?"ملفي الشخصي":"My Profile"}</h3>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
-                <div><label style={lbl}>{lang==="ar"?"الاسم الكامل":"Full Name"}</label><input value={driverProfile.fullName} onChange={e=>setDriverProfile({...driverProfile,fullName:e.target.value})} style={inp}/></div>
-                <div><label style={lbl}>{lang==="ar"?"تاريخ الميلاد":"Date of Birth"}</label><input type="date" value={driverProfile.dob} onChange={e=>setDriverProfile({...driverProfile,dob:e.target.value})} style={inp}/></div>
-              </div>
-              <div style={{marginBottom:12}}><label style={lbl}>{lang==="ar"?"رقم الهوية أو الجواز":"ID / Passport Number"}</label><input value={driverProfile.idNumber} onChange={e=>setDriverProfile({...driverProfile,idNumber:e.target.value})} style={inp}/></div>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
-                <div><label style={lbl}>{lang==="ar"?"نوع السيارة ولونها":"Car Type & Color"}</label><input value={driverProfile.carType} onChange={e=>setDriverProfile({...driverProfile,carType:e.target.value})} style={inp}/></div>
-                <div><label style={lbl}>{lang==="ar"?"موديل السيارة":"Car Model"}</label><input value={driverProfile.carModel} onChange={e=>setDriverProfile({...driverProfile,carModel:e.target.value})} style={inp}/></div>
+              <div style={{display:"flex",justifyContent:"flex-end",marginBottom:16}}>
+                {!driverEditing&&<button onClick={()=>setDriverEditing(true)} style={{background:"#F0F7F3",color:"#1B3A2A",border:"1.5px solid #1B3A2A",padding:"7px 18px",borderRadius:8,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{lang==="ar"?"تعديل":"Edit"}</button>}
               </div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
-                <div><label style={lbl}>{lang==="ar"?"رقم اللوحة":"License Plate"}</label><input value={driverProfile.carPlate} onChange={e=>setDriverProfile({...driverProfile,carPlate:e.target.value})} style={inp}/></div>
-                <div><label style={lbl}>{lang==="ar"?"رقم رخصة النقل":"Transport License"}</label><input value={driverProfile.transportLicense} onChange={e=>setDriverProfile({...driverProfile,transportLicense:e.target.value})} style={inp}/></div>
+                <div><label style={lbl}>{lang==="ar"?"الاسم الكامل":"Full Name"}</label>{driverEditing?<input value={driverProfile.fullName} onChange={e=>setDriverProfile({...driverProfile,fullName:e.target.value})} style={inp}/>:<div style={{fontSize:14,fontWeight:600,color:"#333",padding:"11px 0"}}>{driverProfile.fullName||"—"}</div>}</div>
+                <div><label style={lbl}>{lang==="ar"?"تاريخ الميلاد":"Date of Birth"}</label>{driverEditing?<input type="date" value={driverProfile.dob} onChange={e=>setDriverProfile({...driverProfile,dob:e.target.value})} style={inp}/>:<div style={{fontSize:14,fontWeight:600,color:"#333",padding:"11px 0"}}>{driverProfile.dob||"—"}</div>}</div>
               </div>
-              <div style={{marginBottom:16}}><label style={lbl}>{lang==="ar"?"رقم رخصة القيادة":"Driver License Number"}</label><input value={driverProfile.driverLicense} onChange={e=>setDriverProfile({...driverProfile,driverLicense:e.target.value})} style={inp}/></div>
+              <div style={{marginBottom:12}}><label style={lbl}>{lang==="ar"?"رقم الهوية أو الجواز":"ID / Passport Number"}</label>{driverEditing?<input value={driverProfile.idNumber} onChange={e=>setDriverProfile({...driverProfile,idNumber:e.target.value})} style={inp}/>:<div style={{fontSize:14,fontWeight:600,color:"#333",padding:"11px 0"}}>{driverProfile.idNumber||"—"}</div>}</div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
+                <div><label style={lbl}>{lang==="ar"?"نوع السيارة ولونها":"Car Type & Color"}</label>{driverEditing?<input value={driverProfile.carType} onChange={e=>setDriverProfile({...driverProfile,carType:e.target.value})} style={inp}/>:<div style={{fontSize:14,fontWeight:600,color:"#333",padding:"11px 0"}}>{driverProfile.carType||"—"}</div>}</div>
+                <div><label style={lbl}>{lang==="ar"?"موديل السيارة":"Car Model"}</label>{driverEditing?<input value={driverProfile.carModel} onChange={e=>setDriverProfile({...driverProfile,carModel:e.target.value})} style={inp}/>:<div style={{fontSize:14,fontWeight:600,color:"#333",padding:"11px 0"}}>{driverProfile.carModel||"—"}</div>}</div>
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
+                <div><label style={lbl}>{lang==="ar"?"رقم اللوحة":"License Plate"}</label>{driverEditing?<input value={driverProfile.carPlate} onChange={e=>setDriverProfile({...driverProfile,carPlate:e.target.value})} style={inp}/>:<div style={{fontSize:14,fontWeight:600,color:"#333",padding:"11px 0"}}>{driverProfile.carPlate||"—"}</div>}</div>
+                <div><label style={lbl}>{lang==="ar"?"رقم رخصة النقل":"Transport License"}</label>{driverEditing?<input value={driverProfile.transportLicense} onChange={e=>setDriverProfile({...driverProfile,transportLicense:e.target.value})} style={inp}/>:<div style={{fontSize:14,fontWeight:600,color:"#333",padding:"11px 0"}}>{driverProfile.transportLicense||"—"}</div>}</div>
+              </div>
+              <div style={{marginBottom:16}}><label style={lbl}>{lang==="ar"?"رقم رخصة القيادة":"Driver License Number"}</label>{driverEditing?<input value={driverProfile.driverLicense} onChange={e=>setDriverProfile({...driverProfile,driverLicense:e.target.value})} style={inp}/>:<div style={{fontSize:14,fontWeight:600,color:"#333",padding:"11px 0"}}>{driverProfile.driverLicense||"—"}</div>}</div>
               {driverProfileMsg&&<div style={{marginBottom:12,padding:"10px 16px",background:"#F0FDF4",border:"1px solid #BBF7D0",borderRadius:10,color:"#166534",fontSize:13,fontWeight:700}}>{driverProfileMsg}</div>}
-              <button onClick={saveDriverProfile} style={{width:"100%",background:"#1B3A2A",color:"white",border:"none",padding:"13px",borderRadius:12,fontSize:14,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>{lang==="ar"?"حفظ التغييرات":"Save Changes"}</button>
+              {driverEditing&&<div style={{display:"flex",gap:10}}>
+                <button onClick={()=>setDriverEditing(false)} style={{flex:1,background:"white",color:"#666",border:"1.5px solid #DDD",padding:"12px",borderRadius:10,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{lang==="ar"?"إلغاء":"Cancel"}</button>
+                <button onClick={()=>{saveDriverProfile();setDriverEditing(false);}} style={{flex:2,background:"#1B3A2A",color:"white",border:"none",padding:"12px",borderRadius:10,fontSize:14,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>{lang==="ar"?"حفظ التغييرات":"Save Changes"}</button>
+              </div>}
             </div>
 
             <h3 style={{fontSize:18,fontWeight:800,color:"#1B3A2A",marginBottom:16}}>{drv.myTrips}</h3>
