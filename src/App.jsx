@@ -86,7 +86,7 @@ const T={
     features:[
       {icon:"🛣️",t:"٧ مسارات",d:"دمشق ↔ بيروت · دمشق ↔ حمص · دمشق ↔ حلب · دمشق ↔ عمّان · دمشق ↔ مطار الملكة علياء · دمشق ↔ مطار دمشق · حلب ↔ حمص"},
       {icon:"🚗",t:"سيارة أو فان",d:"احجز مقعد واحد في سيارة مشتركة، أو استأجر سيارة كاملة لحد ٤ ركاب، أو فان لحد ١٠ ركاب — الخيار بيدك"},
-      {icon:"💜",t:"رحلات للنساء فقط",d:"مو مرتاحة تسافرين مع رجال؟ عندنا سيارات مخصصة للنساء فقط — سافري براحة بال 💅"},
+      {icon:"💜",t:"رحلات للنساء فقط — قريباً",d:"مو مرتاحة تسافرين مع رجال؟ عندنا سيارات مخصصة للنساء فقط — سافري براحة بال 💅"},
     ],
     deal:{from:"من",to:"إلى",selectCity:"اختر المحافظة",selectDest:"اختر الوجهة",selectFromFirst:"اختر نقطة الانطلاق أولاً",dateRange:"أي وقت بين",dateFrom:"من تاريخ",dateTo:"إلى تاريخ",name:"الاسم",phone:"رقم الهاتف",submit:"خبرني!",fillAll:"يرجى ملء جميع الحقول",confirmTitle:"تم تسجيل طلبك!",confirmMsg:"سنخبرك عبر واتساب لما يتوفر مقعد فاضي.",confirmClose:"تمام"},
     b:{title:"احجز رحلة خاصة",searchTitle:"ابحث عن رحلة",searchDate:"تاريخ السفر",searchBtn:"ابحث",noTrips:"لا توجد رحلات متاحة",customBook:"احجز رحلة خاصة",availableTrips:"الرحلات المتاحة",bookSeat:"احجز مقعد",seatsLeft:"مقاعد متبقية",from:"من",to:"إلى",filterGender:"نوع الرحلة",mixedOnly:"مختلط",womenOnly:"نساء فقط",type:"نوع الحجز",seat:"مقعد واحد",car:"سيارة كاملة (حتى ٤ ركاب)",van:"فان (حتى ١٠ ركاب)",date:"التاريخ",time:"الوقت",name:"الاسم الكامل",phone:"رقم الهاتف",passengers:"عدد الركاب",bags:"عدد الحقائب",notes:"ملاحظات إضافية",submit:"تأكيد الحجز",selectCity:"اختر المحافظة",selectDest:"اختر الوجهة",selectFromFirst:"اختر نقطة الانطلاق أولاً",price:"السعر",fillAll:"يرجى ملء جميع الحقول المطلوبة",carOnlyNote:"هذا المسار متاح للسيارة الكاملة فقط",formNote:"عبّي المعلومات وبنتواصل معك",payment:"طريقة الدفع",cash:"كاش",crypto:"عملات رقمية",shamcash:"شام كاش",shamcashSoon:"قريباً...",cryptoNote:"أرسل المبلغ بـ USDT على شبكة BEP20 إلى العنوان التالي:",copied:"تم النسخ!",copyAddress:"نسخ العنوان",confirmTitle:"تم الحجز بنجاح!",confirmRef:"رقم الحجز",confirmMsg:"سيتم إرسال تأكيد الحجز عبر واتساب مع تعليمات التواصل مع السائق.",confirmClose:"إغلاق",rateTrip:"قيّم رحلتك",submitRating:"إرسال التقييم",ratingThanks:"شكراً على تقييمك!"},
@@ -140,7 +140,7 @@ const T={
     features:[
       {icon:"🛣️",t:"7 routes",d:"Damascus ↔ Beirut · Damascus ↔ Homs · Damascus ↔ Aleppo · Damascus ↔ Amman · Damascus ↔ Queen Alia Airport · Damascus ↔ Damascus Airport · Aleppo ↔ Homs"},
       {icon:"🚗",t:"Car or van",d:"Book a single seat in a shared car, rent a full car for up to 4, or a van for up to 10 — your choice"},
-      {icon:"💜",t:"Women-only rides",d:"Not comfortable riding with men? We have dedicated cars for women only — travel with peace of mind 💅"},
+      {icon:"💜",t:"Women-only rides — Coming Soon",d:"Not comfortable riding with men? We have dedicated cars for women only — travel with peace of mind 💅"},
     ],
     deal:{from:"From",to:"To",selectCity:"Select city",selectDest:"Select destination",selectFromFirst:"Select origin first",dateRange:"Anytime between",dateFrom:"From date",dateTo:"To date",name:"Name",phone:"Phone number",submit:"Let me know!",fillAll:"Please fill all fields",confirmTitle:"You're on the list!",confirmMsg:"We'll notify you via WhatsApp when a seat is available.",confirmClose:"Got it"},
     b:{title:"Book a Custom Ride",searchTitle:"Find a Trip",searchDate:"Travel Date",searchBtn:"Search",noTrips:"No trips available",customBook:"Book a custom ride",availableTrips:"Available Trips",bookSeat:"Book a Seat",seatsLeft:"seats left",from:"From",to:"To",filterGender:"Trip Type",mixedOnly:"Mixed",womenOnly:"Women Only",type:"Booking Type",seat:"Single Seat",car:"Full Car (up to 4 pax)",van:"Van (up to 10 pax)",date:"Date",time:"Time",name:"Full Name",phone:"Phone Number",passengers:"Passengers",bags:"Bags",notes:"Additional Notes",submit:"Confirm Booking",selectCity:"Select city",selectDest:"Select destination",selectFromFirst:"Select origin first",price:"Price",fillAll:"Please fill all required fields",carOnlyNote:"This route is available for whole car only",formNote:"Fill in the details and we'll get back to you",payment:"Payment Method",cash:"Cash",crypto:"Crypto",shamcash:"Sham Cash",shamcashSoon:"Coming soon...",cryptoNote:"Send the amount in USDT on BEP20 network to the following address:",copied:"Copied!",copyAddress:"Copy Address",confirmTitle:"Booking Confirmed!",confirmRef:"Booking Reference",confirmMsg:"Your booking confirmation will be sent to you via WhatsApp along with instructions on how to connect with the driver.",confirmClose:"Close",rateTrip:"Rate Your Trip",submitRating:"Submit Rating",ratingThanks:"Thanks for your rating!"},
@@ -365,6 +365,8 @@ const [driverEditing,setDriverEditing]=useState(false);
     if(!authForm.fullName||!authForm.phoneNumber||!authForm.email||!authForm.password){setAuthError(t.auth.error);return;}
     setAuthLoading(true);setAuthError("");
     const phone=fullPhone();
+    const{data:existing}=await supabase.from("profiles").select("id").eq("phone",phone).maybeSingle();
+    if(existing){setAuthError("PHONE_EXISTS");setAuthLoading(false);return;}
     const{error}=await supabase.auth.signInWithOtp({phone});
     if(error){setAuthError(t.auth.error);}
     else{setPendingPhone(phone);setAuthStep("signup_otp");}
@@ -817,6 +819,7 @@ const [driverEditing,setDriverEditing]=useState(false);
         @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
         *{box-sizing:border-box;margin:0;padding:0}
         input,select,textarea{font-family:'Montserrat',sans-serif;font-size:14px}
+        .feat-desc{transition:color 0.25s}
         ::selection{background:#1B3A2A;color:white} html{scroll-behavior:smooth}
       `}</style>
 
@@ -875,7 +878,7 @@ const [driverEditing,setDriverEditing]=useState(false);
             </div>
 
             {authSuccess&&<div style={{marginBottom:16,padding:"12px 16px",background:"#F0FDF4",border:"1px solid #BBF7D0",borderRadius:10,color:"#166534",fontSize:13,fontWeight:700,textAlign:"center"}}>{authSuccess}</div>}
-            {authError&&<div style={{marginBottom:16,padding:"10px 16px",background:"#FEF2F2",border:"1px solid #FECACA",borderRadius:10,color:"#B91C1C",fontSize:13,fontWeight:700}}>{authError}</div>}
+            {authError&&authError!=="PHONE_EXISTS"&&<div style={{marginBottom:16,padding:"10px 16px",background:"#FEF2F2",border:"1px solid #FECACA",borderRadius:10,color:"#B91C1C",fontSize:13,fontWeight:700}}>{authError}</div>}
 
             {/* CHOICE */}
             {authStep==="choice"&&(
@@ -906,6 +909,10 @@ const [driverEditing,setDriverEditing]=useState(false);
               </div>
               <div style={{marginBottom:8}}><label style={lbl}>{t.auth.password} *</label><input type="password" value={authForm.password} onChange={e=>setAuthForm(f=>({...f,password:e.target.value}))} style={inp}/></div>
               <p style={{fontSize:11,color:"#AAA",marginBottom:20}}>{t.auth.passwordHint}</p>
+              {authError==="PHONE_EXISTS"&&<div style={{marginBottom:16,padding:"12px 16px",background:"#FEF2F2",border:"1px solid #FECACA",borderRadius:10,fontSize:13,fontWeight:700,textAlign:"center"}}>
+                <span style={{color:"#B91C1C"}}>{lang==="ar"?"هذا الرقم مسجل مسبقاً.":"This phone number is already registered."}</span>{" "}
+                <span onClick={()=>{setAuthStep("login");setAuthError("");}} style={{color:"#1B3A2A",fontWeight:800,cursor:"pointer",textDecoration:"underline"}}>{lang==="ar"?"سجّل الدخول بدلاً من ذلك":"Log in instead"}</span>
+              </div>}
               <button onClick={handleSignupSendOtp} disabled={authLoading} style={{width:"100%",background:"#1B3A2A",color:"white",border:"none",padding:"14px",borderRadius:12,fontSize:15,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>{authLoading?"...":t.auth.sendOtp}</button>
               <p style={{textAlign:"center",marginTop:16,fontSize:13,color:"#888"}}>{t.auth.haveAccount}{" "}<span onClick={()=>{setAuthStep("login");setAuthError("");}} style={{color:"#1B3A2A",fontWeight:700,cursor:"pointer"}}>{t.auth.loginBtn}</span></p>
             </>)}
@@ -1327,9 +1334,8 @@ const [driverEditing,setDriverEditing]=useState(false);
               <div style={{marginBottom:16}}>
                 <label style={lbl}>{drv.genderType} *</label>
                 <div style={{display:"flex",gap:10}}>
-                  {[["mixed",drv.mixed],["women_only",drv.womenOnly]].map(([k,l])=>(
-                    <button key={k} onClick={()=>setTripForm({...tripForm,genderType:k})} style={{flex:1,padding:"12px",borderRadius:12,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",border:"2px solid",transition:"all 0.2s",borderColor:tripForm.genderType===k?(k==="women_only"?"#7C3AED":"#1B3A2A"):"#E8E6E1",background:tripForm.genderType===k?(k==="women_only"?"#7C3AED":"#1B3A2A"):"white",color:tripForm.genderType===k?"white":"#666"}}>{l}</button>
-                  ))}
+                  <button onClick={()=>setTripForm({...tripForm,genderType:"mixed"})} style={{flex:1,padding:"12px",borderRadius:12,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",border:"2px solid",transition:"all 0.2s",borderColor:tripForm.genderType==="mixed"?"#1B3A2A":"#E8E6E1",background:tripForm.genderType==="mixed"?"#1B3A2A":"white",color:tripForm.genderType==="mixed"?"white":"#666"}}>{drv.mixed}</button>
+                  <button disabled style={{flex:1,padding:"12px",borderRadius:12,fontSize:13,fontWeight:700,cursor:"not-allowed",fontFamily:"inherit",border:"2px solid #E8E6E1",background:"#F8F8F8",color:"#CCC"}}>💜 {lang==="ar"?"نساء فقط — قريباً":"Women Only — Soon"}</button>
                 </div>
               </div>
               {tripError&&<div style={{marginBottom:12,padding:"10px 16px",background:"#FEF2F2",border:"1px solid #FECACA",borderRadius:10,color:"#B91C1C",fontSize:13,fontWeight:700}}>{tripError}</div>}
@@ -1466,14 +1472,14 @@ const [driverEditing,setDriverEditing]=useState(false);
 
         {/* TWO CARDS BANNER */}
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:0}}>
-          <div onClick={()=>{setSearchGender("women_only");searchRef.current?.scrollIntoView({behavior:"smooth"})}} style={{background:"linear-gradient(135deg,#C9717A,#D4848C)",padding:"28px 20px",cursor:"pointer",position:"relative",overflow:"hidden",transition:"filter 0.2s"}} onMouseEnter={e=>e.currentTarget.style.filter="brightness(1.08)"} onMouseLeave={e=>e.currentTarget.style.filter="brightness(1)"}>
+          <div style={{background:"linear-gradient(135deg,#C9717A,#D4848C)",padding:"28px 20px",cursor:"default",position:"relative",overflow:"hidden",opacity:0.9}}>
             <div style={{position:"absolute",top:"-10px",right:"-10px",fontSize:60,opacity:0.1}}>💜</div>
             <div style={{textAlign:"center",position:"relative",zIndex:1}}>
               <div style={{width:44,height:44,borderRadius:"50%",background:"rgba(255,255,255,0.25)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 10px",fontSize:20}}>🤍</div>
               <div style={{fontSize:"clamp(13px,3vw,17px)",fontWeight:900,color:"white",marginBottom:8}}>{lang==="ar"?"سافري بأمان وراحة 💜":"Travel safe & comfortable 💜"}</div>
               <div style={{display:"inline-block",background:"rgba(255,255,255,0.25)",borderRadius:20,padding:"3px 14px",fontSize:11,fontWeight:700,color:"white",marginBottom:10}}>{lang==="ar"?"نساء فقط":"Women Only"}</div>
               <div style={{fontSize:11,color:"rgba(255,255,255,0.85)",lineHeight:1.6,marginBottom:14}}>{lang==="ar"?"بيئة مخصصة للسيدات فقط — سافري براحة بال 💅":"A safe space for women travelers only 💅"}</div>
-              <div style={{background:"rgba(255,255,255,0.2)",border:"1px solid rgba(255,255,255,0.4)",borderRadius:20,padding:"6px 16px",fontSize:11,fontWeight:700,color:"white",display:"inline-block"}}>{lang==="ar"?"اضغطي هنا للبحث 💜":"Tap to search 💜"}</div>
+              <div style={{background:"rgba(0,0,0,0.25)",border:"1px solid rgba(255,255,255,0.3)",borderRadius:20,padding:"6px 16px",fontSize:11,fontWeight:700,color:"rgba(255,255,255,0.85)",display:"inline-block"}}>{lang==="ar"?"قريباً... 💜":"Coming Soon 💜"}</div>
             </div>
           </div>
           <div onClick={()=>{setSearchGender("mixed");searchRef.current?.scrollIntoView({behavior:"smooth"})}} style={{background:"linear-gradient(135deg,#4A5C45,#5C7055)",padding:"28px 20px",cursor:"pointer",position:"relative",overflow:"hidden",transition:"filter 0.2s"}} onMouseEnter={e=>e.currentTarget.style.filter="brightness(1.08)"} onMouseLeave={e=>e.currentTarget.style.filter="brightness(1)"}>
@@ -1499,10 +1505,10 @@ const [driverEditing,setDriverEditing]=useState(false);
           <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(190px,1fr))",gap:14}}>
             {t.features.map((f,i)=>{
               const isWomenFeature=f.icon==="💜";
-              return(<div key={i} style={{background:isWomenFeature?"linear-gradient(135deg,#F5F3FF,#EDE9FE)":"white",border:`1px solid ${isWomenFeature?"#DDD6FE":"#ECEAE6"}`,borderRadius:14,padding:"28px 20px",textAlign:"center",animation:`fadeUp 0.6s ease ${0.15*i+0.3}s both`,transition:"transform 0.2s,box-shadow 0.2s"}} onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.boxShadow=`0 8px 24px ${isWomenFeature?"rgba(124,58,237,0.15)":"rgba(0,0,0,0.06)"}`}} onMouseLeave={e=>{e.currentTarget.style.transform="translateY(0)";e.currentTarget.style.boxShadow="none"}}>
-                <div style={{fontSize:28,marginBottom:10}}>{f.icon}</div>
-                <div style={{fontWeight:800,fontSize:14,color:isWomenFeature?"#6D28D9":"#1B3A2A",marginBottom:5}}>{f.t}</div>
-                <div style={{fontSize:12,color:isWomenFeature?"#7C3AED99":"#999",lineHeight:1.5}}>{f.d}</div>
+              return(<div key={i} style={{background:isWomenFeature?"linear-gradient(135deg,#F5F3FF,#EDE9FE)":"white",border:`1px solid ${isWomenFeature?"#DDD6FE":"#ECEAE6"}`,borderRadius:14,padding:"28px 20px",textAlign:"center",animation:`fadeUp 0.6s ease ${0.15*i+0.3}s both`,transition:"transform 0.25s,box-shadow 0.25s",position:"relative",zIndex:0}} onMouseEnter={e=>{e.currentTarget.style.transform="scale(1.06)";e.currentTarget.style.zIndex="2";e.currentTarget.style.boxShadow=`0 20px 48px ${isWomenFeature?"rgba(124,58,237,0.18)":"rgba(27,58,42,0.13)"}`;e.currentTarget.querySelector(".feat-desc").style.color=isWomenFeature?"#7C3AED":"#444";}} onMouseLeave={e=>{e.currentTarget.style.transform="scale(1)";e.currentTarget.style.zIndex="0";e.currentTarget.style.boxShadow="none";e.currentTarget.querySelector(".feat-desc").style.color=isWomenFeature?"rgba(124,58,237,0.6)":"#999";}}>
+                <div style={{fontSize:32,marginBottom:10}}>{f.icon}</div>
+                <div style={{fontWeight:800,fontSize:14,color:isWomenFeature?"#6D28D9":"#1B3A2A",marginBottom:6}}>{f.t}</div>
+                <div className="feat-desc" style={{fontSize:12,color:isWomenFeature?"rgba(124,58,237,0.6)":"#999",lineHeight:1.6,transition:"color 0.25s"}}>{f.d}</div>
               </div>);
             })}
           </div>
@@ -1521,9 +1527,8 @@ const [driverEditing,setDriverEditing]=useState(false);
             <div style={{marginBottom:12}}>
               <label style={lbl}>{b.filterGender}</label>
               <div style={{display:"flex",gap:8}}>
-                {[["mixed",b.mixedOnly],["women_only",b.womenOnly]].map(([k,l])=>(
-                  <button key={k} onClick={()=>setSearchGender(k)} style={{flex:1,padding:"9px",borderRadius:10,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",border:"2px solid",transition:"all 0.2s",borderColor:searchGender===k?(k==="women_only"?"#7C3AED":"#1B3A2A"):"#E8E6E1",background:searchGender===k?(k==="women_only"?"#7C3AED":"#1B3A2A"):"white",color:searchGender===k?"white":"#666"}}>{k==="women_only"?"💜 ":"🚗 "}{l}</button>
-                ))}
+                <button onClick={()=>setSearchGender("mixed")} style={{flex:1,padding:"9px",borderRadius:10,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",border:"2px solid",transition:"all 0.2s",borderColor:searchGender==="mixed"?"#1B3A2A":"#E8E6E1",background:searchGender==="mixed"?"#1B3A2A":"white",color:searchGender==="mixed"?"white":"#666"}}>🚗 {b.mixedOnly}</button>
+                <button disabled style={{flex:1,padding:"9px",borderRadius:10,fontSize:12,fontWeight:700,cursor:"not-allowed",fontFamily:"inherit",border:"2px solid #E8E6E1",background:"#F8F8F8",color:"#CCC"}}>💜 {lang==="ar"?"نساء فقط — قريباً":"Women Only — Soon"}</button>
               </div>
             </div>
             <div style={{display:"flex",gap:10,alignItems:"flex-end"}}>
