@@ -921,15 +921,31 @@ export default function App(){
           </div>
 
           {/* TAB: Profile edit */}
-          {profileTab==="profile"&&(
+         {profileTab==="profile"&&(
             <div style={{background:"white",borderRadius:16,padding:"28px",border:"1px solid #E8E6E1"}}>
-              <h3 style={{fontSize:17,fontWeight:800,color:"#1B3A2A",marginBottom:20}}>{prof.editProfile}</h3>
-              <div style={{marginBottom:14}}><label style={lbl}>{lang==="ar"?"الاسم الكامل":"Full Name"}</label><input value={profileEdit.fullName} onChange={e=>setProfileEdit(p=>({...p,fullName:e.target.value}))} style={inp}/></div>
-              <div style={{marginBottom:14}}><label style={lbl}>{lang==="ar"?"رقم الهاتف":"Phone Number"}</label><input value={profileEdit.phone} onChange={e=>setProfileEdit(p=>({...p,phone:e.target.value}))} style={{...inp,direction:"ltr",textAlign:"left"}}/></div>
-              <div style={{marginBottom:20}}><label style={lbl}>{lang==="ar"?"البريد الإلكتروني":"Email"}</label><input value={profileEdit.email} style={{...inp,background:"#F5F5F5",color:"#AAA",cursor:"not-allowed"}} readOnly/><p style={{fontSize:11,color:"#AAA",marginTop:4}}>{lang==="ar"?"لا يمكن تغيير البريد الإلكتروني":"Email cannot be changed"}</p></div>
-              {profileSaved&&<div style={{marginBottom:12,padding:"10px 16px",background:"#F0FDF4",border:"1px solid #BBF7D0",borderRadius:10,color:"#166534",fontSize:13,fontWeight:700}}>{prof.saved}</div>}
-              <button onClick={saveProfile} style={{width:"100%",background:"#1B3A2A",color:"white",border:"none",padding:"13px",borderRadius:12,fontSize:14,fontWeight:800,cursor:"pointer",fontFamily:"inherit",marginBottom:24}}>{prof.saveChanges}</button>
-
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+                <h3 style={{fontSize:17,fontWeight:800,color:"#1B3A2A"}}>{prof.editProfile}</h3>
+                {!profileEditing&&<button onClick={()=>setProfileEditing(true)} style={{background:"#F0F7F3",color:"#1B3A2A",border:"1.5px solid #1B3A2A",padding:"7px 18px",borderRadius:8,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{lang==="ar"?"تعديل":"Edit"}</button>}
+              </div>
+              <div style={{marginBottom:14}}>
+                <label style={lbl}>{lang==="ar"?"الاسم الكامل":"Full Name"}</label>
+                {profileEditing?<input value={profileEdit.fullName} onChange={e=>setProfileEdit(p=>({...p,fullName:e.target.value}))} style={inp}/>:<div style={{fontSize:14,fontWeight:600,color:"#333",padding:"11px 0"}}>{profileEdit.fullName||"—"}</div>}
+              </div>
+              <div style={{marginBottom:14}}>
+                <label style={lbl}>{lang==="ar"?"رقم الهاتف":"Phone Number"}</label>
+                {profileEditing?<input value={profileEdit.phone} onChange={e=>setProfileEdit(p=>({...p,phone:e.target.value}))} style={{...inp,direction:"ltr",textAlign:"left"}}/>:<div style={{fontSize:14,fontWeight:600,color:"#333",padding:"11px 0",direction:"ltr",textAlign:"left"}}>{profileEdit.phone||"—"}</div>}
+              </div>
+              <div style={{marginBottom:20}}>
+                <label style={lbl}>{lang==="ar"?"البريد الإلكتروني":"Email"}</label>
+                <div style={{fontSize:14,fontWeight:600,color:"#AAA",padding:"11px 0"}}>{profileEdit.email||"—"}</div>
+              </div>
+              {profileEditing&&(<>
+                {profileSaved&&<div style={{marginBottom:12,padding:"10px 16px",background:"#F0FDF4",border:"1px solid #BBF7D0",borderRadius:10,color:"#166534",fontSize:13,fontWeight:700}}>{prof.saved}</div>}
+                <div style={{display:"flex",gap:10,marginBottom:24}}>
+                  <button onClick={()=>{setProfileEditing(false);setProfileEdit({fullName:profile?.full_name||"",phone:profile?.phone||"",email:profile?.email||user.email||""});}} style={{flex:1,background:"white",color:"#666",border:"1.5px solid #DDD",padding:"12px",borderRadius:10,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{lang==="ar"?"إلغاء":"Cancel"}</button>
+                  <button onClick={()=>{saveProfile();setProfileEditing(false);}} style={{flex:2,background:"#1B3A2A",color:"white",border:"none",padding:"12px",borderRadius:10,fontSize:14,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>{prof.saveChanges}</button>
+                </div>
+              </>)}
               <div style={{borderTop:"1px solid #E8E6E1",paddingTop:20}}>
                 <h3 style={{fontSize:15,fontWeight:800,color:"#1B3A2A",marginBottom:16}}>{prof.changePassword}</h3>
                 <div style={{marginBottom:12}}><label style={lbl}>{prof.newPassword}</label><input type="password" value={pwForm.next} onChange={e=>setPwForm(p=>({...p,next:e.target.value}))} style={inp} placeholder={lang==="ar"?"٦ أحرف على الأقل":"At least 6 characters"}/></div>
@@ -938,7 +954,6 @@ export default function App(){
               </div>
             </div>
           )}
-
           {/* TAB: Upcoming bookings */}
           {profileTab==="upcoming"&&(
             <div>
