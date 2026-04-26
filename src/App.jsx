@@ -365,6 +365,8 @@ const [driverEditing,setDriverEditing]=useState(false);
     if(!authForm.fullName||!authForm.phoneNumber||!authForm.email||!authForm.password){setAuthError(t.auth.error);return;}
     setAuthLoading(true);setAuthError("");
     const phone=fullPhone();
+    const{data:existing}=await supabase.from("profiles").select("id").eq("phone",phone).maybeSingle();
+    if(existing){setAuthError("PHONE_EXISTS");setAuthLoading(false);return;}
     const{error}=await supabase.auth.signInWithOtp({phone});
     if(error){setAuthError(t.auth.error);}
     else{setPendingPhone(phone);setAuthStep("signup_otp");}
@@ -875,7 +877,7 @@ const [driverEditing,setDriverEditing]=useState(false);
             </div>
 
             {authSuccess&&<div style={{marginBottom:16,padding:"12px 16px",background:"#F0FDF4",border:"1px solid #BBF7D0",borderRadius:10,color:"#166534",fontSize:13,fontWeight:700,textAlign:"center"}}>{authSuccess}</div>}
-            {authError&&<div style={{marginBottom:16,padding:"10px 16px",background:"#FEF2F2",border:"1px solid #FECACA",borderRadius:10,color:"#B91C1C",fontSize:13,fontWeight:700}}>{authError}</div>}
+            {authError&&authError!=="PHONE_EXISTS"&&<div style={{marginBottom:16,padding:"10px 16px",background:"#FEF2F2",border:"1px solid #FECACA",borderRadius:10,color:"#B91C1C",fontSize:13,fontWeight:700}}>{authError}</div>}
 
             {/* CHOICE */}
             {authStep==="choice"&&(
@@ -906,6 +908,10 @@ const [driverEditing,setDriverEditing]=useState(false);
               </div>
               <div style={{marginBottom:8}}><label style={lbl}>{t.auth.password} *</label><input type="password" value={authForm.password} onChange={e=>setAuthForm(f=>({...f,password:e.target.value}))} style={inp}/></div>
               <p style={{fontSize:11,color:"#AAA",marginBottom:20}}>{t.auth.passwordHint}</p>
+              {authError==="PHONE_EXISTS"&&<div style={{marginBottom:16,padding:"12px 16px",background:"#FEF2F2",border:"1px solid #FECACA",borderRadius:10,fontSize:13,fontWeight:700,textAlign:"center"}}>
+                <span style={{color:"#B91C1C"}}>{lang==="ar"?"هذا الرقم مسجل مسبقاً.":"This phone number is already registered."}</span>{" "}
+                <span onClick={()=>{setAuthStep("login");setAuthError("");}} style={{color:"#1B3A2A",fontWeight:800,cursor:"pointer",textDecoration:"underline"}}>{lang==="ar"?"سجّل الدخول بدلاً من ذلك":"Log in instead"}</span>
+              </div>}
               <button onClick={handleSignupSendOtp} disabled={authLoading} style={{width:"100%",background:"#1B3A2A",color:"white",border:"none",padding:"14px",borderRadius:12,fontSize:15,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>{authLoading?"...":t.auth.sendOtp}</button>
               <p style={{textAlign:"center",marginTop:16,fontSize:13,color:"#888"}}>{t.auth.haveAccount}{" "}<span onClick={()=>{setAuthStep("login");setAuthError("");}} style={{color:"#1B3A2A",fontWeight:700,cursor:"pointer"}}>{t.auth.loginBtn}</span></p>
             </>)}
