@@ -739,7 +739,7 @@ const [driverEditing,setDriverEditing]=useState(false);
     setForm({from:"",to:"",type:"car",date:"",time:"",name:"",phone:"",passengers:"1",bags:"0",notes:"",payment:"cash"});
   };
 
-  const navLinks=[["home",t.nav.home],["contact",t.nav.contact]];
+  const navLinks=[["home",t.nav.home],["contact",t.nav.contact],...(driverApproved?[["driver",t.nav.driver]]:[]),(isAdmin?[["admin",t.nav.admin]]:[]）];
   const statusBadge=(s)=>({padding:"4px 12px",borderRadius:20,fontSize:11,fontWeight:700,background:s==="active"?"#D1FAE5":s==="pending"?"#FFF3CD":s==="completed"?"#E0F2FE":"#FEE2E2",color:s==="active"?"#065F46":s==="pending"?"#92400E":s==="completed"?"#0369A1":"#991B1B"});
 
   const timeOptions=Array.from({length:96},(_,i)=>{
@@ -773,8 +773,8 @@ const [driverEditing,setDriverEditing]=useState(false);
           <div style={{display:"flex",alignItems:"center",gap:18}} className="dnav">
             {navLinks.map(([k,l])=>(<span key={k} onClick={()=>setPage(k)} style={{cursor:"pointer",fontSize:13,fontWeight:600,color:page===k?"#1B3A2A":"#999"}}>{l}</span>))}
             {!isDriverApplied&&user&&<span onClick={()=>setPage("apply")} style={{cursor:"pointer",fontSize:13,fontWeight:600,color:page==="apply"?"#1B3A2A":"#999"}}>{t.nav.apply}</span>}
-            {isAdmin&&<span onClick={()=>setPage("admin")} style={{cursor:"pointer",fontSize:13,fontWeight:600,color:page==="admin"?"#1B3A2A":"#E8913A"}}>{t.nav.admin}</span>}
-            {user&&driverApproved&&<span onClick={()=>setPage("driver")} style={{cursor:"pointer",fontSize:13,fontWeight:600,color:page==="driver"?"#1B3A2A":"#999"}}>{t.nav.driver}</span>}
+          
+            
             {user?(
               <div style={{display:"flex",gap:8,alignItems:"center"}}>
                 <button onClick={()=>setPage("profile")} style={{background:page==="profile"?"#1B3A2A":"transparent",color:page==="profile"?"white":"#555",border:"1.5px solid #DDD",borderRadius:8,padding:"6px 14px",fontSize:12,cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>{t.nav.profile}</button>
