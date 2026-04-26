@@ -555,6 +555,7 @@ const [driverEditing,setDriverEditing]=useState(false);
 
   const checkPromoCode=async()=>{
     if(!promoCode) return;
+    if(!/^[A-Z0-9]{1,20}$/.test(promoCode.toUpperCase())){setPromoError(lang==="ar"?"كود غير صحيح":"Invalid code");return;}
     const{data}=await supabase.from("promo_codes").select("*").eq("code",promoCode.toUpperCase()).eq("active",true).maybeSingle();
     if(!data){setPromoError(lang==="ar"?"كود غير صحيح":"Invalid code");setPromoDiscount(null);}
     else{setPromoDiscount(data);setPromoError("");}
@@ -579,7 +580,9 @@ const [driverEditing,setDriverEditing]=useState(false);
 
   const createPromoCode=async()=>{
     if(!newPromo.code||!newPromo.discount_value) return;
-    await supabase.from("promo_codes").insert({code:newPromo.code.toUpperCase(),discount_type:newPromo.discount_type,discount_value:parseFloat(newPromo.discount_value),active:true});
+    const val=parseFloat(newPromo.discount_value);
+    if(isNaN(val)||val<=0||(newPromo.discount_type==="percentage"&&val>100)) return;
+    await supabase.from("promo_codes").insert({code:newPromo.code.toUpperCase(),discount_type:newPromo.discount_type,discount_value:val,active:true});
     setNewPromo({code:"",discount_type:"fixed",discount_value:""});
     loadPromoCodes();
   };
@@ -591,10 +594,13 @@ const [driverEditing,setDriverEditing]=useState(false);
   };
 
   const saveDriverProfile=async()=>{
-    await supabase.from("profiles").update({full_name:driverProfile.fullName,date_of_birth:driverProfile.dob||null,id_number:driverProfile.idNumber,car_type:driverProfile.carType,car_model:driverProfile.carModel,car_plate:driverProfile.carPlate,transport_license:driverProfile.transportLicense,driver_license:driverProfile.driverLicense}).eq("id",selectedDriver.id);
+    const targetId=selectedDriver?.id||user?.id;
+    if(!targetId) return;
+    await supabase.from("profiles").update({full_name:driverProfile.fullName,date_of_birth:driverProfile.dob||null,id_number:driverProfile.idNumber,car_type:driverProfile.carType,car_model:driverProfile.carModel,car_plate:driverProfile.carPlate,transport_license:driverProfile.transportLicense,driver_license:driverProfile.driverLicense}).eq("id",targetId);
     setDriverProfileMsg(lang==="ar"?"تم الحفظ بنجاح ✓":"Saved successfully ✓");
     setTimeout(()=>setDriverProfileMsg(""),3000);
-    loadAdminData();
+    if(selectedDriver) loadAdminData();
+    else loadProfile(user);
   };
 
   const filteredAdminTrips=adminAllTrips.filter(trip=>{
@@ -606,6 +612,9 @@ const [driverEditing,setDriverEditing]=useState(false);
   const loadDriverData=async()=>{
     if(!user) return;
     await loadProfile(user);
+    const{data:myApp}=await supabase.from("driver_applications").select("*").eq("user_id",user.id).order("created_at",{ascending:false}).limit(1).maybeSingle();
+    const{data:myProfileData}=await supabase.from("profiles").select("*").eq("id",user.id).single();
+    setDriverProfile({fullName:myProfileData?.full_name||"",dob:myProfileData?.date_of_birth||"",idNumber:myProfileData?.id_number||"",carType:myProfileData?.car_type||myApp?.car_type||"",carModel:myProfileData?.car_model||myApp?.car_model||"",carPlate:myProfileData?.car_plate||"",transportLicense:myProfileData?.transport_license||"",driverLicense:myProfileData?.driver_license||""});
     const{data:myTrips}=await supabase.from("trips").select("*").eq("driver_id",user.id).order("trip_date",{ascending:false});
     setDriverTrips(myTrips||[]);
     if(myTrips){
