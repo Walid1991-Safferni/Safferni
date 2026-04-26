@@ -1,13 +1,13 @@
 import { useState, useRef, useEffect } from "react";
 import { createClient } from "@supabase/supabase-js";
 
-const SUPABASE_URL = "https://httsiptnvtchtqvabkyp.supabase.co";
-const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh0dHNpcHRudnRjaHRxdmFia3lwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY2NjcyMzgsImV4cCI6MjA5MjI0MzIzOH0.ypI-BaFF-L1jttheMiFbaeQE2AQOskPQK2d1UfiDA2c";
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON = import.meta.env.VITE_SUPABASE_ANON_KEY;
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON);
-const SHEET_URL = "https://script.google.com/macros/s/AKfycbxfCu6s3k-Pt618KoEdZuPV6mfv98L2J3ZAptGUURFiVKkUdIQnZh66ZNSAWcfL42r0/exec";
-const USDT_ADDRESS = "0x79F8b2d4e412f8A25Dc19487c878C203ce1e9b69";
-const WA_PHONE = "963949191411";
-const ADMIN_EMAILS = ["admin@safferni.com", "mearmrstane@gmail.com"];
+const SHEET_URL = import.meta.env.VITE_SHEET_URL;
+const USDT_ADDRESS = import.meta.env.VITE_USDT_ADDRESS;
+const WA_PHONE = import.meta.env.VITE_WA_PHONE;
+const ADMIN_EMAILS = (import.meta.env.VITE_ADMIN_EMAILS || "").split(",").map(e => e.trim()).filter(Boolean);
 
 const cities = [
   { id:"dam", ar:"دمشق", en:"Damascus" },
@@ -217,6 +217,7 @@ export default function App(){
   const [tripBooked,setTripBooked]=useState(false);
   const [lastBookingId,setLastBookingId]=useState(null);
   const [tripRating,setTripRating]=useState(0);
+  const [seatBookingError,setSeatBookingError]=useState("");
   const [ratingSubmitted,setRatingSubmitted]=useState(false);
 
   // AUTH STATE — new unified flow
@@ -423,7 +424,7 @@ const [driverEditing,setDriverEditing]=useState(false);
 
   // Forgot password Step 3: Set new password
   const handleForgotNewPass=async()=>{
-    if(!authForm.password||authForm.password.length<6){setAuthError(lang==="ar"?"كلمة المرور يجب أن تكون ٦ أحرف على الأقل":"Password must be at least 6 characters");return;}
+    if(!authForm.password||authForm.password.length<8){setAuthError(lang==="ar"?"كلمة المرور يجب أن تكون ٨ أحرف على الأقل":"Password must be at least 8 characters");return;}
     setAuthLoading(true);setAuthError("");
     const{error}=await supabase.auth.updateUser({password:authForm.password});
     if(error){setAuthError(t.auth.error);setAuthLoading(false);return;}
@@ -466,7 +467,7 @@ const [driverEditing,setDriverEditing]=useState(false);
   };
 
   const changePassword=async()=>{
-    if(!pwForm.next||pwForm.next.length<6){setPwMsg(lang==="ar"?"كلمة المرور يجب أن تكون ٦ أحرف على الأقل":"Password must be at least 6 characters");return;}
+    if(!pwForm.next||pwForm.next.length<8){setPwMsg(lang==="ar"?"كلمة المرور يجب أن تكون ٨ أحرف على الأقل":"Password must be at least 8 characters");return;}
     const{error}=await supabase.auth.updateUser({password:pwForm.next});
     if(error) setPwMsg(t.auth.error);
     else{setPwMsg(prof.passwordChanged+" ✓");setPwForm({current:"",next:""});}
@@ -672,23 +673,30 @@ const [driverEditing,setDriverEditing]=useState(false);
   };
 
   const bookTripSeat=async()=>{
-    if(!tripBooking.name||!tripBooking.phone||!selectedTrip) return;
-    // Validate seats
-    if(tripBooking.seats>selectedTrip.available_seats){return;}
+    setSeatBookingError("");
+    const name=tripBooking.name.trim();
+    const phone=tripBooking.phone.trim();
+    if(!name||!phone||!selectedTrip){setSeatBookingError(lang==="ar"?"يرجى تعبئة الاسم ورقم الهاتف":"Please fill in your name and phone number");return;}
+    if(name.length<2){setSeatBookingError(lang==="ar"?"الاسم قصير جداً":"Name is too short");return;}
+    if(!/^\+?[\d\s\-]{7,20}$/.test(phone)){setSeatBookingError(lang==="ar"?"رقم الهاتف غير صحيح":"Invalid phone number");return;}
+    if(tripBooking.seats>selectedTrip.available_seats){setSeatBookingError(lang==="ar"?"عدد المقاعد غير متاح":"Not enough seats available");return;}
     const ref=genRef();
-    const{data:booking,error}=await supabase.from("bookings").insert({
-      trip_id:selectedTrip.id,
-      user_id:user?.id||null,
-      passenger_name:tripBooking.name,
-      passenger_phone:tripBooking.phone,
-      seats:tripBooking.seats,
-      payment_method:tripBooking.payment,
-      status:"pending",
-      ref_code:ref,
-      total_price:applyDiscount(selectedTrip.price_per_seat*tripBooking.seats),
-    }).select().single();
-    if(error) return;
-    await supabase.from("trips").update({available_seats:selectedTrip.available_seats-tripBooking.seats}).eq("id",selectedTrip.id);
+    const{data:booking,error}=await supabase.rpc("book_trip_seat",{
+      p_trip_id:selectedTrip.id,
+      p_user_id:user?.id||null,
+      p_passenger_name:name,
+      p_passenger_phone:phone,
+      p_seats:tripBooking.seats,
+      p_payment_method:tripBooking.payment,
+      p_ref_code:ref,
+      p_total_price:applyDiscount(selectedTrip.price_per_seat*tripBooking.seats),
+    });
+    if(error||!booking?.success){
+      const msg=booking?.error||error?.message||"";
+      if(msg.includes("seats")||msg.includes("available")){setSeatBookingError(lang==="ar"?"عُذراً، لم تعد هناك مقاعد كافية":"Sorry, not enough seats left — someone else just booked");}
+      else{setSeatBookingError(lang==="ar"?"فشل الحجز، يرجى المحاولة مرة أخرى":"Booking failed, please try again");}
+      return;
+    }
     if(booking) setLastBookingId(booking.id);
     const from=gc(selectedTrip.from_city);const to=gc(selectedTrip.to_city);
     const isWomen=selectedTrip.gender_type==="women_only";
@@ -1566,8 +1574,9 @@ const [driverEditing,setDriverEditing]=useState(false);
                     <span style={{fontSize:20,fontWeight:900,color:selectedTrip.gender_type==="women_only"?"#7C3AED":"#1B3A2A"}}>${applyDiscount(selectedTrip.price_per_seat*tripBooking.seats).toFixed(2)}</span>
                   </div>
                 </div>
+                {seatBookingError&&<div style={{background:"#FEF2F2",border:"1px solid #FECACA",borderRadius:8,padding:"10px 14px",marginBottom:12,fontSize:13,color:"#DC2626",fontWeight:600,textAlign:"center"}}>{seatBookingError}</div>}
                 <div style={{display:"flex",gap:10}}>
-                  <button onClick={()=>setSelectedTrip(null)} style={{flex:1,background:"white",color:"#666",border:"1.5px solid #DDD",padding:"12px",borderRadius:10,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>✕</button>
+                  <button onClick={()=>{setSelectedTrip(null);setSeatBookingError("");}} style={{flex:1,background:"white",color:"#666",border:"1.5px solid #DDD",padding:"12px",borderRadius:10,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>✕</button>
                   <button onClick={bookTripSeat} style={{flex:2,background:selectedTrip.gender_type==="women_only"?"#7C3AED":"#1B3A2A",color:"white",border:"none",padding:"12px",borderRadius:10,fontSize:14,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>{b.submit}</button>
                 </div>
               </div>)}
