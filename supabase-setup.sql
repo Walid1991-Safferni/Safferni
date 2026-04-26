@@ -359,3 +359,24 @@ CREATE POLICY "promo_codes_delete_admin" ON promo_codes
 --   WHERE schemaname = 'public';
 -- All tables should show rowsecurity = true
 -- ============================================================
+
+
+-- ============================================================
+-- PART 3: SCHEMA ADDITIONS
+-- Run these if you haven't already.
+-- ============================================================
+
+-- Driver profile columns on profiles table
+ALTER TABLE profiles
+  ADD COLUMN IF NOT EXISTS date_of_birth text,
+  ADD COLUMN IF NOT EXISTS id_number text,
+  ADD COLUMN IF NOT EXISTS car_type text,
+  ADD COLUMN IF NOT EXISTS car_model text,
+  ADD COLUMN IF NOT EXISTS car_plate text,
+  ADD COLUMN IF NOT EXISTS transport_license text,
+  ADD COLUMN IF NOT EXISTS driver_license text;
+
+-- Promo code usage tracking
+ALTER TABLE promo_codes
+  ADD COLUMN IF NOT EXISTS max_uses int,
+  ADD COLUMN IF NOT EXISTS uses_count int DEFAULT 0;

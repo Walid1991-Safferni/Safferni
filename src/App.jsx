@@ -232,7 +232,7 @@ export default function App(){
   const [pendingPhone,setPendingPhone]=useState("");
 
   // Apply
-  const [applyForm,setApplyForm]=useState({fullName:"",phone:"",city:"",carType:"",carModel:"",licensePlate:"",notes:""});
+  const [applyForm,setApplyForm]=useState({fullName:"",phone:"",city:"",carType:"",carModel:"",licensePlate:"",notes:"",dob:""});
   const [applySubmitted,setApplySubmitted]=useState(false);
   const [applyError,setApplyError]=useState("");
   const [driverApplication,setDriverApplication]=useState(null);
@@ -272,7 +272,7 @@ export default function App(){
   const [promoDiscount,setPromoDiscount]=useState(null);
   const [promoError,setPromoError]=useState("");
   const [promoCodes,setPromoCodes]=useState([]);
-  const [newPromo,setNewPromo]=useState({code:"",discount_type:"fixed",discount_value:""});
+  const [newPromo,setNewPromo]=useState({code:"",discount_type:"fixed",discount_value:"",max_uses:""});
 
   // Trip passengers (admin expand)
   const [expandedTrip,setExpandedTrip]=useState(null);
@@ -461,8 +461,20 @@ const [driverEditing,setDriverEditing]=useState(false);
   };
 
   const cancelBooking=async(bookingId)=>{
+    const bk=upcomingBookings.find(b=>b.id===bookingId);
+    if(bk?.trips){
+      const tripDateTime=new Date(`${bk.trips.trip_date}T${bk.trips.trip_time||"00:00"}`);
+      if((tripDateTime-new Date())<24*60*60*1000){
+        alert(lang==="ar"?"لا يمكن إلغاء الحجز قبل أقل من 24 ساعة من موعد الرحلة":"Bookings cannot be cancelled less than 24 hours before departure");
+        return;
+      }
+    }
     if(!window.confirm(prof.cancelConfirm)) return;
     await supabase.from("bookings").update({status:"cancelled"}).eq("id",bookingId);
+    if(bk?.trip_id){
+      const{data:trip}=await supabase.from("trips").select("available_seats").eq("id",bk.trip_id).single();
+      if(trip) await supabase.from("trips").update({available_seats:trip.available_seats+(bk.seats||1)}).eq("id",bk.trip_id);
+    }
     loadPassengerBookings();
   };
 
@@ -478,9 +490,13 @@ const [driverEditing,setDriverEditing]=useState(false);
 
   const handleApply=async()=>{
     if(!applyForm.fullName||!applyForm.phone||!applyForm.city||!applyForm.carType){setApplyError(t.apply.fillAll);return;}
+    if(applyForm.dob){
+      const cutoff=new Date();cutoff.setFullYear(cutoff.getFullYear()-18);
+      if(new Date(applyForm.dob)>cutoff){setApplyError(lang==="ar"?"يجب أن يكون عمرك 18 عامًا على الأقل":"Must be at least 18 years old");return;}
+    }
     const ref=genAppRef();
-    const{error}=await supabase.from("driver_applications").insert({user_id:user?.id||null,full_name:applyForm.fullName,phone:applyForm.phone,city:applyForm.city,car_type:applyForm.carType,car_model:applyForm.carModel,license_plate:applyForm.licensePlate,notes:applyForm.notes,app_ref:ref});
-    if(!error){setAppRef(ref);setApplySubmitted(true);setApplyForm({fullName:"",phone:"",city:"",carType:"",carModel:"",licensePlate:"",notes:""});}
+    const{error}=await supabase.from("driver_applications").insert({user_id:user?.id||null,full_name:applyForm.fullName,phone:applyForm.phone,city:applyForm.city,car_type:applyForm.carType,car_model:applyForm.carModel,license_plate:applyForm.licensePlate,notes:applyForm.notes,app_ref:ref,date_of_birth:applyForm.dob||null});
+    if(!error){setAppRef(ref);setApplySubmitted(true);setApplyForm({fullName:"",phone:"",city:"",carType:"",carModel:"",licensePlate:"",notes:"",dob:""});}
     else setApplyError(t.apply.fillAll);
   };
 
@@ -542,7 +558,9 @@ const [driverEditing,setDriverEditing]=useState(false);
   };
 
   const submitReview=async(tripId,driverId,bookingId)=>{
-    if(!reviewForm.rating) return;
+    if(!reviewForm.rating||!bookingId||!user) return;
+    const{data:myBooking}=await supabase.from("bookings").select("id").eq("id",bookingId).eq("user_id",user.id).neq("status","cancelled").maybeSingle();
+    if(!myBooking) return;
     await supabase.from("trip_reviews").insert({trip_id:tripId,booking_id:bookingId,driver_id:driverId,passenger_name:tripBooking.name||profile?.full_name||"Anonymous",rating:reviewForm.rating,review_text:reviewForm.text});
     const{data:reviews}=await supabase.from("trip_reviews").select("rating").eq("driver_id",driverId);
     if(reviews&&reviews.length>0){
@@ -558,6 +576,7 @@ const [driverEditing,setDriverEditing]=useState(false);
     if(!/^[A-Z0-9]{1,20}$/.test(promoCode.toUpperCase())){setPromoError(lang==="ar"?"كود غير صحيح":"Invalid code");return;}
     const{data}=await supabase.from("promo_codes").select("*").eq("code",promoCode.toUpperCase()).eq("active",true).maybeSingle();
     if(!data){setPromoError(lang==="ar"?"كود غير صحيح":"Invalid code");setPromoDiscount(null);}
+    else if(data.max_uses!==null&&data.max_uses!==undefined&&(data.uses_count||0)>=data.max_uses){setPromoError(lang==="ar"?"انتهى الحد المسموح به لهذا الكود":"This promo code has reached its usage limit");setPromoDiscount(null);}
     else{setPromoDiscount(data);setPromoError("");}
   };
 
@@ -582,8 +601,9 @@ const [driverEditing,setDriverEditing]=useState(false);
     if(!newPromo.code||!newPromo.discount_value) return;
     const val=parseFloat(newPromo.discount_value);
     if(isNaN(val)||val<=0||(newPromo.discount_type==="percentage"&&val>100)) return;
-    await supabase.from("promo_codes").insert({code:newPromo.code.toUpperCase(),discount_type:newPromo.discount_type,discount_value:val,active:true});
-    setNewPromo({code:"",discount_type:"fixed",discount_value:""});
+    const maxUses=newPromo.max_uses?parseInt(newPromo.max_uses):null;
+    await supabase.from("promo_codes").insert({code:newPromo.code.toUpperCase(),discount_type:newPromo.discount_type,discount_value:val,active:true,max_uses:maxUses,uses_count:0});
+    setNewPromo({code:"",discount_type:"fixed",discount_value:"",max_uses:""});
     loadPromoCodes();
   };
 
@@ -636,6 +656,8 @@ const [driverEditing,setDriverEditing]=useState(false);
   };
 
   const validateTrip=async()=>{
+    const today=new Date(new Date().toDateString());
+    if(tripForm.date&&new Date(tripForm.date)<today){setTripError(lang==="ar"?"لا يمكن نشر رحلة بتاريخ سابق":"Cannot post a trip with a past date");return false;}
     const{data:activeTripsList}=await supabase.from("trips").select("id").eq("driver_id",user.id).eq("status","active");
     if((activeTripsList?.length||0)>=10){setTripError(drv.limitReached);return false;}
     const{data:dayTrips}=await supabase.from("trips").select("trip_time").eq("driver_id",user.id).eq("trip_date",tripForm.date).neq("status","cancelled");
@@ -669,7 +691,11 @@ const [driverEditing,setDriverEditing]=useState(false);
     else setTripError(drv.fillAll);
   };
 
-  const cancelDriverTrip=async(id)=>{await supabase.from("trips").update({status:"cancelled"}).eq("id",id);loadDriverData();};
+  const cancelDriverTrip=async(id)=>{
+    if(!window.confirm(lang==="ar"?"هل أنت متأكد من إلغاء هذه الرحلة؟":"Are you sure you want to cancel this trip?")) return;
+    await supabase.from("trips").update({status:"cancelled"}).eq("id",id);
+    loadDriverData();
+  };
 
   const requestTimeEdit=async()=>{
     if(!editRequestForm.newTime) return;
@@ -714,7 +740,8 @@ const [driverEditing,setDriverEditing]=useState(false);
       else{setSeatBookingError(lang==="ar"?"فشل الحجز، يرجى المحاولة مرة أخرى":"Booking failed, please try again");}
       return;
     }
-    if(booking) setLastBookingId(booking.id);
+    if(booking) setLastBookingId(booking.booking_id||booking.id);
+    if(promoDiscount?.id) await supabase.from("promo_codes").update({uses_count:(promoDiscount.uses_count||0)+1}).eq("id",promoDiscount.id);
     const from=gc(selectedTrip.from_city);const to=gc(selectedTrip.to_city);
     const isWomen=selectedTrip.gender_type==="women_only";
     const msg=lang==="ar"
@@ -1063,6 +1090,7 @@ const [driverEditing,setDriverEditing]=useState(false);
                     <div><label style={lbl}>{t.apply.phone} *</label><input value={applyForm.phone||profile?.phone||""} onChange={e=>setApplyForm(f=>({...f,phone:e.target.value}))} style={{...inp,direction:"ltr",textAlign:"left"}} placeholder="+963..."/></div>
                     <div><label style={lbl}>{t.apply.city} *</label><select value={applyForm.city} onChange={e=>setApplyForm(f=>({...f,city:e.target.value}))} style={inp}><option value="">{b.selectCity}</option>{cities.map(c=><option key={c.id} value={c.id}>{c[lang]}</option>)}</select></div>
                   </div>
+                  <div style={{marginBottom:14}}><label style={lbl}>{lang==="ar"?"تاريخ الميلاد (يجب أن يكون عمرك +18)":"Date of Birth (must be 18+)"}</label><input type="date" value={applyForm.dob} max={new Date(new Date().setFullYear(new Date().getFullYear()-18)).toISOString().split("T")[0]} onChange={e=>setApplyForm(f=>({...f,dob:e.target.value}))} style={inp}/></div>
                   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:14}}>
                     <div><label style={lbl}>{t.apply.carType} *</label><input value={applyForm.carType} onChange={e=>setApplyForm(f=>({...f,carType:e.target.value}))} style={inp}/></div>
                     <div><label style={lbl}>{t.apply.carModel}</label><input value={applyForm.carModel} onChange={e=>setApplyForm(f=>({...f,carModel:e.target.value}))} style={inp} placeholder="2022"/></div>
@@ -1101,6 +1129,7 @@ const [driverEditing,setDriverEditing]=useState(false);
               <div><label style={lbl}>{t.apply.phone} *</label><input value={applyForm.phone} onChange={e=>setApplyForm({...applyForm,phone:e.target.value})} style={{...inp,direction:"ltr",textAlign:"left"}} placeholder="+963..."/></div>
               <div><label style={lbl}>{t.apply.city} *</label><select value={applyForm.city} onChange={e=>setApplyForm({...applyForm,city:e.target.value})} style={inp}><option value="">{b.selectCity}</option>{cities.map(c=><option key={c.id} value={c.id}>{c[lang]}</option>)}</select></div>
             </div>
+            <div style={{marginBottom:16}}><label style={lbl}>{lang==="ar"?"تاريخ الميلاد (يجب أن يكون عمرك +18)":"Date of Birth (must be 18+)"}</label><input type="date" value={applyForm.dob} max={new Date(new Date().setFullYear(new Date().getFullYear()-18)).toISOString().split("T")[0]} onChange={e=>setApplyForm({...applyForm,dob:e.target.value})} style={inp}/></div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:16}}>
               <div><label style={lbl}>{t.apply.carType} *</label><input value={applyForm.carType} onChange={e=>setApplyForm({...applyForm,carType:e.target.value})} style={inp}/></div>
               <div><label style={lbl}>{t.apply.carModel}</label><input value={applyForm.carModel} onChange={e=>setApplyForm({...applyForm,carModel:e.target.value})} style={inp} placeholder="2022"/></div>
@@ -1252,17 +1281,18 @@ const [driverEditing,setDriverEditing]=useState(false);
           {adminTab==="promoCodes"&&(<div>
             <div style={{background:"white",borderRadius:14,padding:"24px",border:"1px solid #E8E6E1",marginBottom:24}}>
               <h3 style={{fontSize:16,fontWeight:800,color:"#1B3A2A",marginBottom:16}}>{lang==="ar"?"إنشاء كود جديد":"Create New Code"}</h3>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr auto",gap:10,alignItems:"flex-end"}}>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr auto",gap:10,alignItems:"flex-end"}}>
                 <div><label style={lbl}>{lang==="ar"?"الكود":"Code"}</label><input value={newPromo.code} onChange={e=>setNewPromo({...newPromo,code:e.target.value.toUpperCase()})} style={inp} placeholder="SAFFERNI10"/></div>
                 <div><label style={lbl}>{lang==="ar"?"نوع الخصم":"Type"}</label><select value={newPromo.discount_type} onChange={e=>setNewPromo({...newPromo,discount_type:e.target.value})} style={inp}><option value="fixed">{lang==="ar"?"مبلغ ثابت ($)":"Fixed ($)"}</option><option value="percentage">{lang==="ar"?"نسبة (%)":"Percentage (%)"}</option></select></div>
                 <div><label style={lbl}>{lang==="ar"?"القيمة":"Value"}</label><input type="number" value={newPromo.discount_value} onChange={e=>setNewPromo({...newPromo,discount_value:e.target.value})} style={inp} placeholder="10"/></div>
+                <div><label style={lbl}>{lang==="ar"?"الحد الأقصى":"Max Uses"}</label><input type="number" value={newPromo.max_uses} onChange={e=>setNewPromo({...newPromo,max_uses:e.target.value})} style={inp} placeholder={lang==="ar"?"غير محدود":"Unlimited"}/></div>
                 <button onClick={createPromoCode} style={{background:"#1B3A2A",color:"white",border:"none",padding:"11px 20px",borderRadius:10,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{lang==="ar"?"إنشاء":"Create"}</button>
               </div>
             </div>
             {promoCodes.length===0?<p style={{textAlign:"center",color:"#AAA",padding:"40px"}}>{lang==="ar"?"لا توجد كودات":"No promo codes yet"}</p>:
             promoCodes.map((p,i)=>(
               <div key={p.id} style={{background:"white",borderRadius:12,padding:"16px 20px",border:"1px solid #E8E6E1",marginBottom:10,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10}}>
-                <div><span style={{fontWeight:900,fontSize:16,color:"#1B3A2A",letterSpacing:1}}>{p.code}</span><span style={{marginInlineStart:12,fontSize:13,color:"#888"}}>{p.discount_type==="fixed"?`$${p.discount_value} off`:`${p.discount_value}% off`}</span></div>
+                <div><span style={{fontWeight:900,fontSize:16,color:"#1B3A2A",letterSpacing:1}}>{p.code}</span><span style={{marginInlineStart:12,fontSize:13,color:"#888"}}>{p.discount_type==="fixed"?`$${p.discount_value} off`:`${p.discount_value}% off`}</span>{p.max_uses!=null&&<span style={{marginInlineStart:10,fontSize:11,color:"#AAA"}}>{p.uses_count||0}/{p.max_uses} {lang==="ar"?"مستخدم":"uses"}</span>}</div>
                 <div style={{display:"flex",gap:8,alignItems:"center"}}>
                   <span style={{fontSize:11,fontWeight:700,padding:"3px 10px",borderRadius:20,background:p.active?"#D1FAE5":"#FEE2E2",color:p.active?"#065F46":"#991B1B"}}>{p.active?(lang==="ar"?"نشط":"Active"):(lang==="ar"?"معطل":"Inactive")}</span>
                   <button onClick={async()=>{await supabase.from("promo_codes").update({active:!p.active}).eq("id",p.id);loadPromoCodes();}} style={{background:p.active?"#EF4444":"#1B3A2A",color:"white",border:"none",padding:"6px 14px",borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{p.active?(lang==="ar"?"تعطيل":"Disable"):(lang==="ar"?"تفعيل":"Enable")}</button>
@@ -1286,7 +1316,7 @@ const [driverEditing,setDriverEditing]=useState(false);
                 <div><label style={lbl}>{drv.to} *</label><select value={tripForm.to} onChange={e=>setTripForm({...tripForm,to:e.target.value})} style={inp} disabled={!tripForm.from}><option value="">{tripForm.from?b.selectDest:b.selectFromFirst}</option>{tripForm.from?getDests(tripForm.from).map(id=>{const c=gc(id);return<option key={id} value={id}>{c[lang]}</option>}):null}</select></div>
               </div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:16}}>
-                <div><label style={lbl}>{drv.date} *</label><input type="date" value={tripForm.date} onChange={e=>setTripForm({...tripForm,date:e.target.value})} style={inp}/></div>
+                <div><label style={lbl}>{drv.date} *</label><input type="date" value={tripForm.date} min={new Date().toISOString().split("T")[0]} onChange={e=>setTripForm({...tripForm,date:e.target.value})} style={inp}/></div>
                 <div><label style={lbl}>{drv.time}</label><select value={tripForm.time} onChange={e=>setTripForm({...tripForm,time:e.target.value})} style={inp}><option value="">--</option>{timeOptions.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}</select></div>
               </div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12,marginBottom:16}}>
