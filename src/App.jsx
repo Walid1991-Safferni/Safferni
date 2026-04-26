@@ -596,11 +596,19 @@ const [driverEditing,setDriverEditing]=useState(false);
   const saveDriverProfile=async()=>{
     const targetId=selectedDriver?.id||user?.id;
     if(!targetId) return;
-    await supabase.from("profiles").update({full_name:driverProfile.fullName,date_of_birth:driverProfile.dob||null,id_number:driverProfile.idNumber,car_type:driverProfile.carType,car_model:driverProfile.carModel,car_plate:driverProfile.carPlate,transport_license:driverProfile.transportLicense,driver_license:driverProfile.driverLicense}).eq("id",targetId);
+    if(driverProfile.dob){
+      const cutoff=new Date();cutoff.setFullYear(cutoff.getFullYear()-18);
+      if(new Date(driverProfile.dob)>cutoff){
+        setDriverProfileMsg(lang==="ar"?"يجب أن يكون عمرك 18 عامًا على الأقل":"Must be at least 18 years old");
+        return;
+      }
+    }
+    const{error}=await supabase.from("profiles").update({full_name:driverProfile.fullName,date_of_birth:driverProfile.dob||null,id_number:driverProfile.idNumber,car_type:driverProfile.carType,car_model:driverProfile.carModel,car_plate:driverProfile.carPlate,transport_license:driverProfile.transportLicense,driver_license:driverProfile.driverLicense}).eq("id",targetId);
+    if(error){setDriverProfileMsg(lang==="ar"?"حدث خطأ أثناء الحفظ":"Save failed: "+error.message);return;}
     setDriverProfileMsg(lang==="ar"?"تم الحفظ بنجاح ✓":"Saved successfully ✓");
     setTimeout(()=>setDriverProfileMsg(""),3000);
     if(selectedDriver) loadAdminData();
-    else loadProfile(user);
+    else loadDriverData();
   };
 
   const filteredAdminTrips=adminAllTrips.filter(trip=>{
@@ -1307,7 +1315,7 @@ const [driverEditing,setDriverEditing]=useState(false);
               </div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
                 <div><label style={lbl}>{lang==="ar"?"الاسم الكامل":"Full Name"}</label>{driverEditing?<input value={driverProfile.fullName} onChange={e=>setDriverProfile({...driverProfile,fullName:e.target.value})} style={inp}/>:<div style={{fontSize:14,fontWeight:600,color:"#333",padding:"11px 0"}}>{driverProfile.fullName||"—"}</div>}</div>
-                <div><label style={lbl}>{lang==="ar"?"تاريخ الميلاد":"Date of Birth"}</label>{driverEditing?<input type="date" value={driverProfile.dob} onChange={e=>setDriverProfile({...driverProfile,dob:e.target.value})} style={inp}/>:<div style={{fontSize:14,fontWeight:600,color:"#333",padding:"11px 0"}}>{driverProfile.dob||"—"}</div>}</div>
+                <div><label style={lbl}>{lang==="ar"?"تاريخ الميلاد":"Date of Birth"}</label>{driverEditing?<input type="date" value={driverProfile.dob} max={new Date(new Date().setFullYear(new Date().getFullYear()-18)).toISOString().split("T")[0]} onChange={e=>setDriverProfile({...driverProfile,dob:e.target.value})} style={inp}/>:<div style={{fontSize:14,fontWeight:600,color:"#333",padding:"11px 0"}}>{driverProfile.dob||"—"}</div>}</div>
               </div>
               <div style={{marginBottom:12}}><label style={lbl}>{lang==="ar"?"رقم الهوية أو الجواز":"ID / Passport Number"}</label>{driverEditing?<input value={driverProfile.idNumber} onChange={e=>setDriverProfile({...driverProfile,idNumber:e.target.value})} style={inp}/>:<div style={{fontSize:14,fontWeight:600,color:"#333",padding:"11px 0"}}>{driverProfile.idNumber||"—"}</div>}</div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
@@ -1370,7 +1378,7 @@ const [driverEditing,setDriverEditing]=useState(false);
             </div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
               <div><label style={lbl}>{lang==="ar"?"الاسم الكامل":"Full Name"}</label><input value={driverProfile.fullName} onChange={e=>setDriverProfile({...driverProfile,fullName:e.target.value})} style={inp}/></div>
-              <div><label style={lbl}>{lang==="ar"?"تاريخ الميلاد":"Date of Birth"}</label><input type="date" value={driverProfile.dob} onChange={e=>setDriverProfile({...driverProfile,dob:e.target.value})} style={inp}/></div>
+              <div><label style={lbl}>{lang==="ar"?"تاريخ الميلاد":"Date of Birth"}</label><input type="date" value={driverProfile.dob} max={new Date(new Date().setFullYear(new Date().getFullYear()-18)).toISOString().split("T")[0]} onChange={e=>setDriverProfile({...driverProfile,dob:e.target.value})} style={inp}/></div>
             </div>
             <div style={{marginBottom:12}}><label style={lbl}>{lang==="ar"?"رقم الهوية أو الجواز":"ID / Passport Number"}</label><input value={driverProfile.idNumber} onChange={e=>setDriverProfile({...driverProfile,idNumber:e.target.value})} style={inp}/></div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
