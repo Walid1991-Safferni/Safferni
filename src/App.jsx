@@ -281,6 +281,7 @@ export default function App(){
   const [profileTab,setProfileTab]=useState("profile");
   const [profileEdit,setProfileEdit]=useState({fullName:"",phone:"",email:""});
   const [profileSaved,setProfileSaved]=useState(false);
+  const [profileEditing,setProfileEditing]=useState(false);
   const [upcomingBookings,setUpcomingBookings]=useState([]);
   const [pastBookings,setPastBookings]=useState([]);
   const [profileLoading,setProfileLoading]=useState(false);
