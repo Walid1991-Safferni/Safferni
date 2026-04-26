@@ -596,11 +596,12 @@ const [driverEditing,setDriverEditing]=useState(false);
   const saveDriverProfile=async()=>{
     const targetId=selectedDriver?.id||user?.id;
     if(!targetId) return;
-    await supabase.from("profiles").update({full_name:driverProfile.fullName,date_of_birth:driverProfile.dob||null,id_number:driverProfile.idNumber,car_type:driverProfile.carType,car_model:driverProfile.carModel,car_plate:driverProfile.carPlate,transport_license:driverProfile.transportLicense,driver_license:driverProfile.driverLicense}).eq("id",targetId);
+    const{error}=await supabase.from("profiles").update({full_name:driverProfile.fullName,date_of_birth:driverProfile.dob||null,id_number:driverProfile.idNumber,car_type:driverProfile.carType,car_model:driverProfile.carModel,car_plate:driverProfile.carPlate,transport_license:driverProfile.transportLicense,driver_license:driverProfile.driverLicense}).eq("id",targetId);
+    if(error){setDriverProfileMsg(lang==="ar"?"حدث خطأ أثناء الحفظ":"Save failed: "+error.message);return;}
     setDriverProfileMsg(lang==="ar"?"تم الحفظ بنجاح ✓":"Saved successfully ✓");
     setTimeout(()=>setDriverProfileMsg(""),3000);
     if(selectedDriver) loadAdminData();
-    else loadProfile(user);
+    else loadDriverData();
   };
 
   const filteredAdminTrips=adminAllTrips.filter(trip=>{
