@@ -374,7 +374,17 @@ ALTER TABLE profiles
   ADD COLUMN IF NOT EXISTS car_model text,
   ADD COLUMN IF NOT EXISTS car_plate text,
   ADD COLUMN IF NOT EXISTS transport_license text,
-  ADD COLUMN IF NOT EXISTS driver_license text;
+  ADD COLUMN IF NOT EXISTS driver_license text,
+  ADD COLUMN IF NOT EXISTS has_wifi bool DEFAULT false,
+  ADD COLUMN IF NOT EXISTS has_water bool DEFAULT false,
+  ADD COLUMN IF NOT EXISTS has_ac bool DEFAULT false;
+
+-- Driver application extra columns
+ALTER TABLE driver_applications
+  ADD COLUMN IF NOT EXISTS driver_license_number text,
+  ADD COLUMN IF NOT EXISTS has_wifi bool DEFAULT false,
+  ADD COLUMN IF NOT EXISTS has_water bool DEFAULT false,
+  ADD COLUMN IF NOT EXISTS has_ac bool DEFAULT false;
 
 -- Promo code usage tracking
 ALTER TABLE promo_codes

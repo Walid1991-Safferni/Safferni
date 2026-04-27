@@ -232,7 +232,7 @@ export default function App(){
   const [pendingPhone,setPendingPhone]=useState("");
 
   // Apply
-  const [applyForm,setApplyForm]=useState({fullName:"",phone:"",city:"",carType:"",carModel:"",licensePlate:"",notes:"",dob:""});
+  const [applyForm,setApplyForm]=useState({fullName:"",phone:"",dob:"",carKindYear:"",carLicense:"",driverLicenseNum:"",notes:"",hasWifi:false,hasWater:false,hasAc:false});
   const [applySubmitted,setApplySubmitted]=useState(false);
   const [applyError,setApplyError]=useState("");
   const [driverApplication,setDriverApplication]=useState(null);
@@ -248,7 +248,8 @@ export default function App(){
   const [tripFilterDate,setTripFilterDate]=useState("");
   const [dashStats,setDashStats]=useState({activeTrips:0,totalDrivers:0,bookingsToday:0,popularRoute:"—"});
   const [selectedDriver,setSelectedDriver]=useState(null);
-  const [driverProfile,setDriverProfile]=useState({fullName:"",dob:"",idNumber:"",carType:"",carModel:"",carPlate:"",transportLicense:"",driverLicense:""});
+  const [driverProfile,setDriverProfile]=useState({fullName:"",dob:"",idNumber:"",carKindYear:"",carPlate:"",transportLicense:"",driverLicense:"",hasWifi:false,hasWater:false,hasAc:false});
+  const [driverPublicPage,setDriverPublicPage]=useState(null);
   const [driverProfileMsg,setDriverProfileMsg]=useState("");
 
   // Driver panel
@@ -491,14 +492,14 @@ const [driverEditing,setDriverEditing]=useState(false);
   // ─── BOOKING HELPERS ──────────────────────────────────────────────────────
 
   const handleApply=async()=>{
-    if(!applyForm.fullName||!applyForm.phone||!applyForm.city||!applyForm.carType){setApplyError(t.apply.fillAll);return;}
+    if(!applyForm.fullName||!applyForm.phone||!applyForm.carKindYear){setApplyError(t.apply.fillAll);return;}
     if(applyForm.dob){
       const cutoff=new Date();cutoff.setFullYear(cutoff.getFullYear()-18);
       if(new Date(applyForm.dob)>cutoff){setApplyError(lang==="ar"?"يجب أن يكون عمرك 18 عامًا على الأقل":"Must be at least 18 years old");return;}
     }
     const ref=genAppRef();
-    const{error}=await supabase.from("driver_applications").insert({user_id:user?.id||null,full_name:applyForm.fullName,phone:applyForm.phone,city:applyForm.city,car_type:applyForm.carType,car_model:applyForm.carModel,license_plate:applyForm.licensePlate,notes:applyForm.notes,app_ref:ref,date_of_birth:applyForm.dob||null});
-    if(!error){setAppRef(ref);setApplySubmitted(true);setApplyForm({fullName:"",phone:"",city:"",carType:"",carModel:"",licensePlate:"",notes:"",dob:""});}
+    const{error}=await supabase.from("driver_applications").insert({user_id:user?.id||null,full_name:applyForm.fullName,phone:applyForm.phone,car_type:applyForm.carKindYear,license_plate:applyForm.carLicense,driver_license_number:applyForm.driverLicenseNum,notes:applyForm.notes,app_ref:ref,date_of_birth:applyForm.dob||null,has_wifi:applyForm.hasWifi,has_water:applyForm.hasWater,has_ac:applyForm.hasAc});
+    if(!error){setAppRef(ref);setApplySubmitted(true);setApplyForm({fullName:"",phone:"",dob:"",carKindYear:"",carLicense:"",driverLicenseNum:"",notes:"",hasWifi:false,hasWater:false,hasAc:false});}
     else setApplyError(t.apply.fillAll);
   };
 
@@ -611,8 +612,13 @@ const [driverEditing,setDriverEditing]=useState(false);
 
   const openDriverProfile=async(driver)=>{
     setSelectedDriver(driver);
-    const{data}=await supabase.from("driver_applications").select("*").eq("user_id",driver.id).order("created_at",{ascending:false}).limit(1).maybeSingle();
-    setDriverProfile({fullName:driver.full_name||"",dob:data?.date_of_birth||driver.date_of_birth||"",idNumber:data?.id_number||driver.id_number||"",carType:data?.car_type||driver.car_type||"",carModel:data?.car_model||driver.car_model||"",carPlate:data?.car_plate||driver.car_plate||"",transportLicense:data?.transport_license||driver.transport_license||"",driverLicense:data?.driver_license||driver.driver_license||""});
+    setDriverProfile({fullName:driver.full_name||"",dob:driver.date_of_birth||"",idNumber:driver.id_number||"",carKindYear:driver.car_type||"",carPlate:driver.car_plate||"",transportLicense:driver.transport_license||"",driverLicense:driver.driver_license||"",hasWifi:driver.has_wifi||false,hasWater:driver.has_water||false,hasAc:driver.has_ac||false});
+  };
+
+  const openDriverPublicPage=async(driverId)=>{
+    const{data:prof}=await supabase.from("profiles").select("full_name,car_type,has_wifi,has_water,has_ac").eq("id",driverId).single();
+    const{data:reviews}=await supabase.from("trip_reviews").select("*").eq("driver_id",driverId).order("created_at",{ascending:false});
+    setDriverPublicPage({profile:prof,reviews:reviews||[]});
   };
 
   const saveDriverProfile=async()=>{
@@ -625,7 +631,7 @@ const [driverEditing,setDriverEditing]=useState(false);
         return;
       }
     }
-    const{error}=await supabase.from("profiles").update({full_name:driverProfile.fullName,date_of_birth:driverProfile.dob||null,id_number:driverProfile.idNumber,car_type:driverProfile.carType,car_model:driverProfile.carModel,car_plate:driverProfile.carPlate,transport_license:driverProfile.transportLicense,driver_license:driverProfile.driverLicense}).eq("id",targetId);
+    const{error}=await supabase.from("profiles").update({full_name:driverProfile.fullName,date_of_birth:driverProfile.dob||null,id_number:driverProfile.idNumber,car_type:driverProfile.carKindYear,car_plate:driverProfile.carPlate,transport_license:driverProfile.transportLicense,driver_license:driverProfile.driverLicense,has_wifi:driverProfile.hasWifi,has_water:driverProfile.hasWater,has_ac:driverProfile.hasAc}).eq("id",targetId);
     if(error){setDriverProfileMsg(lang==="ar"?"حدث خطأ أثناء الحفظ":"Save failed: "+error.message);return;}
     setDriverProfileMsg(lang==="ar"?"تم الحفظ بنجاح ✓":"Saved successfully ✓");
     setTimeout(()=>setDriverProfileMsg(""),3000);
@@ -644,7 +650,7 @@ const [driverEditing,setDriverEditing]=useState(false);
     await loadProfile(user);
     const{data:myApp}=await supabase.from("driver_applications").select("*").eq("user_id",user.id).order("created_at",{ascending:false}).limit(1).maybeSingle();
     const{data:myProfileData}=await supabase.from("profiles").select("*").eq("id",user.id).single();
-    setDriverProfile({fullName:myProfileData?.full_name||"",dob:myProfileData?.date_of_birth||"",idNumber:myProfileData?.id_number||"",carType:myProfileData?.car_type||myApp?.car_type||"",carModel:myProfileData?.car_model||myApp?.car_model||"",carPlate:myProfileData?.car_plate||"",transportLicense:myProfileData?.transport_license||"",driverLicense:myProfileData?.driver_license||""});
+    setDriverProfile({fullName:myProfileData?.full_name||"",dob:myProfileData?.date_of_birth||"",idNumber:myProfileData?.id_number||"",carKindYear:myProfileData?.car_type||myApp?.car_type||"",carPlate:myProfileData?.car_plate||"",transportLicense:myProfileData?.transport_license||"",driverLicense:myProfileData?.driver_license||"",hasWifi:myProfileData?.has_wifi||false,hasWater:myProfileData?.has_water||false,hasAc:myProfileData?.has_ac||false});
     const{data:myTrips}=await supabase.from("trips").select("*").eq("driver_id",user.id).order("trip_date",{ascending:false});
     setDriverTrips(myTrips||[]);
     if(myTrips){
@@ -1093,16 +1099,24 @@ const [driverEditing,setDriverEditing]=useState(false);
                   <h3 style={{fontSize:17,fontWeight:800,color:"#1B3A2A",marginBottom:6}}>{t.apply.title}</h3>
                   <p style={{fontSize:13,color:"#AAA",marginBottom:20}}>{t.apply.desc}</p>
                   <div style={{marginBottom:14}}><label style={lbl}>{t.apply.fullName} *</label><input value={applyForm.fullName||profile?.full_name||""} onChange={e=>setApplyForm(f=>({...f,fullName:e.target.value}))} style={inp}/></div>
-                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:14}}>
-                    <div><label style={lbl}>{t.apply.phone} *</label><input value={applyForm.phone||profile?.phone||""} onChange={e=>setApplyForm(f=>({...f,phone:e.target.value}))} style={{...inp,direction:"ltr",textAlign:"left"}} placeholder="+963..."/></div>
-                    <div><label style={lbl}>{t.apply.city} *</label><select value={applyForm.city} onChange={e=>setApplyForm(f=>({...f,city:e.target.value}))} style={inp}><option value="">{b.selectCity}</option>{cities.map(c=><option key={c.id} value={c.id}>{c[lang]}</option>)}</select></div>
-                  </div>
+                  <div style={{marginBottom:14}}><label style={lbl}>{t.apply.phone} *</label><input value={applyForm.phone||profile?.phone||""} onChange={e=>setApplyForm(f=>({...f,phone:e.target.value}))} style={{...inp,direction:"ltr",textAlign:"left"}} placeholder="+963..."/></div>
                   <div style={{marginBottom:14}}><label style={lbl}>{lang==="ar"?"تاريخ الميلاد (يجب أن يكون عمرك +18)":"Date of Birth (must be 18+)"}</label><input type="date" value={applyForm.dob} max={new Date(new Date().setFullYear(new Date().getFullYear()-18)).toISOString().split("T")[0]} onChange={e=>setApplyForm(f=>({...f,dob:e.target.value}))} style={inp}/></div>
+                  <div style={{marginBottom:14}}><label style={lbl}>{lang==="ar"?"نوع السيارة والسنة *":"Car Kind & Year *"}</label><input value={applyForm.carKindYear} onChange={e=>setApplyForm(f=>({...f,carKindYear:e.target.value}))} style={inp} placeholder={lang==="ar"?"مثال: تويوتا كامري 2020":"e.g. Toyota Camry 2020"}/></div>
                   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:14}}>
-                    <div><label style={lbl}>{t.apply.carType} *</label><input value={applyForm.carType} onChange={e=>setApplyForm(f=>({...f,carType:e.target.value}))} style={inp}/></div>
-                    <div><label style={lbl}>{t.apply.carModel}</label><input value={applyForm.carModel} onChange={e=>setApplyForm(f=>({...f,carModel:e.target.value}))} style={inp} placeholder="2022"/></div>
+                    <div><label style={lbl}>{lang==="ar"?"رقم لوحة السيارة":"Car License Plate"}</label><input value={applyForm.carLicense} onChange={e=>setApplyForm(f=>({...f,carLicense:e.target.value}))} style={inp}/></div>
+                    <div><label style={lbl}>{lang==="ar"?"رقم رخصة القيادة":"Driver License Number"}</label><input value={applyForm.driverLicenseNum} onChange={e=>setApplyForm(f=>({...f,driverLicenseNum:e.target.value}))} style={inp}/></div>
                   </div>
-                  <div style={{marginBottom:14}}><label style={lbl}>{t.apply.licensePlate}</label><input value={applyForm.licensePlate} onChange={e=>setApplyForm(f=>({...f,licensePlate:e.target.value}))} style={inp}/></div>
+                  <div style={{marginBottom:14}}>
+                    <label style={lbl}>{lang==="ar"?"المرافق المتاحة":"Available Facilities"}</label>
+                    <div style={{display:"flex",gap:20,flexWrap:"wrap",marginTop:4}}>
+                      {[["hasWifi","📶","WiFi","واي فاي"],["hasWater","💧",lang==="ar"?"مياه":"Water","مياه"],["hasAc","❄️",lang==="ar"?"تكييف":"AC","تكييف"]].map(([k,icon,label])=>(
+                        <label key={k} style={{display:"flex",alignItems:"center",gap:6,cursor:"pointer",fontSize:13,fontWeight:700,color:"#333"}}>
+                          <input type="checkbox" checked={applyForm[k]} onChange={e=>setApplyForm(f=>({...f,[k]:e.target.checked}))} style={{width:16,height:16,cursor:"pointer"}}/>
+                          {icon} {label}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
                   <div style={{marginBottom:20}}><label style={lbl}>{t.apply.notes}</label><textarea value={applyForm.notes} onChange={e=>setApplyForm(f=>({...f,notes:e.target.value}))} style={{...inp,minHeight:60,resize:"vertical"}} rows={2}/></div>
                   {applyError&&<div style={{marginBottom:12,padding:"10px 16px",background:"#FEF2F2",border:"1px solid #FECACA",borderRadius:10,color:"#B91C1C",fontSize:13,fontWeight:700}}>{applyError}</div>}
                   {applySubmitted&&<div style={{marginBottom:12,padding:"10px 16px",background:"#F0FDF4",border:"1px solid #BBF7D0",borderRadius:10,color:"#166534",fontSize:13,fontWeight:700}}>✓ {t.apply.success}</div>}
@@ -1132,16 +1146,24 @@ const [driverEditing,setDriverEditing]=useState(false);
             <h2 style={{fontSize:24,fontWeight:900,marginBottom:8,color:"#1B3A2A",textAlign:"center"}}>{t.apply.title}</h2>
             <p style={{fontSize:13,color:"#AAA",textAlign:"center",marginBottom:28}}>{t.apply.desc}</p>
             <div style={{marginBottom:16}}><label style={lbl}>{t.apply.fullName} *</label><input value={applyForm.fullName} onChange={e=>setApplyForm({...applyForm,fullName:e.target.value})} style={inp}/></div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:16}}>
-              <div><label style={lbl}>{t.apply.phone} *</label><input value={applyForm.phone} onChange={e=>setApplyForm({...applyForm,phone:e.target.value})} style={{...inp,direction:"ltr",textAlign:"left"}} placeholder="+963..."/></div>
-              <div><label style={lbl}>{t.apply.city} *</label><select value={applyForm.city} onChange={e=>setApplyForm({...applyForm,city:e.target.value})} style={inp}><option value="">{b.selectCity}</option>{cities.map(c=><option key={c.id} value={c.id}>{c[lang]}</option>)}</select></div>
-            </div>
+            <div style={{marginBottom:16}}><label style={lbl}>{t.apply.phone} *</label><input value={applyForm.phone} onChange={e=>setApplyForm({...applyForm,phone:e.target.value})} style={{...inp,direction:"ltr",textAlign:"left"}} placeholder="+963..."/></div>
             <div style={{marginBottom:16}}><label style={lbl}>{lang==="ar"?"تاريخ الميلاد (يجب أن يكون عمرك +18)":"Date of Birth (must be 18+)"}</label><input type="date" value={applyForm.dob} max={new Date(new Date().setFullYear(new Date().getFullYear()-18)).toISOString().split("T")[0]} onChange={e=>setApplyForm({...applyForm,dob:e.target.value})} style={inp}/></div>
+            <div style={{marginBottom:16}}><label style={lbl}>{lang==="ar"?"نوع السيارة والسنة *":"Car Kind & Year *"}</label><input value={applyForm.carKindYear} onChange={e=>setApplyForm({...applyForm,carKindYear:e.target.value})} style={inp} placeholder={lang==="ar"?"مثال: تويوتا كامري 2020":"e.g. Toyota Camry 2020"}/></div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:16}}>
-              <div><label style={lbl}>{t.apply.carType} *</label><input value={applyForm.carType} onChange={e=>setApplyForm({...applyForm,carType:e.target.value})} style={inp}/></div>
-              <div><label style={lbl}>{t.apply.carModel}</label><input value={applyForm.carModel} onChange={e=>setApplyForm({...applyForm,carModel:e.target.value})} style={inp} placeholder="2022"/></div>
+              <div><label style={lbl}>{lang==="ar"?"رقم لوحة السيارة":"Car License Plate"}</label><input value={applyForm.carLicense} onChange={e=>setApplyForm({...applyForm,carLicense:e.target.value})} style={inp}/></div>
+              <div><label style={lbl}>{lang==="ar"?"رقم رخصة القيادة":"Driver License Number"}</label><input value={applyForm.driverLicenseNum} onChange={e=>setApplyForm({...applyForm,driverLicenseNum:e.target.value})} style={inp}/></div>
             </div>
-            <div style={{marginBottom:16}}><label style={lbl}>{t.apply.licensePlate}</label><input value={applyForm.licensePlate} onChange={e=>setApplyForm({...applyForm,licensePlate:e.target.value})} style={inp}/></div>
+            <div style={{marginBottom:16}}>
+              <label style={lbl}>{lang==="ar"?"المرافق المتاحة":"Available Facilities"}</label>
+              <div style={{display:"flex",gap:20,flexWrap:"wrap",marginTop:4}}>
+                {[["hasWifi","📶","WiFi","واي فاي"],["hasWater","💧",lang==="ar"?"مياه":"Water","مياه"],["hasAc","❄️",lang==="ar"?"تكييف":"AC","تكييف"]].map(([k,icon,label])=>(
+                  <label key={k} style={{display:"flex",alignItems:"center",gap:6,cursor:"pointer",fontSize:13,fontWeight:700,color:"#333"}}>
+                    <input type="checkbox" checked={applyForm[k]} onChange={e=>setApplyForm({...applyForm,[k]:e.target.checked})} style={{width:16,height:16,cursor:"pointer"}}/>
+                    {icon} {label}
+                  </label>
+                ))}
+              </div>
+            </div>
             <div style={{marginBottom:20}}><label style={lbl}>{t.apply.notes}</label><textarea value={applyForm.notes} onChange={e=>setApplyForm({...applyForm,notes:e.target.value})} style={{...inp,minHeight:65,resize:"vertical"}} rows={2}/></div>
             {applyError&&<div style={{marginBottom:14,padding:"10px 16px",background:"#FEF2F2",border:"1px solid #FECACA",borderRadius:10,color:"#B91C1C",fontSize:13,fontWeight:700}}>{applyError}</div>}
             <button onClick={handleApply} style={{width:"100%",background:"#1B3A2A",color:"white",border:"none",padding:"14px",borderRadius:12,fontSize:15,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>{t.apply.submit}</button>
@@ -1354,15 +1376,22 @@ const [driverEditing,setDriverEditing]=useState(false);
                 <div><label style={lbl}>{lang==="ar"?"تاريخ الميلاد":"Date of Birth"}</label>{driverEditing?<input type="date" value={driverProfile.dob} max={new Date(new Date().setFullYear(new Date().getFullYear()-18)).toISOString().split("T")[0]} onChange={e=>setDriverProfile({...driverProfile,dob:e.target.value})} style={inp}/>:<div style={{fontSize:14,fontWeight:600,color:"#333",padding:"11px 0"}}>{driverProfile.dob||"—"}</div>}</div>
               </div>
               <div style={{marginBottom:12}}><label style={lbl}>{lang==="ar"?"رقم الهوية أو الجواز":"ID / Passport Number"}</label>{driverEditing?<input value={driverProfile.idNumber} onChange={e=>setDriverProfile({...driverProfile,idNumber:e.target.value})} style={inp}/>:<div style={{fontSize:14,fontWeight:600,color:"#333",padding:"11px 0"}}>{driverProfile.idNumber||"—"}</div>}</div>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
-                <div><label style={lbl}>{lang==="ar"?"نوع السيارة ولونها":"Car Type & Color"}</label>{driverEditing?<input value={driverProfile.carType} onChange={e=>setDriverProfile({...driverProfile,carType:e.target.value})} style={inp}/>:<div style={{fontSize:14,fontWeight:600,color:"#333",padding:"11px 0"}}>{driverProfile.carType||"—"}</div>}</div>
-                <div><label style={lbl}>{lang==="ar"?"موديل السيارة":"Car Model"}</label>{driverEditing?<input value={driverProfile.carModel} onChange={e=>setDriverProfile({...driverProfile,carModel:e.target.value})} style={inp}/>:<div style={{fontSize:14,fontWeight:600,color:"#333",padding:"11px 0"}}>{driverProfile.carModel||"—"}</div>}</div>
-              </div>
+              <div style={{marginBottom:12}}><label style={lbl}>{lang==="ar"?"نوع السيارة والسنة":"Car Kind & Year"}</label>{driverEditing?<input value={driverProfile.carKindYear} onChange={e=>setDriverProfile({...driverProfile,carKindYear:e.target.value})} style={inp} placeholder={lang==="ar"?"مثال: تويوتا كامري 2020":"e.g. Toyota Camry 2020"}/>:<div style={{fontSize:14,fontWeight:600,color:"#333",padding:"11px 0"}}>{driverProfile.carKindYear||"—"}</div>}</div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
                 <div><label style={lbl}>{lang==="ar"?"رقم اللوحة":"License Plate"}</label>{driverEditing?<input value={driverProfile.carPlate} onChange={e=>setDriverProfile({...driverProfile,carPlate:e.target.value})} style={inp}/>:<div style={{fontSize:14,fontWeight:600,color:"#333",padding:"11px 0"}}>{driverProfile.carPlate||"—"}</div>}</div>
                 <div><label style={lbl}>{lang==="ar"?"رقم رخصة النقل":"Transport License"}</label>{driverEditing?<input value={driverProfile.transportLicense} onChange={e=>setDriverProfile({...driverProfile,transportLicense:e.target.value})} style={inp}/>:<div style={{fontSize:14,fontWeight:600,color:"#333",padding:"11px 0"}}>{driverProfile.transportLicense||"—"}</div>}</div>
               </div>
-              <div style={{marginBottom:16}}><label style={lbl}>{lang==="ar"?"رقم رخصة القيادة":"Driver License Number"}</label>{driverEditing?<input value={driverProfile.driverLicense} onChange={e=>setDriverProfile({...driverProfile,driverLicense:e.target.value})} style={inp}/>:<div style={{fontSize:14,fontWeight:600,color:"#333",padding:"11px 0"}}>{driverProfile.driverLicense||"—"}</div>}</div>
+              <div style={{marginBottom:12}}><label style={lbl}>{lang==="ar"?"رقم رخصة القيادة":"Driver License Number"}</label>{driverEditing?<input value={driverProfile.driverLicense} onChange={e=>setDriverProfile({...driverProfile,driverLicense:e.target.value})} style={inp}/>:<div style={{fontSize:14,fontWeight:600,color:"#333",padding:"11px 0"}}>{driverProfile.driverLicense||"—"}</div>}</div>
+              <div style={{marginBottom:16}}>
+                <label style={lbl}>{lang==="ar"?"المرافق المتاحة":"Available Facilities"}</label>
+                <div style={{display:"flex",gap:20,flexWrap:"wrap",marginTop:6}}>
+                  {[["hasWifi","📶","WiFi","واي فاي"],["hasWater","💧",lang==="ar"?"مياه":"Water","مياه"],["hasAc","❄️",lang==="ar"?"تكييف":"AC","تكييف"]].map(([k,icon,label])=>(
+                    driverEditing
+                      ?<label key={k} style={{display:"flex",alignItems:"center",gap:6,cursor:"pointer",fontSize:13,fontWeight:700,color:"#333"}}><input type="checkbox" checked={driverProfile[k]} onChange={e=>setDriverProfile({...driverProfile,[k]:e.target.checked})} style={{width:16,height:16,cursor:"pointer"}}/>{icon} {label}</label>
+                      :<span key={k} style={{fontSize:13,fontWeight:700,color:driverProfile[k]?"#1B3A2A":"#CCC"}}>{icon} {label}</span>
+                  ))}
+                </div>
+              </div>
               {driverProfileMsg&&<div style={{marginBottom:12,padding:"10px 16px",background:"#F0FDF4",border:"1px solid #BBF7D0",borderRadius:10,color:"#166534",fontSize:13,fontWeight:700}}>{driverProfileMsg}</div>}
               {driverEditing&&<div style={{display:"flex",gap:10}}>
                 <button onClick={()=>setDriverEditing(false)} style={{flex:1,background:"white",color:"#666",border:"1.5px solid #DDD",padding:"12px",borderRadius:10,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{lang==="ar"?"إلغاء":"Cancel"}</button>
@@ -1417,19 +1446,65 @@ const [driverEditing,setDriverEditing]=useState(false);
               <div><label style={lbl}>{lang==="ar"?"تاريخ الميلاد":"Date of Birth"}</label><input type="date" value={driverProfile.dob} max={new Date(new Date().setFullYear(new Date().getFullYear()-18)).toISOString().split("T")[0]} onChange={e=>setDriverProfile({...driverProfile,dob:e.target.value})} style={inp}/></div>
             </div>
             <div style={{marginBottom:12}}><label style={lbl}>{lang==="ar"?"رقم الهوية أو الجواز":"ID / Passport Number"}</label><input value={driverProfile.idNumber} onChange={e=>setDriverProfile({...driverProfile,idNumber:e.target.value})} style={inp}/></div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
-              <div><label style={lbl}>{lang==="ar"?"نوع السيارة ولونها":"Car Type & Color"}</label><input value={driverProfile.carType} onChange={e=>setDriverProfile({...driverProfile,carType:e.target.value})} style={inp}/></div>
-              <div><label style={lbl}>{lang==="ar"?"موديل السيارة":"Car Model"}</label><input value={driverProfile.carModel} onChange={e=>setDriverProfile({...driverProfile,carModel:e.target.value})} style={inp}/></div>
-            </div>
+            <div style={{marginBottom:12}}><label style={lbl}>{lang==="ar"?"نوع السيارة والسنة":"Car Kind & Year"}</label><input value={driverProfile.carKindYear} onChange={e=>setDriverProfile({...driverProfile,carKindYear:e.target.value})} style={inp} placeholder={lang==="ar"?"مثال: تويوتا كامري 2020":"e.g. Toyota Camry 2020"}/></div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
               <div><label style={lbl}>{lang==="ar"?"رقم اللوحة":"License Plate"}</label><input value={driverProfile.carPlate} onChange={e=>setDriverProfile({...driverProfile,carPlate:e.target.value})} style={inp}/></div>
               <div><label style={lbl}>{lang==="ar"?"رقم رخصة النقل":"Transport License"}</label><input value={driverProfile.transportLicense} onChange={e=>setDriverProfile({...driverProfile,transportLicense:e.target.value})} style={inp}/></div>
             </div>
-            <div style={{marginBottom:20}}><label style={lbl}>{lang==="ar"?"رقم رخصة القيادة":"Driver License Number"}</label><input value={driverProfile.driverLicense} onChange={e=>setDriverProfile({...driverProfile,driverLicense:e.target.value})} style={inp}/></div>
+            <div style={{marginBottom:12}}><label style={lbl}>{lang==="ar"?"رقم رخصة القيادة":"Driver License Number"}</label><input value={driverProfile.driverLicense} onChange={e=>setDriverProfile({...driverProfile,driverLicense:e.target.value})} style={inp}/></div>
+            <div style={{marginBottom:20}}>
+              <label style={lbl}>{lang==="ar"?"المرافق المتاحة":"Available Facilities"}</label>
+              <div style={{display:"flex",gap:20,flexWrap:"wrap",marginTop:6}}>
+                {[["hasWifi","📶","WiFi","واي فاي"],["hasWater","💧",lang==="ar"?"مياه":"Water","مياه"],["hasAc","❄️",lang==="ar"?"تكييف":"AC","تكييف"]].map(([k,icon,label])=>(
+                  <label key={k} style={{display:"flex",alignItems:"center",gap:6,cursor:"pointer",fontSize:13,fontWeight:700,color:"#333"}}><input type="checkbox" checked={driverProfile[k]} onChange={e=>setDriverProfile({...driverProfile,[k]:e.target.checked})} style={{width:16,height:16,cursor:"pointer"}}/>{icon} {label}</label>
+                ))}
+              </div>
+            </div>
             {driverProfileMsg&&<div style={{marginBottom:12,padding:"10px 16px",background:"#F0FDF4",border:"1px solid #BBF7D0",borderRadius:10,color:"#166534",fontSize:13,fontWeight:700}}>{driverProfileMsg}</div>}
             <div style={{display:"flex",gap:10}}>
               <button onClick={()=>setSelectedDriver(null)} style={{flex:1,background:"white",color:"#666",border:"1.5px solid #DDD",padding:"12px",borderRadius:10,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>✕</button>
               <button onClick={saveDriverProfile} style={{flex:2,background:"#1B3A2A",color:"white",border:"none",padding:"12px",borderRadius:10,fontSize:14,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>{lang==="ar"?"حفظ":"Save"}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* DRIVER PUBLIC PROFILE MODAL */}
+      {driverPublicPage&&(
+        <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,0.5)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center",padding:"24px"}} onClick={()=>setDriverPublicPage(null)}>
+          <div style={{background:"white",borderRadius:20,padding:"32px",maxWidth:420,width:"100%",animation:"fadeUp 0.3s ease",maxHeight:"90vh",overflowY:"auto"}} onClick={e=>e.stopPropagation()}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+              <h3 style={{fontSize:18,fontWeight:900,color:"#1B3A2A"}}>👤 {lang==="ar"?"ملف السائق":"Driver Profile"}</h3>
+              <button onClick={()=>setDriverPublicPage(null)} style={{background:"transparent",border:"none",fontSize:20,cursor:"pointer",color:"#888"}}>✕</button>
+            </div>
+            <div style={{background:"#F0F7F3",borderRadius:14,padding:"18px 20px",marginBottom:20}}>
+              <div style={{fontSize:20,fontWeight:900,color:"#1B3A2A",marginBottom:4}}>{driverPublicPage.profile?.full_name||"—"}</div>
+              {driverPublicPage.profile?.car_type&&<div style={{fontSize:14,color:"#555",fontWeight:600}}>🚗 {driverPublicPage.profile.car_type}</div>}
+            </div>
+            <div style={{marginBottom:20}}>
+              <div style={{fontSize:12,fontWeight:700,color:"#888",textTransform:"uppercase",marginBottom:10}}>{lang==="ar"?"المرافق المتاحة":"Available Facilities"}</div>
+              <div style={{display:"flex",gap:12,flexWrap:"wrap"}}>
+                {[["has_wifi","📶","WiFi","واي فاي"],["has_water","💧",lang==="ar"?"مياه":"Water","مياه"],["has_ac","❄️",lang==="ar"?"تكييف":"AC","تكييف"]].map(([k,icon,label])=>{
+                  const has=driverPublicPage.profile?.[k];
+                  return(<span key={k} style={{display:"flex",alignItems:"center",gap:5,padding:"5px 12px",borderRadius:20,fontSize:12,fontWeight:700,background:has?"#D1FAE5":"#F3F4F6",color:has?"#065F46":"#9CA3AF",border:`1px solid ${has?"#A7F3D0":"#E5E7EB"}`}}>{icon} {label}</span>);
+                })}
+              </div>
+            </div>
+            <div>
+              <div style={{fontSize:12,fontWeight:700,color:"#888",textTransform:"uppercase",marginBottom:10}}>{lang==="ar"?"تقييمات الركاب":"Passenger Reviews"}</div>
+              {driverPublicPage.reviews.length===0
+                ?<p style={{textAlign:"center",color:"#CCC",padding:"20px 0",fontSize:13}}>{lang==="ar"?"لا توجد تقييمات بعد":"No reviews yet"}</p>
+                :driverPublicPage.reviews.map((r,i)=>(
+                  <div key={i} style={{borderBottom:i<driverPublicPage.reviews.length-1?"1px solid #F0EEEA":"none",paddingBottom:12,marginBottom:12}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:4}}>
+                      <span style={{fontSize:13,fontWeight:700,color:"#1B3A2A"}}>{r.passenger_name||"—"}</span>
+                      <StarRating value={r.rating} readOnly/>
+                    </div>
+                    {r.review_text&&<p style={{fontSize:13,color:"#555",lineHeight:1.6,margin:0}}>{r.review_text}</p>}
+                    <span style={{fontSize:11,color:"#BBB"}}>{new Date(r.created_at).toLocaleDateString()}</span>
+                  </div>
+                ))
+              }
             </div>
           </div>
         </div>
@@ -1558,6 +1633,7 @@ const [driverEditing,setDriverEditing]=useState(false);
                           {trip.avg_rating>0&&<StarRating value={Math.round(trip.avg_rating)} readOnly/>}
                           {trip.avg_rating>0&&<span style={{fontSize:11,color:"#888"}}>({trip.rating_count})</span>}
                           <button onClick={async(e)=>{e.stopPropagation();setReviewSidebarDriver(trip.driver_id);await loadDriverReviews(trip.driver_id);}} style={{background:"transparent",border:"1px solid #DDD",borderRadius:20,padding:"2px 10px",fontSize:11,fontWeight:700,color:"#555",cursor:"pointer",fontFamily:"inherit"}}>{lang==="ar"?"التقييمات":"See reviews"}</button>
+                          <button onClick={async(e)=>{e.stopPropagation();await openDriverPublicPage(trip.driver_id);}} style={{background:"transparent",border:"1px solid #C7D2CC",borderRadius:20,padding:"2px 10px",fontSize:11,fontWeight:700,color:"#1B3A2A",cursor:"pointer",fontFamily:"inherit"}}>👤 {lang==="ar"?"السائق":"Driver"}</button>
                         </div>
                       </div>
                       <div style={{display:"flex",alignItems:"center",gap:12}}>
