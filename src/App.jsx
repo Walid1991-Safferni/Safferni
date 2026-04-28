@@ -10,10 +10,23 @@ const WA_PHONE = import.meta.env.VITE_WA_PHONE;
 const ADMIN_EMAILS = (import.meta.env.VITE_ADMIN_EMAILS || "").split(",").map(e => e.trim()).filter(Boolean);
 
 const cities = [
+  // 14 Syrian governorates
   { id:"dam", ar:"دمشق", en:"Damascus" },
-  { id:"bei", ar:"بيروت", en:"Beirut" },
-  { id:"hom", ar:"حمص", en:"Homs" },
   { id:"ale", ar:"حلب", en:"Aleppo" },
+  { id:"hom", ar:"حمص", en:"Homs" },
+  { id:"ham", ar:"حماة", en:"Hama" },
+  { id:"lat", ar:"اللاذقية", en:"Latakia" },
+  { id:"tar", ar:"طرطوس", en:"Tartus" },
+  { id:"dar", ar:"درعا", en:"Daraa" },
+  { id:"dez", ar:"دير الزور", en:"Deir ez-Zor" },
+  { id:"has", ar:"الحسكة", en:"Al-Hasakah" },
+  { id:"raq", ar:"الرقة", en:"Raqqa" },
+  { id:"idl", ar:"إدلب", en:"Idlib" },
+  { id:"qun", ar:"القنيطرة", en:"Quneitra" },
+  { id:"suw", ar:"السويداء", en:"As-Suwayda" },
+  { id:"rif", ar:"ريف دمشق", en:"Rural Damascus" },
+  // International
+  { id:"bei", ar:"بيروت", en:"Beirut" },
   { id:"amm", ar:"عمّان", en:"Amman" },
   { id:"qaa", ar:"مطار الملكة علياء", en:"Queen Alia Airport" },
   { id:"daa", ar:"مطار دمشق الدولي", en:"Damascus Int'l Airport" },
@@ -21,16 +34,13 @@ const cities = [
 
 const routeMap = [
   { from:"dam", to:"bei", car:100, van:110, seat:25, carOnly:false },
-  { from:"dam", to:"hom", car:100, van:110, seat:25, carOnly:false },
-  { from:"dam", to:"ale", car:175, van:195, seat:45, carOnly:false },
   { from:"dam", to:"amm", car:175, van:195, seat:45, carOnly:false },
   { from:"dam", to:"qaa", car:200, van:220, seat:50, carOnly:false },
   { from:"dam", to:"daa", car:25, van:28, seat:null, carOnly:true },
-  { from:"ale", to:"hom", car:100, van:110, seat:25, carOnly:false },
 ];
 
-const getDests=(f)=>{const d=[];routeMap.forEach(r=>{if(r.from===f)d.push(r.to);if(r.to===f)d.push(r.from)});return[...new Set(d)]};
-const findRoute=(a,b)=>routeMap.find(r=>(r.from===a&&r.to===b)||(r.from===b&&r.to===a));
+const getDests=(f)=>cities.filter(c=>c.id!==f).map(c=>c.id);
+const findRoute=(a,b)=>routeMap.find(r=>(r.from===a&&r.to===b)||(r.from===b&&r.to===a))||{from:a,to:b,car:100,van:110,seat:25,carOnly:false};
 const gc=(id)=>cities.find(c=>c.id===id);
 const genRef=()=>{const d=new Date();return`SAF-${d.getFullYear().toString().slice(-2)}${String(d.getMonth()+1).padStart(2,"0")}-${Math.floor(Math.random()*9000)+1000}`};
 const genAppRef=()=>{const d=new Date();return`DRV-${String(d.getDate()).padStart(2,"0")}${String(d.getMonth()+1).padStart(2,"0")}-${Math.floor(Math.random()*9000)+1000}`};
@@ -84,7 +94,7 @@ const T={
     nav:{home:"الرئيسية",pricing:"الأسعار",contact:"تواصل معنا",book:"احجز الآن",login:"تسجيل الدخول",logout:"خروج",admin:"لوحة الإدارة",driver:"لوحة السائق",apply:"سجّل كسائق",profile:"حسابي"},
     about:{title:"من نحن",p1:"سفّرني هي خدمة نقل بين المحافظات تربط سوريا بعمّان وبيروت.",p2:"سائقونا محترفون وذوو خبرة، ونلتزم بالمواعيد المحددة.",p3:"سواء كنت مسافراً لوحدك أو مع عائلتك، عندنا الخيار المناسب لك."},
     features:[
-      {icon:"🛣️",t:"٧ مسارات",d:"دمشق ↔ بيروت · دمشق ↔ حمص · دمشق ↔ حلب · دمشق ↔ عمّان · دمشق ↔ مطار الملكة علياء · دمشق ↔ مطار دمشق · حلب ↔ حمص"},
+      {icon:"🛣️",t:"١٤ محافظة سورية",d:"من الصحراء إلى الشاطئ، ومن الجبال إلى الوديان — نربط كل محافظات سوريا وما وراءها حتى عمّان وبيروت"},
       {icon:"🚗",t:"سيارة أو فان",d:"احجز مقعد واحد في سيارة مشتركة، أو استأجر سيارة كاملة لحد ٤ ركاب، أو فان لحد ١٠ ركاب — الخيار بيدك"},
       {icon:"💜",t:"رحلات للنساء فقط — قريباً",d:"مو مرتاحة تسافرين مع رجال؟ عندنا سيارات مخصصة للنساء فقط — سافري براحة بال 💅"},
     ],
@@ -138,7 +148,7 @@ const T={
     nav:{home:"Home",pricing:"Pricing",contact:"Contact",book:"Book Now",login:"Login",logout:"Logout",admin:"Admin Panel",driver:"Driver Panel",apply:"Become a Driver",profile:"My Account"},
     about:{title:"About Us",p1:"Safferni is an intercity transport service connecting Syria with Amman and Beirut.",p2:"Our drivers are experienced professionals, and we stick to our schedules.",p3:"Whether you're traveling solo or with family, we have the right option for you."},
     features:[
-      {icon:"🛣️",t:"7 routes",d:"Damascus ↔ Beirut · Damascus ↔ Homs · Damascus ↔ Aleppo · Damascus ↔ Amman · Damascus ↔ Queen Alia Airport · Damascus ↔ Damascus Airport · Aleppo ↔ Homs"},
+      {icon:"🛣️",t:"14 Syrian Governorates",d:"From the desert to the beach, from the mountains to the valleys — connecting every Syrian governorate and beyond to Amman and Beirut"},
       {icon:"🚗",t:"Car or van",d:"Book a single seat in a shared car, rent a full car for up to 4, or a van for up to 10 — your choice"},
       {icon:"💜",t:"Women-only rides — Coming Soon",d:"Not comfortable riding with men? We have dedicated cars for women only — travel with peace of mind 💅"},
     ],
@@ -1781,7 +1791,13 @@ const [driverEditing,setDriverEditing]=useState(false);
       {/* PRICING */}
       {page==="pricing"&&(<section style={{maxWidth:800,margin:"0 auto",padding:"60px 24px 80px",...fade}}>
         <h2 style={{fontSize:32,fontWeight:900,marginBottom:10,textAlign:"center",color:"#1B3A2A"}}>{t.pricing.title}</h2>
-        <p style={{textAlign:"center",color:"#888",marginBottom:36,fontSize:15}}>{t.pricing.desc}</p>
+        <p style={{textAlign:"center",color:"#888",marginBottom:24,fontSize:15}}>{t.pricing.desc}</p>
+        <div style={{background:"linear-gradient(135deg,#F0F7F3,#E8F5ED)",borderRadius:14,padding:"20px 24px",marginBottom:24,border:"1px solid #C6E8D4",display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:12,textAlign:"center"}}>
+          <div><div style={{fontSize:11,fontWeight:700,color:"#888",textTransform:"uppercase",marginBottom:4}}>{lang==="ar"?"مقعد واحد":"Per Seat"}</div><div style={{fontSize:28,fontWeight:900,color:"#1B3A2A"}}>$25</div></div>
+          <div><div style={{fontSize:11,fontWeight:700,color:"#888",textTransform:"uppercase",marginBottom:4}}>{lang==="ar"?"سيارة كاملة":"Full Car"}</div><div style={{fontSize:28,fontWeight:900,color:"#1B3A2A"}}>$100</div></div>
+          <div><div style={{fontSize:11,fontWeight:700,color:"#888",textTransform:"uppercase",marginBottom:4}}>{lang==="ar"?"فان":"Van"}</div><div style={{fontSize:28,fontWeight:900,color:"#1B3A2A"}}>$110</div></div>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:12,fontWeight:700,color:"#555",lineHeight:1.5}}>{lang==="ar"?"لجميع المحافظات السورية — أسعار موحدة":"All Syrian governorates — flat rate"}</span></div>
+        </div>
         <div style={{background:"white",borderRadius:16,border:"1px solid #E8E6E1",overflow:"hidden",boxShadow:"0 2px 12px rgba(0,0,0,0.03)"}}>
           <div style={{display:"grid",gridTemplateColumns:"1.8fr 1fr 1fr 1fr",padding:"14px 20px",background:"#1B3A2A",fontSize:11,fontWeight:700,color:"rgba(255,255,255,0.85)",textTransform:"uppercase"}}>
             <div>{t.pricing.route}</div><div style={{textAlign:"center"}}>{t.pricing.seat}</div><div style={{textAlign:"center"}}>{t.pricing.car}</div><div style={{textAlign:"center"}}>{t.pricing.van}</div>
