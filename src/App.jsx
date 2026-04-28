@@ -489,6 +489,18 @@ const [driverEditing,setDriverEditing]=useState(false);
     setTimeout(()=>setPwMsg(""),3000);
   };
 
+  const deleteAccount=async()=>{
+    if(!window.confirm(lang==="ar"?"هل أنت متأكد تماماً؟ سيتم حذف حسابك وجميع بياناتك نهائياً ولا يمكن التراجع عن ذلك.":"Are you absolutely sure? Your account and all data will be permanently deleted and cannot be recovered.")) return;
+    const{data,error}=await supabase.rpc("delete_own_account");
+    if(error){alert(lang==="ar"?"حدث خطأ، يرجى المحاولة مرة أخرى":"An error occurred, please try again");return;}
+    if(!data?.success&&data?.error==="active_trips"){
+      alert(lang==="ar"?"لا يمكن حذف الحساب لأن لديك رحلات قادمة نشطة كراكب أو كسائق. يرجى إلغاؤها أولاً.":"Cannot delete account because you have upcoming active trips as a passenger or driver. Please cancel them first.");
+      return;
+    }
+    await supabase.auth.signOut();
+    setUser(null);setProfile(null);setDriverApproved(false);setPage("home");
+  };
+
   // ─── BOOKING HELPERS ──────────────────────────────────────────────────────
 
   const handleApply=async()=>{
@@ -1023,6 +1035,11 @@ const [driverEditing,setDriverEditing]=useState(false);
                 <div style={{marginBottom:12}}><label style={lbl}>{prof.newPassword}</label><input type="password" value={pwForm.next} onChange={e=>setPwForm(p=>({...p,next:e.target.value}))} style={inp} placeholder={lang==="ar"?"٦ أحرف على الأقل":"At least 6 characters"}/></div>
                 {pwMsg&&<div style={{marginBottom:12,padding:"10px 16px",background:pwMsg.includes("✓")?"#F0FDF4":"#FEF2F2",border:`1px solid ${pwMsg.includes("✓")?"#BBF7D0":"#FECACA"}`,borderRadius:10,color:pwMsg.includes("✓")?"#166534":"#B91C1C",fontSize:13,fontWeight:700}}>{pwMsg}</div>}
                 <button onClick={changePassword} style={{background:"#F0F7F3",color:"#1B3A2A",border:"1.5px solid #1B3A2A",padding:"11px 24px",borderRadius:10,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{prof.changePassword}</button>
+              </div>
+              <div style={{borderTop:"1px solid #FECACA",paddingTop:20,marginTop:8}}>
+                <h3 style={{fontSize:15,fontWeight:800,color:"#991B1B",marginBottom:6}}>{lang==="ar"?"حذف الحساب":"Delete Account"}</h3>
+                <p style={{fontSize:12,color:"#AAA",marginBottom:14}}>{lang==="ar"?"سيتم حذف حسابك وجميع بياناتك نهائياً. لا يمكن التراجع عن هذا الإجراء.":"Your account and all data will be permanently deleted. This action cannot be undone."}</p>
+                <button onClick={deleteAccount} style={{background:"white",color:"#991B1B",border:"1.5px solid #FECACA",padding:"10px 22px",borderRadius:10,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{lang==="ar"?"حذف حسابي نهائياً":"Permanently Delete My Account"}</button>
               </div>
             </div>
           )}

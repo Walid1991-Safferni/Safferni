@@ -390,3 +390,66 @@ ALTER TABLE driver_applications
 ALTER TABLE promo_codes
   ADD COLUMN IF NOT EXISTS max_uses int,
   ADD COLUMN IF NOT EXISTS uses_count int DEFAULT 0;
+
+
+-- ============================================================
+-- PART 4: ACCOUNT DELETION RPC
+-- Checks for active trips, then wipes all user data including
+-- the auth.users row so the account is fully removed.
+-- ============================================================
+
+CREATE OR REPLACE FUNCTION delete_own_account()
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_uid  uuid := auth.uid();
+  v_today text := CURRENT_DATE::text;
+BEGIN
+  -- Block if user has upcoming active bookings as a passenger
+  IF EXISTS (
+    SELECT 1 FROM bookings b
+    JOIN trips t ON t.id = b.trip_id
+    WHERE b.user_id = v_uid
+      AND b.status != 'cancelled'
+      AND t.trip_date >= v_today
+      AND t.status = 'active'
+  ) THEN
+    RETURN jsonb_build_object('success', false, 'error', 'active_trips');
+  END IF;
+
+  -- Block if user has upcoming active trips as a driver
+  IF EXISTS (
+    SELECT 1 FROM trips
+    WHERE driver_id = v_uid
+      AND status = 'active'
+      AND trip_date >= v_today
+  ) THEN
+    RETURN jsonb_build_object('success', false, 'error', 'active_trips');
+  END IF;
+
+  -- Wipe all data in safe dependency order
+  DELETE FROM trip_ratings
+    WHERE booking_id IN (SELECT id FROM bookings WHERE user_id = v_uid);
+  DELETE FROM trip_reviews
+    WHERE booking_id IN (SELECT id FROM bookings WHERE user_id = v_uid);
+  DELETE FROM bookings WHERE user_id = v_uid;
+
+  DELETE FROM trip_ratings
+    WHERE trip_id IN (SELECT id FROM trips WHERE driver_id = v_uid);
+  DELETE FROM trip_reviews
+    WHERE trip_id IN (SELECT id FROM trips WHERE driver_id = v_uid);
+  DELETE FROM bookings
+    WHERE trip_id IN (SELECT id FROM trips WHERE driver_id = v_uid);
+  DELETE FROM trip_edit_requests
+    WHERE trip_id IN (SELECT id FROM trips WHERE driver_id = v_uid);
+  DELETE FROM trips WHERE driver_id = v_uid;
+
+  DELETE FROM driver_applications WHERE user_id = v_uid;
+  DELETE FROM profiles WHERE id = v_uid;
+  DELETE FROM auth.users WHERE id = v_uid;
+
+  RETURN jsonb_build_object('success', true);
+END;
+$$;
