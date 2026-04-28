@@ -378,6 +378,8 @@ const [driverEditing,setDriverEditing]=useState(false);
     if(authForm.password.length<8){setAuthError(lang==="ar"?"كلمة المرور يجب أن تكون ٨ أحرف على الأقل":"Password must be at least 8 characters");return;}
     setAuthLoading(true);setAuthError("");
     const email=authForm.email.trim().toLowerCase();
+    const{data:existingEmail}=await supabase.from("profiles").select("id").eq("email",email).maybeSingle();
+    if(existingEmail){setAuthError(lang==="ar"?"هذا البريد الإلكتروني مسجل مسبقاً. سجّل الدخول بدلاً من ذلك.":"This email is already registered. Please log in instead.");setAuthLoading(false);return;}
     const{error}=await supabase.auth.signInWithOtp({email,options:{shouldCreateUser:true}});
     if(error){setAuthError(error.message||t.auth.error);setAuthLoading(false);return;}
     setAuthStep("signup_otp_email");
@@ -405,9 +407,14 @@ const [driverEditing,setDriverEditing]=useState(false);
   const handleSignupOtherStart=async()=>{
     if(!authForm.fullName||!authForm.phoneNumber||!authForm.email||!authForm.password){setAuthError(t.auth.error);return;}
     setAuthLoading(true);setAuthError("");
+    const email=authForm.email.trim().toLowerCase();
     const phone=fullPhone();
-    const{data:existing}=await supabase.from("profiles").select("id").eq("phone",phone).maybeSingle();
-    if(existing){setAuthError("PHONE_EXISTS");setAuthLoading(false);return;}
+    const[{data:existingPhone},{data:existingEmail}]=await Promise.all([
+      supabase.from("profiles").select("id").eq("phone",phone).maybeSingle(),
+      supabase.from("profiles").select("id").eq("email",email).maybeSingle(),
+    ]);
+    if(existingPhone){setAuthError("PHONE_EXISTS");setAuthLoading(false);return;}
+    if(existingEmail){setAuthError(lang==="ar"?"هذا البريد الإلكتروني مسجل مسبقاً. سجّل الدخول بدلاً من ذلك.":"This email is already registered. Please log in instead.");setAuthLoading(false);return;}
     const{error}=await supabase.auth.signInWithOtp({phone});
     if(error){setAuthError(error.message||t.auth.error);setAuthLoading(false);return;}
     setPendingPhone(phone);
@@ -425,7 +432,8 @@ const [driverEditing,setDriverEditing]=useState(false);
     const uid=data.user?.id;
     if(uid){
       const email=authForm.email.trim().toLowerCase();
-      await supabase.auth.updateUser({email,password:authForm.password});
+      const{error:updateErr}=await supabase.auth.updateUser({email,password:authForm.password});
+      if(updateErr){setAuthError(lang==="ar"?"البريد الإلكتروني مسجل مسبقاً":"This email is already registered");setAuthLoading(false);return;}
       const role=ADMIN_EMAILS.includes(email)?"admin":"passenger";
       await supabase.from("profiles").upsert({id:uid,email,full_name:authForm.fullName,phone,role});
     }
@@ -963,7 +971,7 @@ const [driverEditing,setDriverEditing]=useState(false);
               <div style={{background:"#F0FDF4",border:"1px solid #BBF7D0",borderRadius:12,padding:"12px 16px",marginBottom:20,textAlign:"center"}}>
                 <p style={{fontSize:13,color:"#166534",fontWeight:700}}>📧 {lang==="ar"?"تم إرسال كود التحقق إلى بريدك الإلكتروني":"Verification code sent to your email"}</p>
               </div>
-              <div style={{marginBottom:20}}><label style={lbl}>{lang==="ar"?"كود التحقق (٦ أرقام)":"Verification Code (6 digits)"} *</label><input type="text" inputMode="numeric" maxLength={6} value={authOtp} onChange={e=>setAuthOtp(e.target.value.replace(/\D/g,""))} style={{...inp,textAlign:"center",fontSize:22,letterSpacing:8}} placeholder="000000" onKeyDown={e=>e.key==="Enter"&&handleSignupSyriaVerify()}/></div>
+              <div style={{marginBottom:20}}><label style={lbl}>{lang==="ar"?"كود التحقق":"Verification Code"} *</label><input type="text" inputMode="numeric" maxLength={8} value={authOtp} onChange={e=>setAuthOtp(e.target.value.replace(/\D/g,""))} style={{...inp,textAlign:"center",fontSize:22,letterSpacing:8}} placeholder="••••••••" onKeyDown={e=>e.key==="Enter"&&handleSignupSyriaVerify()}/></div>
               <button onClick={handleSignupSyriaVerify} disabled={authLoading} style={{width:"100%",background:"#1B3A2A",color:"white",border:"none",padding:"14px",borderRadius:12,fontSize:15,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>{authLoading?"...":t.auth.verifyOtp}</button>
               <p onClick={()=>{setAuthStep("signup_info_sy");setAuthOtp("");setAuthError("");}} style={{textAlign:"center",marginTop:12,fontSize:12,color:"#AAA",cursor:"pointer"}}>← {lang==="ar"?"رجوع":"Back"}</p>
             </>)}
@@ -992,7 +1000,7 @@ const [driverEditing,setDriverEditing]=useState(false);
               <div style={{background:"#F0FDF4",border:"1px solid #BBF7D0",borderRadius:12,padding:"12px 16px",marginBottom:20,textAlign:"center"}}>
                 <p style={{fontSize:13,color:"#166534",fontWeight:700}}>📱 {lang==="ar"?`${t.auth.otpSent} ${pendingPhone||fullPhone()}`:`${t.auth.otpSent} ${pendingPhone||fullPhone()}`}</p>
               </div>
-              <div style={{marginBottom:20}}><label style={lbl}>{lang==="ar"?"كود التحقق (٦ أرقام)":"Verification Code (6 digits)"} *</label><input type="text" inputMode="numeric" maxLength={6} value={authOtp} onChange={e=>setAuthOtp(e.target.value.replace(/\D/g,""))} style={{...inp,textAlign:"center",fontSize:22,letterSpacing:8}} placeholder="000000" onKeyDown={e=>e.key==="Enter"&&handleSignupOtherVerify()}/></div>
+              <div style={{marginBottom:20}}><label style={lbl}>{lang==="ar"?"كود التحقق":"Verification Code"} *</label><input type="text" inputMode="numeric" maxLength={8} value={authOtp} onChange={e=>setAuthOtp(e.target.value.replace(/\D/g,""))} style={{...inp,textAlign:"center",fontSize:22,letterSpacing:8}} placeholder="••••••••" onKeyDown={e=>e.key==="Enter"&&handleSignupOtherVerify()}/></div>
               <button onClick={handleSignupOtherVerify} disabled={authLoading} style={{width:"100%",background:"#1B3A2A",color:"white",border:"none",padding:"14px",borderRadius:12,fontSize:15,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>{authLoading?"...":t.auth.verifyOtp}</button>
               <p onClick={()=>{setAuthStep("signup_info_other");setAuthOtp("");setAuthError("");}} style={{textAlign:"center",marginTop:12,fontSize:12,color:"#AAA",cursor:"pointer"}}>← {lang==="ar"?"رجوع":"Back"}</p>
             </>)}
