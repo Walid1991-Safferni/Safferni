@@ -448,6 +448,11 @@ BEGIN
 
   DELETE FROM driver_applications WHERE user_id = v_uid;
   DELETE FROM profiles WHERE id = v_uid;
+
+  -- Clear auth sub-tables before deleting the user row
+  DELETE FROM auth.mfa_factors WHERE user_id = v_uid;
+  DELETE FROM auth.sessions WHERE user_id = v_uid;
+  DELETE FROM auth.identities WHERE user_id = v_uid;
   DELETE FROM auth.users WHERE id = v_uid;
 
   RETURN jsonb_build_object('success', true);
