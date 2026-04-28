@@ -378,6 +378,8 @@ const [driverEditing,setDriverEditing]=useState(false);
     if(authForm.password.length<8){setAuthError(lang==="ar"?"كلمة المرور يجب أن تكون ٨ أحرف على الأقل":"Password must be at least 8 characters");return;}
     setAuthLoading(true);setAuthError("");
     const email=authForm.email.trim().toLowerCase();
+    const{data:existingEmail}=await supabase.from("profiles").select("id").eq("email",email).maybeSingle();
+    if(existingEmail){setAuthError(lang==="ar"?"هذا البريد الإلكتروني مسجل مسبقاً. سجّل الدخول بدلاً من ذلك.":"This email is already registered. Please log in instead.");setAuthLoading(false);return;}
     const{error}=await supabase.auth.signInWithOtp({email,options:{shouldCreateUser:true}});
     if(error){setAuthError(error.message||t.auth.error);setAuthLoading(false);return;}
     setAuthStep("signup_otp_email");
@@ -405,9 +407,14 @@ const [driverEditing,setDriverEditing]=useState(false);
   const handleSignupOtherStart=async()=>{
     if(!authForm.fullName||!authForm.phoneNumber||!authForm.email||!authForm.password){setAuthError(t.auth.error);return;}
     setAuthLoading(true);setAuthError("");
+    const email=authForm.email.trim().toLowerCase();
     const phone=fullPhone();
-    const{data:existing}=await supabase.from("profiles").select("id").eq("phone",phone).maybeSingle();
-    if(existing){setAuthError("PHONE_EXISTS");setAuthLoading(false);return;}
+    const[{data:existingPhone},{data:existingEmail}]=await Promise.all([
+      supabase.from("profiles").select("id").eq("phone",phone).maybeSingle(),
+      supabase.from("profiles").select("id").eq("email",email).maybeSingle(),
+    ]);
+    if(existingPhone){setAuthError("PHONE_EXISTS");setAuthLoading(false);return;}
+    if(existingEmail){setAuthError(lang==="ar"?"هذا البريد الإلكتروني مسجل مسبقاً. سجّل الدخول بدلاً من ذلك.":"This email is already registered. Please log in instead.");setAuthLoading(false);return;}
     const{error}=await supabase.auth.signInWithOtp({phone});
     if(error){setAuthError(error.message||t.auth.error);setAuthLoading(false);return;}
     setPendingPhone(phone);
@@ -425,7 +432,8 @@ const [driverEditing,setDriverEditing]=useState(false);
     const uid=data.user?.id;
     if(uid){
       const email=authForm.email.trim().toLowerCase();
-      await supabase.auth.updateUser({email,password:authForm.password});
+      const{error:updateErr}=await supabase.auth.updateUser({email,password:authForm.password});
+      if(updateErr){setAuthError(lang==="ar"?"البريد الإلكتروني مسجل مسبقاً":"This email is already registered");setAuthLoading(false);return;}
       const role=ADMIN_EMAILS.includes(email)?"admin":"passenger";
       await supabase.from("profiles").upsert({id:uid,email,full_name:authForm.fullName,phone,role});
     }
