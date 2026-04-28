@@ -971,7 +971,7 @@ const [driverEditing,setDriverEditing]=useState(false);
               <div style={{background:"#F0FDF4",border:"1px solid #BBF7D0",borderRadius:12,padding:"12px 16px",marginBottom:20,textAlign:"center"}}>
                 <p style={{fontSize:13,color:"#166534",fontWeight:700}}>📧 {lang==="ar"?"تم إرسال كود التحقق إلى بريدك الإلكتروني":"Verification code sent to your email"}</p>
               </div>
-              <div style={{marginBottom:20}}><label style={lbl}>{lang==="ar"?"كود التحقق":"Verification Code"} *</label><input type="text" inputMode="numeric" maxLength={8} value={authOtp} onChange={e=>setAuthOtp(e.target.value.replace(/\D/g,""))} style={{...inp,textAlign:"center",fontSize:22,letterSpacing:8}} placeholder="••••••••" onKeyDown={e=>e.key==="Enter"&&handleSignupSyriaVerify()}/></div>
+              <div style={{marginBottom:20}}><label style={lbl}>{lang==="ar"?"كود التحقق":"Verification Code"} *</label><input type="text" inputMode="text" maxLength={8} value={authOtp} onChange={e=>setAuthOtp(e.target.value.trim())} style={{...inp,textAlign:"center",fontSize:22,letterSpacing:8}} placeholder="••••••••" onKeyDown={e=>e.key==="Enter"&&handleSignupSyriaVerify()}/></div>
               <button onClick={handleSignupSyriaVerify} disabled={authLoading} style={{width:"100%",background:"#1B3A2A",color:"white",border:"none",padding:"14px",borderRadius:12,fontSize:15,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>{authLoading?"...":t.auth.verifyOtp}</button>
               <p onClick={()=>{setAuthStep("signup_info_sy");setAuthOtp("");setAuthError("");}} style={{textAlign:"center",marginTop:12,fontSize:12,color:"#AAA",cursor:"pointer"}}>← {lang==="ar"?"رجوع":"Back"}</p>
             </>)}
@@ -1000,7 +1000,7 @@ const [driverEditing,setDriverEditing]=useState(false);
               <div style={{background:"#F0FDF4",border:"1px solid #BBF7D0",borderRadius:12,padding:"12px 16px",marginBottom:20,textAlign:"center"}}>
                 <p style={{fontSize:13,color:"#166534",fontWeight:700}}>📱 {lang==="ar"?`${t.auth.otpSent} ${pendingPhone||fullPhone()}`:`${t.auth.otpSent} ${pendingPhone||fullPhone()}`}</p>
               </div>
-              <div style={{marginBottom:20}}><label style={lbl}>{lang==="ar"?"كود التحقق":"Verification Code"} *</label><input type="text" inputMode="numeric" maxLength={8} value={authOtp} onChange={e=>setAuthOtp(e.target.value.replace(/\D/g,""))} style={{...inp,textAlign:"center",fontSize:22,letterSpacing:8}} placeholder="••••••••" onKeyDown={e=>e.key==="Enter"&&handleSignupOtherVerify()}/></div>
+              <div style={{marginBottom:20}}><label style={lbl}>{lang==="ar"?"كود التحقق":"Verification Code"} *</label><input type="text" inputMode="text" maxLength={8} value={authOtp} onChange={e=>setAuthOtp(e.target.value.trim())} style={{...inp,textAlign:"center",fontSize:22,letterSpacing:8}} placeholder="••••••••" onKeyDown={e=>e.key==="Enter"&&handleSignupOtherVerify()}/></div>
               <button onClick={handleSignupOtherVerify} disabled={authLoading} style={{width:"100%",background:"#1B3A2A",color:"white",border:"none",padding:"14px",borderRadius:12,fontSize:15,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>{authLoading?"...":t.auth.verifyOtp}</button>
               <p onClick={()=>{setAuthStep("signup_info_other");setAuthOtp("");setAuthError("");}} style={{textAlign:"center",marginTop:12,fontSize:12,color:"#AAA",cursor:"pointer"}}>← {lang==="ar"?"رجوع":"Back"}</p>
             </>)}
