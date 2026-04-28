@@ -512,7 +512,7 @@ const [driverEditing,setDriverEditing]=useState(false);
     const ref=genAppRef();
     const{error}=await supabase.from("driver_applications").insert({user_id:user?.id||null,full_name:applyForm.fullName,phone:applyForm.phone,car_type:applyForm.carKindYear,license_plate:applyForm.carLicense,driver_license_number:applyForm.driverLicenseNum,notes:applyForm.notes,app_ref:ref,date_of_birth:applyForm.dob||null,has_wifi:applyForm.hasWifi,has_water:applyForm.hasWater,has_ac:applyForm.hasAc});
     if(!error){setAppRef(ref);setApplySubmitted(true);setApplyForm({fullName:"",phone:"",dob:"",carKindYear:"",carLicense:"",driverLicenseNum:"",notes:"",hasWifi:false,hasWater:false,hasAc:false});}
-    else setApplyError(t.apply.fillAll);
+    else setApplyError(error.message||t.apply.fillAll);
   };
 
   const loadAdminData=async()=>{
