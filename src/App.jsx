@@ -492,7 +492,7 @@ const [driverEditing,setDriverEditing]=useState(false);
   const deleteAccount=async()=>{
     if(!window.confirm(lang==="ar"?"هل أنت متأكد تماماً؟ سيتم حذف حسابك وجميع بياناتك نهائياً ولا يمكن التراجع عن ذلك.":"Are you absolutely sure? Your account and all data will be permanently deleted and cannot be recovered.")) return;
     const{data,error}=await supabase.rpc("delete_own_account");
-    if(error){alert(lang==="ar"?"حدث خطأ، يرجى المحاولة مرة أخرى":"An error occurred, please try again");return;}
+    if(error){alert((lang==="ar"?"حدث خطأ: ":"Error: ")+error.message);return;}
     if(!data?.success&&data?.error==="active_trips"){
       alert(lang==="ar"?"لا يمكن حذف الحساب لأن لديك رحلات قادمة نشطة كراكب أو كسائق. يرجى إلغاؤها أولاً.":"Cannot delete account because you have upcoming active trips as a passenger or driver. Please cancel them first.");
       return;
