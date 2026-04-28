@@ -229,6 +229,10 @@ export default function App(){
   const [tripRating,setTripRating]=useState(0);
   const [seatBookingError,setSeatBookingError]=useState("");
   const [ratingSubmitted,setRatingSubmitted]=useState(false);
+  const [selectedBookingDetail,setSelectedBookingDetail]=useState(null);
+  const [selectedTripDetail,setSelectedTripDetail]=useState(null);
+  const [tripDetailBookings,setTripDetailBookings]=useState([]);
+  const [tripDetailLoading,setTripDetailLoading]=useState(false);
 
   // AUTH STATE — new unified flow
   // authStep: "choice" | "login" | "signup_country" | "signup_info_sy" | "signup_otp_email" | "signup_info_other" | "signup_otp_sms" | "forgot_phone" | "forgot_newpass"
@@ -467,6 +471,13 @@ const [driverEditing,setDriverEditing]=useState(false);
   };
 
   // ─── PASSENGER PROFILE ────────────────────────────────────────────────────
+
+  const loadTripBookings=async(tripId)=>{
+    setTripDetailLoading(true);
+    const{data}=await supabase.from("bookings").select("*").eq("trip_id",tripId).neq("status","cancelled").order("created_at",{ascending:false});
+    setTripDetailBookings(data||[]);
+    setTripDetailLoading(false);
+  };
 
   const loadPassengerBookings=async()=>{
     if(!user) return;
@@ -1098,7 +1109,7 @@ const [driverEditing,setDriverEditing]=useState(false);
               :upcomingBookings.map((bk,i)=>{
                 const trip=bk.trips;
                 const fc=gc(trip?.from_city);const tc=gc(trip?.to_city);
-                return(<div key={bk.id} style={{background:"white",borderRadius:14,padding:"20px 24px",border:"1px solid #E8E6E1",marginBottom:12,animation:`fadeUp 0.3s ease ${0.05*i}s both`}}>
+                return(<div key={bk.id} onClick={()=>setSelectedBookingDetail(bk)} style={{background:"white",borderRadius:14,padding:"20px 24px",border:"1px solid #E8E6E1",marginBottom:12,animation:`fadeUp 0.3s ease ${0.05*i}s both`,cursor:"pointer"}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:10}}>
                     <div style={{flex:1}}>
                       <div style={{fontWeight:800,fontSize:15,color:"#1B3A2A",marginBottom:4}}>{fc?.[lang]||trip?.from_city} {lang==="ar"?"إلى":"to"} {tc?.[lang]||trip?.to_city}</div>
@@ -1107,7 +1118,7 @@ const [driverEditing,setDriverEditing]=useState(false);
                     </div>
                     <div style={{display:"flex",flexDirection:"column",gap:6,alignItems:"flex-end"}}>
                       <span style={statusBadge(bk.status)}>{bk.status}</span>
-                      <button onClick={()=>cancelBooking(bk.id)} style={{background:"#FEE2E2",color:"#991B1B",border:"none",padding:"6px 14px",borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{prof.cancelBooking}</button>
+                      <button onClick={e=>{e.stopPropagation();cancelBooking(bk.id);}} style={{background:"#FEE2E2",color:"#991B1B",border:"none",padding:"6px 14px",borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{prof.cancelBooking}</button>
                     </div>
                   </div>
                 </div>);
@@ -1123,14 +1134,14 @@ const [driverEditing,setDriverEditing]=useState(false);
               :pastBookings.map((bk,i)=>{
                 const trip=bk.trips;
                 const fc=gc(trip?.from_city);const tc=gc(trip?.to_city);
-                return(<div key={bk.id} style={{background:"white",borderRadius:14,padding:"20px 24px",border:"1px solid #E8E6E1",marginBottom:12,animation:`fadeUp 0.3s ease ${0.05*i}s both`}}>
+                return(<div key={bk.id} onClick={()=>setSelectedBookingDetail(bk)} style={{background:"white",borderRadius:14,padding:"20px 24px",border:"1px solid #E8E6E1",marginBottom:12,animation:`fadeUp 0.3s ease ${0.05*i}s both`,cursor:"pointer"}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:10}}>
                     <div style={{flex:1}}>
                       <div style={{fontWeight:800,fontSize:15,color:"#555",marginBottom:4}}>{fc?.[lang]||trip?.from_city} {lang==="ar"?"إلى":"to"} {tc?.[lang]||trip?.to_city}</div>
                       <div style={{fontSize:12,color:"#888"}}>{trip?.trip_date} · {formatTime(trip?.trip_time)}</div>
                       <div style={{fontSize:12,color:"#555",marginTop:4}}>📋 {bk.ref_code} · 💺 {bk.seats} {lang==="ar"?"مقعد":"seat(s)"} · 💰 ${bk.total_price||"—"}</div>
                     </div>
-                    <button onClick={async()=>{setReviewSidebarDriver(trip?.driver_id);await loadDriverReviews(trip?.driver_id);}} style={{background:"#F0F7F3",color:"#1B3A2A",border:"1px solid #1B3A2A",padding:"6px 14px",borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{prof.rateNow} ★</button>
+                    <button onClick={async e=>{e.stopPropagation();setReviewSidebarDriver(trip?.driver_id);await loadDriverReviews(trip?.driver_id);}} style={{background:"#F0F7F3",color:"#1B3A2A",border:"1px solid #1B3A2A",padding:"6px 14px",borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{prof.rateNow} ★</button>
                   </div>
                 </div>);
               })}
@@ -1468,7 +1479,7 @@ const [driverEditing,setDriverEditing]=useState(false);
             driverTrips.map((trip,i)=>{
               const fc=gc(trip.from_city);const tc=gc(trip.to_city);
               const isPast=new Date(trip.trip_date)<new Date(new Date().toDateString());
-              return(<div key={trip.id} style={{background:"white",borderRadius:14,padding:"18px 20px",border:"1px solid #E8E6E1",marginBottom:10,animation:`fadeUp 0.4s ease ${0.05*i}s both`}}>
+              return(<div key={trip.id} onClick={()=>{setSelectedTripDetail(trip);loadTripBookings(trip.id);}} style={{background:"white",borderRadius:14,padding:"18px 20px",border:"1px solid #E8E6E1",marginBottom:10,animation:`fadeUp 0.4s ease ${0.05*i}s both`,cursor:"pointer"}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:10}}>
                   <div style={{flex:1}}>
                     <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
@@ -1486,8 +1497,8 @@ const [driverEditing,setDriverEditing]=useState(false);
                   <div style={{display:"flex",flexDirection:"column",gap:6,alignItems:"flex-end"}}>
                     <span style={statusBadge(trip.status)}>{trip.status}</span>
                     {(trip.status==="active"||trip.status==="pending")&&!isPast&&(<div style={{display:"flex",gap:6}}>
-                      {trip.status==="active"&&<button onClick={()=>{setEditRequestForm({tripId:trip.id,newTime:""});setShowEditModal(true)}} style={{background:"#F0F7F3",color:"#1B3A2A",border:"1px solid #1B3A2A",padding:"5px 12px",borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{drv.requestTimeEdit}</button>}
-                      <button onClick={()=>cancelDriverTrip(trip.id)} style={{background:"#EF4444",color:"white",border:"none",padding:"5px 12px",borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{drv.cancel}</button>
+                      {trip.status==="active"&&<button onClick={e=>{e.stopPropagation();setEditRequestForm({tripId:trip.id,newTime:""});setShowEditModal(true);}} style={{background:"#F0F7F3",color:"#1B3A2A",border:"1px solid #1B3A2A",padding:"5px 12px",borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{drv.requestTimeEdit}</button>}
+                      <button onClick={e=>{e.stopPropagation();cancelDriverTrip(trip.id);}} style={{background:"#EF4444",color:"white",border:"none",padding:"5px 12px",borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{drv.cancel}</button>
                     </div>)}
                   </div>
                 </div>
@@ -1529,6 +1540,84 @@ const [driverEditing,setDriverEditing]=useState(false);
               <button onClick={()=>setSelectedDriver(null)} style={{flex:1,background:"white",color:"#666",border:"1.5px solid #DDD",padding:"12px",borderRadius:10,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>✕</button>
               <button onClick={saveDriverProfile} style={{flex:2,background:"#1B3A2A",color:"white",border:"none",padding:"12px",borderRadius:10,fontSize:14,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>{lang==="ar"?"حفظ":"Save"}</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* PASSENGER BOOKING DETAIL MODAL */}
+      {selectedBookingDetail&&(
+        <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,0.5)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center",padding:"24px"}} onClick={()=>setSelectedBookingDetail(null)}>
+          <div style={{background:"white",borderRadius:20,padding:"32px",maxWidth:420,width:"100%",animation:"fadeUp 0.3s ease",maxHeight:"90vh",overflowY:"auto"}} onClick={e=>e.stopPropagation()}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+              <h3 style={{fontSize:18,fontWeight:900,color:"#1B3A2A"}}>{lang==="ar"?"تفاصيل الرحلة":"Trip Details"}</h3>
+              <button onClick={()=>setSelectedBookingDetail(null)} style={{background:"transparent",border:"none",fontSize:20,cursor:"pointer",color:"#888"}}>✕</button>
+            </div>
+            {(()=>{
+              const bk=selectedBookingDetail;const trip=bk.trips;
+              const fc=gc(trip?.from_city);const tc=gc(trip?.to_city);
+              return(<>
+                <div style={{background:"#F0F7F3",borderRadius:14,padding:"16px 20px",marginBottom:16}}>
+                  <div style={{fontWeight:900,fontSize:16,color:"#1B3A2A",marginBottom:6}}>{fc?.[lang]||trip?.from_city} → {tc?.[lang]||trip?.to_city}</div>
+                  <div style={{fontSize:13,color:"#555"}}>{trip?.trip_date} · {formatTime(trip?.trip_time)}</div>
+                  {trip?.car_type&&<div style={{fontSize:12,color:"#888",marginTop:4}}>🚗 {trip.car_type}</div>}
+                </div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:16}}>
+                  {[
+                    [lang==="ar"?"رقم الحجز":"Ref",bk.ref_code],
+                    [lang==="ar"?"المقاعد":"Seats",bk.seats],
+                    [lang==="ar"?"الدفع":"Payment",bk.payment_method],
+                    [lang==="ar"?"الإجمالي":"Total","$"+(bk.total_price||"—")],
+                    [lang==="ar"?"الحالة":"Status",bk.status],
+                  ].map(([label,val])=>(
+                    <div key={label} style={{background:"#FAFAF8",borderRadius:10,padding:"10px 14px",border:"1px solid #E8E6E1"}}>
+                      <div style={{fontSize:10,fontWeight:700,color:"#AAA",marginBottom:2}}>{label}</div>
+                      <div style={{fontSize:13,fontWeight:800,color:"#1B3A2A"}}>{val}</div>
+                    </div>
+                  ))}
+                </div>
+                {trip?.driver_id&&(
+                  <button onClick={async()=>{await openDriverPublicPage(trip.driver_id);}} style={{width:"100%",background:"#1B3A2A",color:"white",border:"none",padding:"12px",borderRadius:10,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit",marginBottom:10}}>
+                    👤 {lang==="ar"?"عرض ملف السائق":"View Driver Profile"}
+                  </button>
+                )}
+              </>);
+            })()}
+          </div>
+        </div>
+      )}
+
+      {/* DRIVER TRIP BOOKINGS MODAL */}
+      {selectedTripDetail&&(
+        <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,0.5)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center",padding:"24px"}} onClick={()=>setSelectedTripDetail(null)}>
+          <div style={{background:"white",borderRadius:20,padding:"32px",maxWidth:500,width:"100%",animation:"fadeUp 0.3s ease",maxHeight:"90vh",overflowY:"auto"}} onClick={e=>e.stopPropagation()}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+              <h3 style={{fontSize:18,fontWeight:900,color:"#1B3A2A"}}>{lang==="ar"?"حجوزات الرحلة":"Trip Bookings"}</h3>
+              <button onClick={()=>setSelectedTripDetail(null)} style={{background:"transparent",border:"none",fontSize:20,cursor:"pointer",color:"#888"}}>✕</button>
+            </div>
+            {(()=>{
+              const trip=selectedTripDetail;
+              const fc=gc(trip.from_city);const tc=gc(trip.to_city);
+              return(<>
+                <div style={{background:"#F0F7F3",borderRadius:14,padding:"14px 18px",marginBottom:20}}>
+                  <div style={{fontWeight:900,fontSize:15,color:"#1B3A2A"}}>{fc?.[lang]||trip.from_city} → {tc?.[lang]||trip.to_city}</div>
+                  <div style={{fontSize:12,color:"#555",marginTop:4}}>{trip.trip_date} · {formatTime(trip.trip_time)} · {trip.total_seats-trip.available_seats}/{trip.total_seats} {lang==="ar"?"مقعد محجوز":"seats booked"}</div>
+                </div>
+                {tripDetailLoading?<p style={{textAlign:"center",color:"#AAA",padding:"24px"}}>{lang==="ar"?"جاري التحميل...":"Loading..."}</p>
+                :tripDetailBookings.length===0?<p style={{textAlign:"center",color:"#AAA",padding:"24px"}}>{lang==="ar"?"لا توجد حجوزات بعد":"No bookings yet"}</p>
+                :tripDetailBookings.map((bk,i)=>(
+                  <div key={bk.id} style={{background:"#FAFAF8",borderRadius:12,padding:"14px 16px",border:"1px solid #E8E6E1",marginBottom:8}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10}}>
+                      <div>
+                        <div style={{fontWeight:800,fontSize:14,color:"#1B3A2A",marginBottom:2}}>{bk.passenger_name}</div>
+                        <div style={{fontSize:12,color:"#555"}}>{bk.passenger_phone}</div>
+                        <div style={{fontSize:11,color:"#888",marginTop:4}}>💺 {bk.seats} {lang==="ar"?"مقعد":"seat(s)"} · {bk.payment_method} · 📋 {bk.ref_code}</div>
+                      </div>
+                      <span style={statusBadge(bk.status)}>{bk.status}</span>
+                    </div>
+                  </div>
+                ))}
+              </>);
+            })()}
           </div>
         </div>
       )}
@@ -1702,11 +1791,14 @@ const [driverEditing,setDriverEditing]=useState(false);
                       </div>
                       <div style={{display:"flex",alignItems:"center",gap:12}}>
                         <span style={{fontSize:20,fontWeight:900,color:isWomen?"#6D28D9":"#1B3A2A"}}>${trip.price_per_seat}</span>
-                        <button onClick={()=>{
-                          if(!user){resetAuth();setPage("login");return;}
-                          setSelectedTrip(trip);setTripBooked(false);setRatingSubmitted(false);setTripRating(0);
-                          setTripBooking({name:profile?.full_name||"",phone:profile?.phone||"",seats:1,payment:"cash"});
-                        }} style={{background:isWomen?"#7C3AED":"#1B3A2A",color:"white",border:"none",padding:"8px 16px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{b.bookSeat}</button>
+                        {trip.available_seats<=0
+                          ?<button disabled style={{background:"#D1D5DB",color:"#6B7280",border:"none",padding:"8px 16px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"not-allowed",fontFamily:"inherit"}}>{lang==="ar"?"اكتملت المقاعد":"Trip Full"}</button>
+                          :<button onClick={()=>{
+                            if(!user){resetAuth();setPage("login");return;}
+                            setSelectedTrip(trip);setTripBooked(false);setRatingSubmitted(false);setTripRating(0);
+                            setTripBooking({name:profile?.full_name||"",phone:profile?.phone||"",seats:1,payment:"cash"});
+                          }} style={{background:isWomen?"#7C3AED":"#1B3A2A",color:"white",border:"none",padding:"8px 16px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{b.bookSeat}</button>
+                        }
                       </div>
                     </div>
                   </div>);
