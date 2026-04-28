@@ -405,7 +405,7 @@ SECURITY DEFINER
 AS $$
 DECLARE
   v_uid  uuid := auth.uid();
-  v_today text := CURRENT_DATE::text;
+  v_today date := CURRENT_DATE;
 BEGIN
   -- Block if user has upcoming active bookings as a passenger
   IF EXISTS (
