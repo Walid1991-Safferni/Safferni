@@ -33,21 +33,21 @@ const cities = [
 ];
 
 const routeMap=[
-  {from:"dam",to:"bei", seatMin:30,seatMax:40, car:140,van:200},
-  {from:"daa",to:"bei", seatMin:35,seatMax:40, car:150,van:220},
-  {from:"dam",to:"amm", seatMin:45,seatMax:55, car:190,van:250},
-  {from:"dam",to:"qaa", seatMin:45,seatMax:55, car:200,van:260},
-  {from:"qaa",to:"dam", seatMin:65,seatMax:75, car:260,van:320},
-  {from:"dam",to:"hom", seatMin:25,seatMax:35, car:110,van:150},
-  {from:"dam",to:"ale", seatMin:45,seatMax:55, car:180,van:240},
-  {from:"hom",to:"ale", seatMin:20,seatMax:30, car:90, van:130},
-  {from:"hom",to:"ham", seatMin:15,seatMax:20, car:65, van:90},
-  {from:"ham",to:"ale", seatMin:20,seatMax:30, car:90, van:130},
-  {from:"dam",to:"dar", seatMin:25,seatMax:35, car:110,van:150},
-  {from:"hom",to:"tar", seatMin:25,seatMax:35, car:110,van:150},
-  {from:"hom",to:"lat", seatMin:25,seatMax:35, car:110,van:150},
-  {from:"dam",to:"lat", seatMin:45,seatMax:55, car:180,van:240},
-  {from:"dam",to:"tar", seatMin:45,seatMax:55, car:180,van:240},
+  {from:"dam",to:"bei", seat:35, seatMin:30,seatMax:40, car:140,van:200},
+  {from:"daa",to:"bei", seat:40, seatMin:35,seatMax:40, car:150,van:220},
+  {from:"dam",to:"amm", seat:50, seatMin:45,seatMax:55, car:190,van:250},
+  {from:"dam",to:"qaa", seat:50, seatMin:45,seatMax:55, car:200,van:260},
+  {from:"qaa",to:"dam", seat:70, seatMin:65,seatMax:75, car:260,van:320},
+  {from:"dam",to:"hom", seat:30, seatMin:25,seatMax:35, car:110,van:150},
+  {from:"dam",to:"ale", seat:50, seatMin:45,seatMax:55, car:180,van:240},
+  {from:"hom",to:"ale", seat:25, seatMin:20,seatMax:30, car:90, van:130},
+  {from:"hom",to:"ham", seat:18, seatMin:15,seatMax:20, car:65, van:90},
+  {from:"ham",to:"ale", seat:25, seatMin:20,seatMax:30, car:90, van:130},
+  {from:"dam",to:"dar", seat:30, seatMin:25,seatMax:35, car:110,van:150},
+  {from:"hom",to:"tar", seat:30, seatMin:25,seatMax:35, car:110,van:150},
+  {from:"hom",to:"lat", seat:30, seatMin:25,seatMax:35, car:110,van:150},
+  {from:"dam",to:"lat", seat:50, seatMin:45,seatMax:55, car:180,van:240},
+  {from:"dam",to:"tar", seat:50, seatMin:45,seatMax:55, car:180,van:240},
 ];
 
 const getDests=(f)=>cities.filter(c=>c.id!==f).map(c=>c.id);
@@ -55,7 +55,7 @@ const findRoute=(a,b)=>routeMap.find(r=>r.from===a&&r.to===b)||routeMap.find(r=>
 const gc=(id)=>cities.find(c=>c.id===id);
 const genRef=()=>{const d=new Date();return`SAF-${d.getFullYear().toString().slice(-2)}${String(d.getMonth()+1).padStart(2,"0")}-${Math.floor(Math.random()*9000)+1000}`};
 const genAppRef=()=>{const d=new Date();return`DRV-${String(d.getDate()).padStart(2,"0")}${String(d.getMonth()+1).padStart(2,"0")}-${Math.floor(Math.random()*9000)+1000}`};
-const pricingRoutes=routeMap.map(r=>({from:gc(r.from),to:gc(r.to),seatMin:r.seatMin,seatMax:r.seatMax,car:r.car,van:r.van}));
+const pricingRoutes=routeMap.map(r=>({from:gc(r.from),to:gc(r.to),seat:r.seat,seatMin:r.seatMin,seatMax:r.seatMax,car:r.car,van:r.van}));
 const timeToMinutes=(t)=>{if(!t)return 0;const[h,m]=t.split(":").map(Number);return h*60+m};
 const formatTime=(t)=>{if(!t)return"—";const h=parseInt(t.slice(0,2));const m=t.slice(3,5);const ampm=h>=12?"PM":"AM";const h12=h===0?12:h>12?h-12:h;return`${h12}:${m} ${ampm}`};
 const fakeEmail=(phone)=>`${phone.replace(/\D/g,"")}@safferni.app`;
@@ -855,7 +855,7 @@ const [driverEditing,setDriverEditing]=useState(false);
   const availDests=form.from?getDests(form.from).map(id=>gc(id)):[];
   const route=form.from&&form.to?findRoute(form.from,form.to):null;
   const eType=form.type;
-  const price=route&&!route.comingSoon?(eType==="seat"?`${route.seatMin}–${route.seatMax}`:eType==="car"?route.car:route.van):null;
+  const price=route&&!route.comingSoon?(eType==="seat"?route.seat:eType==="car"?route.car:route.van):null;
   const copyUSDT=()=>{
     if(navigator.clipboard){navigator.clipboard.writeText(USDT_ADDRESS).then(()=>{setCopied(true);setTimeout(()=>setCopied(false),2000)});}
     else{const el=document.createElement("textarea");el.value=USDT_ADDRESS;document.body.appendChild(el);el.select();document.execCommand("copy");document.body.removeChild(el);setCopied(true);setTimeout(()=>setCopied(false),2000);}
@@ -1941,7 +1941,7 @@ const [driverEditing,setDriverEditing]=useState(false);
               </div>
             </div>
             {route?.comingSoon&&form.to&&<div style={{background:"#FFF3CD",border:"1px solid #FFE082",borderRadius:12,padding:"14px 20px",marginBottom:18,textAlign:"center"}}><span style={{fontSize:14,fontWeight:700,color:"#92400E"}}>🚧 {lang==="ar"?"هذا المسار قريباً":"This route is coming soon"}</span></div>}
-            {price!==null&&<div style={{background:"linear-gradient(135deg,#F0F7F3,#E8F5ED)",borderRadius:12,padding:"14px 20px",marginBottom:18,display:"flex",justifyContent:"space-between",alignItems:"center"}}><span style={{fontSize:13,fontWeight:700,color:"#555"}}>{b.price}</span><span style={{fontSize:eType==="seat"?"22px":"28px",fontWeight:900,color:"#1B3A2A"}}>${price}</span></div>}
+            {price!==null&&<div style={{background:"linear-gradient(135deg,#F0F7F3,#E8F5ED)",borderRadius:12,padding:"14px 20px",marginBottom:18,display:"flex",justifyContent:"space-between",alignItems:"center"}}><span style={{fontSize:13,fontWeight:700,color:"#555"}}>{b.price}</span><span style={{fontSize:28,fontWeight:900,color:"#1B3A2A"}}>${price}</span></div>}
             <div style={{marginBottom:18}}><label style={lbl}>{b.payment} *</label>
               <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
                 {[["cash",b.cash,"💵"],["crypto",b.crypto,"₿"],["shamcash",b.shamcash,"📱"]].map(([k,l,ic])=>(<button key={k} onClick={()=>setForm({...form,payment:k})} style={{flex:1,minWidth:100,padding:"11px 10px",borderRadius:10,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",border:"2px solid",transition:"all 0.2s",borderColor:form.payment===k?"#1B3A2A":"#E8E6E1",background:form.payment===k?"#1B3A2A":"white",color:form.payment===k?"white":"#666"}}>{ic} {l}</button>))}
@@ -1978,7 +1978,7 @@ const [driverEditing,setDriverEditing]=useState(false);
           </div>
           {pricingRoutes.map((r,i)=>(<div key={i} style={{display:"grid",gridTemplateColumns:"1.8fr 1fr 1fr 1fr",padding:"14px 20px",borderBottom:i<pricingRoutes.length-1?"1px solid #F0EEEA":"none",fontSize:13,transition:"background 0.15s"}} onMouseEnter={e=>e.currentTarget.style.background="#FAFAF8"} onMouseLeave={e=>e.currentTarget.style.background="white"}>
             <div style={{fontWeight:800,color:"#1B3A2A"}}>{r.from[lang]} → {r.to[lang]}</div>
-            <div style={{textAlign:"center",fontWeight:700}}>${r.seatMin}–{r.seatMax}</div>
+            <div style={{textAlign:"center",fontWeight:700}}>${r.seat}</div>
             <div style={{textAlign:"center",fontWeight:700}}>${r.car}</div>
             <div style={{textAlign:"center",fontWeight:700}}>${r.van}</div>
           </div>))}
