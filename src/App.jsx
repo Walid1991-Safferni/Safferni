@@ -32,19 +32,30 @@ const cities = [
   { id:"daa", ar:"مطار دمشق الدولي", en:"Damascus Int'l Airport" },
 ];
 
-const routeMap = [
-  { from:"dam", to:"bei", car:100, van:110, seat:25, carOnly:false },
-  { from:"dam", to:"amm", car:175, van:195, seat:45, carOnly:false },
-  { from:"dam", to:"qaa", car:200, van:220, seat:50, carOnly:false },
-  { from:"dam", to:"daa", car:25, van:28, seat:null, carOnly:true },
+const routeMap=[
+  {from:"dam",to:"bei", seatMin:30,seatMax:40, car:140,van:200},
+  {from:"daa",to:"bei", seatMin:35,seatMax:40, car:150,van:220},
+  {from:"dam",to:"amm", seatMin:45,seatMax:55, car:190,van:250},
+  {from:"dam",to:"qaa", seatMin:45,seatMax:55, car:200,van:260},
+  {from:"qaa",to:"dam", seatMin:65,seatMax:75, car:260,van:320},
+  {from:"dam",to:"hom", seatMin:25,seatMax:35, car:110,van:150},
+  {from:"dam",to:"ale", seatMin:45,seatMax:55, car:180,van:240},
+  {from:"hom",to:"ale", seatMin:20,seatMax:30, car:90, van:130},
+  {from:"hom",to:"ham", seatMin:15,seatMax:20, car:65, van:90},
+  {from:"ham",to:"ale", seatMin:20,seatMax:30, car:90, van:130},
+  {from:"dam",to:"dar", seatMin:25,seatMax:35, car:110,van:150},
+  {from:"hom",to:"tar", seatMin:25,seatMax:35, car:110,van:150},
+  {from:"hom",to:"lat", seatMin:25,seatMax:35, car:110,van:150},
+  {from:"dam",to:"lat", seatMin:45,seatMax:55, car:180,van:240},
+  {from:"dam",to:"tar", seatMin:45,seatMax:55, car:180,van:240},
 ];
 
 const getDests=(f)=>cities.filter(c=>c.id!==f).map(c=>c.id);
-const findRoute=(a,b)=>routeMap.find(r=>(r.from===a&&r.to===b)||(r.from===b&&r.to===a))||{from:a,to:b,car:100,van:110,seat:25,carOnly:false};
+const findRoute=(a,b)=>routeMap.find(r=>r.from===a&&r.to===b)||routeMap.find(r=>r.from===b&&r.to===a)||{comingSoon:true};
 const gc=(id)=>cities.find(c=>c.id===id);
 const genRef=()=>{const d=new Date();return`SAF-${d.getFullYear().toString().slice(-2)}${String(d.getMonth()+1).padStart(2,"0")}-${Math.floor(Math.random()*9000)+1000}`};
 const genAppRef=()=>{const d=new Date();return`DRV-${String(d.getDate()).padStart(2,"0")}${String(d.getMonth()+1).padStart(2,"0")}-${Math.floor(Math.random()*9000)+1000}`};
-const pricingRoutes=routeMap.map(r=>({from:gc(r.from),to:gc(r.to),car:r.car,van:r.van,seat:r.seat,carOnly:r.carOnly}));
+const pricingRoutes=routeMap.map(r=>({from:gc(r.from),to:gc(r.to),seatMin:r.seatMin,seatMax:r.seatMax,car:r.car,van:r.van}));
 const timeToMinutes=(t)=>{if(!t)return 0;const[h,m]=t.split(":").map(Number);return h*60+m};
 const formatTime=(t)=>{if(!t)return"—";const h=parseInt(t.slice(0,2));const m=t.slice(3,5);const ampm=h>=12?"PM":"AM";const h12=h===0?12:h>12?h-12:h;return`${h12}:${m} ${ampm}`};
 const fakeEmail=(phone)=>`${phone.replace(/\D/g,"")}@safferni.app`;
@@ -845,8 +856,8 @@ const [driverEditing,setDriverEditing]=useState(false);
   const toggleLang=()=>setLang(l=>l==="ar"?"en":"ar");
   const availDests=form.from?getDests(form.from).map(id=>gc(id)):[];
   const route=form.from&&form.to?findRoute(form.from,form.to):null;
-  const eType=route?.carOnly&&form.type==="seat"?"car":form.type;
-  const price=route?(eType==="seat"?route.seat:eType==="car"?route.car:route.van):null;
+  const eType=form.type;
+  const price=route&&!route.comingSoon?(eType==="seat"?`${route.seatMin}–${route.seatMax}`:eType==="car"?route.car:route.van):null;
   const copyUSDT=()=>{
     if(navigator.clipboard){navigator.clipboard.writeText(USDT_ADDRESS).then(()=>{setCopied(true);setTimeout(()=>setCopied(false),2000)});}
     else{const el=document.createElement("textarea");el.value=USDT_ADDRESS;document.body.appendChild(el);el.select();document.execCommand("copy");document.body.removeChild(el);setCopied(true);setTimeout(()=>setCopied(false),2000);}
@@ -1926,13 +1937,13 @@ const [driverEditing,setDriverEditing]=useState(false);
               <div><label style={lbl}>{b.from} *</label><select value={form.from} onChange={e=>handleFromChange(e.target.value)} style={inp}><option value="">{b.selectCity}</option>{cities.map(c=><option key={c.id} value={c.id}>{c[lang]}</option>)}</select></div>
               <div><label style={lbl}>{b.to} *</label><select value={form.to} onChange={e=>setForm({...form,to:e.target.value})} style={inp} disabled={!form.from}><option value="">{form.from?b.selectDest:b.selectFromFirst}</option>{availDests.map(c=><option key={c.id} value={c.id}>{c[lang]}</option>)}</select></div>
             </div>
-            {route?.carOnly&&form.type==="seat"&&<div style={{marginBottom:14,padding:"10px 16px",background:"#FFF8E1",border:"1px solid #FFE082",borderRadius:10,color:"#F57F17",fontSize:12,fontWeight:700}}>{b.carOnlyNote}</div>}
             <div style={{marginBottom:18}}><label style={lbl}>{b.type} *</label>
               <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-                {[["seat",b.seat],["car",b.car],["van",b.van]].map(([k,l])=>{const dis=k==="seat"&&route?.carOnly;return(<button key={k} onClick={()=>!dis&&setForm({...form,type:k})} style={{flex:1,minWidth:130,padding:"11px 10px",borderRadius:10,fontSize:11,fontWeight:700,cursor:dis?"not-allowed":"pointer",fontFamily:"inherit",border:"2px solid",transition:"all 0.2s",opacity:dis?0.4:1,borderColor:eType===k?"#1B3A2A":"#E8E6E1",background:eType===k?"#1B3A2A":"white",color:eType===k?"white":"#666"}}>{l}</button>)})}
+                {[["seat",b.seat],["car",b.car],["van",b.van]].map(([k,l])=>(<button key={k} onClick={()=>setForm({...form,type:k})} style={{flex:1,minWidth:130,padding:"11px 10px",borderRadius:10,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit",border:"2px solid",transition:"all 0.2s",borderColor:eType===k?"#1B3A2A":"#E8E6E1",background:eType===k?"#1B3A2A":"white",color:eType===k?"white":"#666"}}>{l}</button>))}
               </div>
             </div>
-            {price!==null&&<div style={{background:"linear-gradient(135deg,#F0F7F3,#E8F5ED)",borderRadius:12,padding:"14px 20px",marginBottom:18,display:"flex",justifyContent:"space-between",alignItems:"center"}}><span style={{fontSize:13,fontWeight:700,color:"#555"}}>{b.price}</span><span style={{fontSize:28,fontWeight:900,color:"#1B3A2A"}}>${price}</span></div>}
+            {route?.comingSoon&&form.to&&<div style={{background:"#FFF3CD",border:"1px solid #FFE082",borderRadius:12,padding:"14px 20px",marginBottom:18,textAlign:"center"}}><span style={{fontSize:14,fontWeight:700,color:"#92400E"}}>🚧 {lang==="ar"?"هذا المسار قريباً":"This route is coming soon"}</span></div>}
+            {price!==null&&<div style={{background:"linear-gradient(135deg,#F0F7F3,#E8F5ED)",borderRadius:12,padding:"14px 20px",marginBottom:18,display:"flex",justifyContent:"space-between",alignItems:"center"}}><span style={{fontSize:13,fontWeight:700,color:"#555"}}>{b.price}</span><span style={{fontSize:eType==="seat"?"22px":"28px",fontWeight:900,color:"#1B3A2A"}}>${price}</span></div>}
             <div style={{marginBottom:18}}><label style={lbl}>{b.payment} *</label>
               <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
                 {[["cash",b.cash,"💵"],["crypto",b.crypto,"₿"],["shamcash",b.shamcash,"📱"]].map(([k,l,ic])=>(<button key={k} onClick={()=>setForm({...form,payment:k})} style={{flex:1,minWidth:100,padding:"11px 10px",borderRadius:10,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",border:"2px solid",transition:"all 0.2s",borderColor:form.payment===k?"#1B3A2A":"#E8E6E1",background:form.payment===k?"#1B3A2A":"white",color:form.payment===k?"white":"#666"}}>{ic} {l}</button>))}
@@ -1963,19 +1974,13 @@ const [driverEditing,setDriverEditing]=useState(false);
       {page==="pricing"&&(<section style={{maxWidth:800,margin:"0 auto",padding:"60px 24px 80px",...fade}}>
         <h2 style={{fontSize:32,fontWeight:900,marginBottom:10,textAlign:"center",color:"#1B3A2A"}}>{t.pricing.title}</h2>
         <p style={{textAlign:"center",color:"#888",marginBottom:24,fontSize:15}}>{t.pricing.desc}</p>
-        <div style={{background:"linear-gradient(135deg,#F0F7F3,#E8F5ED)",borderRadius:14,padding:"20px 24px",marginBottom:24,border:"1px solid #C6E8D4",display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:12,textAlign:"center"}}>
-          <div><div style={{fontSize:11,fontWeight:700,color:"#888",textTransform:"uppercase",marginBottom:4}}>{lang==="ar"?"مقعد واحد":"Per Seat"}</div><div style={{fontSize:28,fontWeight:900,color:"#1B3A2A"}}>$25</div></div>
-          <div><div style={{fontSize:11,fontWeight:700,color:"#888",textTransform:"uppercase",marginBottom:4}}>{lang==="ar"?"سيارة كاملة":"Full Car"}</div><div style={{fontSize:28,fontWeight:900,color:"#1B3A2A"}}>$100</div></div>
-          <div><div style={{fontSize:11,fontWeight:700,color:"#888",textTransform:"uppercase",marginBottom:4}}>{lang==="ar"?"فان":"Van"}</div><div style={{fontSize:28,fontWeight:900,color:"#1B3A2A"}}>$110</div></div>
-          <div style={{display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:12,fontWeight:700,color:"#555",lineHeight:1.5}}>{lang==="ar"?"لجميع المحافظات السورية — أسعار موحدة":"All Syrian governorates — flat rate"}</span></div>
-        </div>
         <div style={{background:"white",borderRadius:16,border:"1px solid #E8E6E1",overflow:"hidden",boxShadow:"0 2px 12px rgba(0,0,0,0.03)"}}>
           <div style={{display:"grid",gridTemplateColumns:"1.8fr 1fr 1fr 1fr",padding:"14px 20px",background:"#1B3A2A",fontSize:11,fontWeight:700,color:"rgba(255,255,255,0.85)",textTransform:"uppercase"}}>
-            <div>{t.pricing.route}</div><div style={{textAlign:"center"}}>{t.pricing.seat}</div><div style={{textAlign:"center"}}>{t.pricing.car}</div><div style={{textAlign:"center"}}>{t.pricing.van}</div>
+            <div>{t.pricing.route}</div><div style={{textAlign:"center"}}>{lang==="ar"?"مقعد / شخص":"Per Seat"}</div><div style={{textAlign:"center"}}>{t.pricing.car}</div><div style={{textAlign:"center"}}>{t.pricing.van}</div>
           </div>
           {pricingRoutes.map((r,i)=>(<div key={i} style={{display:"grid",gridTemplateColumns:"1.8fr 1fr 1fr 1fr",padding:"14px 20px",borderBottom:i<pricingRoutes.length-1?"1px solid #F0EEEA":"none",fontSize:13,transition:"background 0.15s"}} onMouseEnter={e=>e.currentTarget.style.background="#FAFAF8"} onMouseLeave={e=>e.currentTarget.style.background="white"}>
-            <div style={{fontWeight:800,color:"#1B3A2A"}}>{r.from[lang]} {lang==="ar"?"ذهاباً وإياباً":"↔"} {r.to[lang]}</div>
-            <div style={{textAlign:"center",fontWeight:700}}>{r.carOnly?<span style={{fontSize:10,color:"#BBB"}}>{t.pricing.carOnly}</span>:`$${r.seat}`}</div>
+            <div style={{fontWeight:800,color:"#1B3A2A"}}>{r.from[lang]} → {r.to[lang]}</div>
+            <div style={{textAlign:"center",fontWeight:700}}>${r.seatMin}–{r.seatMax}</div>
             <div style={{textAlign:"center",fontWeight:700}}>${r.car}</div>
             <div style={{textAlign:"center",fontWeight:700}}>${r.van}</div>
           </div>))}
