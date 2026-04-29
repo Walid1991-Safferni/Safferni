@@ -762,12 +762,10 @@ const [driverEditing,setDriverEditing]=useState(false);
       const now=new Date();
       if((tripDateTime-now)<2*60*60*1000){setTripError(drv.noticeRequired);return false;}
     }
-    const routeLimits={"dam-bei":{min:35,max:40},"bei-dam":{min:35,max:40},"dam-hom":{min:15,max:25},"hom-dam":{min:15,max:25},"dam-ale":{min:35,max:50},"ale-dam":{min:35,max:50},"dam-amm":{min:60,max:70},"amm-dam":{min:60,max:70},"dam-qaa":{min:65,max:75},"qaa-dam":{min:65,max:75},"dam-daa":{min:20,max:30},"daa-dam":{min:20,max:30},"ale-hom":{min:25,max:30},"hom-ale":{min:25,max:30}};
-    const routeKey=`${tripForm.from}-${tripForm.to}`;
-    const limits=routeLimits[routeKey];
-    if(limits){
+    const driverRoute=findRoute(tripForm.from,tripForm.to);
+    if(driverRoute&&!driverRoute.comingSoon){
       const p=parseFloat(tripForm.pricePerSeat);
-      if(p<limits.min||p>limits.max){setTripError(lang==="ar"?`السعر يجب أن يكون بين $${limits.min} و $${limits.max} لهذا المسار`:`Price must be between $${limits.min} and $${limits.max} for this route`);return false;}
+      if(isNaN(p)||p<driverRoute.seatMin||p>driverRoute.seatMax){setTripError(lang==="ar"?`السعر يجب أن يكون بين $${driverRoute.seatMin} و $${driverRoute.seatMax} لهذا المسار`:`Price must be between $${driverRoute.seatMin} and $${driverRoute.seatMax} for this route`);return false;}
     }
     return true;
   };
@@ -1462,7 +1460,7 @@ const [driverEditing,setDriverEditing]=useState(false);
                 <div><label style={lbl}>{drv.time}</label><select value={tripForm.time} onChange={e=>setTripForm({...tripForm,time:e.target.value})} style={inp}><option value="">--</option>{timeOptions.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}</select></div>
               </div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12,marginBottom:16}}>
-                <div><label style={lbl}>{drv.pricePerSeat} *</label><input type="number" value={tripForm.pricePerSeat} onChange={e=>setTripForm({...tripForm,pricePerSeat:e.target.value})} style={inp} placeholder="0"/></div>
+                <div>{(()=>{const dr=tripForm.from&&tripForm.to?findRoute(tripForm.from,tripForm.to):null;const lim=dr&&!dr.comingSoon?dr:null;return(<><label style={lbl}>{drv.pricePerSeat} *{lim&&<span style={{fontWeight:600,color:"#1B3A2A",marginInlineStart:4,fontSize:10}}>(${lim.seatMin}–${lim.seatMax})</span>}</label><input type="number" min={lim?.seatMin} max={lim?.seatMax} value={tripForm.pricePerSeat} onChange={e=>setTripForm({...tripForm,pricePerSeat:e.target.value})} style={inp} placeholder={lim?`${lim.seatMin}–${lim.seatMax}`:"0"}/></>)})()}</div>
                 <div><label style={lbl}>{drv.totalSeats}</label><select value={tripForm.totalSeats} onChange={e=>setTripForm({...tripForm,totalSeats:e.target.value})} style={inp}>{[2,3,4,5,6,7,8,9,10].map(n=><option key={n} value={n}>{n}</option>)}</select></div>
                 <div><label style={lbl}>{drv.carType}</label><input value={tripForm.carType} onChange={e=>setTripForm({...tripForm,carType:e.target.value})} style={inp}/></div>
               </div>
