@@ -429,12 +429,24 @@ const [driverEditing,setDriverEditing]=useState(false);
     const{data,error}=await supabase.auth.verifyOtp({email,token:authOtp,type:"email"});
     if(error){setAuthError(t.auth.otpWrong);setAuthLoading(false);return;}
     const uid=data.user?.id;
-    if(uid){
-      await supabase.auth.updateUser({password:authForm.password});
-      const role=ADMIN_EMAILS.includes(email)?"admin":"passenger";
-      await supabase.from("profiles").upsert({id:uid,email,full_name:authForm.fullName,phone:"",role});
-    }
+    if(!uid){setAuthError(t.auth.error);setAuthLoading(false);return;}
+    const{error:pwErr}=await supabase.auth.updateUser({password:authForm.password});
+    if(pwErr){setAuthError(lang==="ar"?"فشل في تعيين كلمة المرور، حاول مرة أخرى":"Failed to set password, please try again");setAuthLoading(false);return;}
+    const role=ADMIN_EMAILS.includes(email)?"admin":"passenger";
+    const newProfile={id:uid,email,full_name:authForm.fullName,phone:"",role};
+    await supabase.from("profiles").upsert(newProfile);
+    setProfile(newProfile);
     resetAuth();setPage("home");
+    setAuthLoading(false);
+  };
+
+  // Resend Syria email OTP
+  const handleResendEmailOtp=async()=>{
+    setAuthLoading(true);setAuthError("");
+    const email=authForm.email.trim().toLowerCase();
+    const{error}=await supabase.auth.signInWithOtp({email,options:{shouldCreateUser:true}});
+    if(error){setAuthError(error.message||t.auth.error);}
+    else{setAuthError(lang==="ar"?"تم إعادة إرسال الكود إلى بريدك":"Code resent to your email");}
     setAuthLoading(false);
   };
 
@@ -1045,11 +1057,13 @@ const [driverEditing,setDriverEditing]=useState(false);
             {/* SIGNUP SYRIA OTP: verify email code */}
             {authStep==="signup_otp_email"&&(<>
               <div style={{background:"#F0FDF4",border:"1px solid #BBF7D0",borderRadius:12,padding:"12px 16px",marginBottom:20,textAlign:"center"}}>
-                <p style={{fontSize:13,color:"#166534",fontWeight:700}}>📧 {lang==="ar"?"تم إرسال كود التحقق إلى بريدك الإلكتروني":"Verification code sent to your email"}</p>
+                <p style={{fontSize:13,color:"#166534",fontWeight:700,marginBottom:4}}>📧 {lang==="ar"?"تم إرسال كود التحقق إلى":"Verification code sent to"}</p>
+                <p style={{fontSize:13,color:"#166534",fontWeight:900,margin:0,wordBreak:"break-all"}}>{authForm.email}</p>
               </div>
               <div style={{marginBottom:20}}><label style={lbl}>{lang==="ar"?"كود التحقق":"Verification Code"} *</label><input type="text" inputMode="text" maxLength={8} value={authOtp} onChange={e=>setAuthOtp(e.target.value.trim())} style={{...inp,textAlign:"center",fontSize:26,letterSpacing:4}} placeholder="- - - - - - - -" onKeyDown={e=>e.key==="Enter"&&handleSignupSyriaVerify()}/></div>
               <button onClick={handleSignupSyriaVerify} disabled={authLoading} style={{width:"100%",background:"#1B3A2A",color:"white",border:"none",padding:"14px",borderRadius:12,fontSize:15,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>{authLoading?"...":t.auth.verifyOtp}</button>
-              <p onClick={()=>{setAuthStep("signup_info_sy");setAuthOtp("");setAuthError("");}} style={{textAlign:"center",marginTop:12,fontSize:12,color:"#AAA",cursor:"pointer"}}>← {lang==="ar"?"رجوع":"Back"}</p>
+              <p style={{textAlign:"center",marginTop:14,fontSize:12,color:"#AAA"}}>{lang==="ar"?"لم تستلم الكود؟":"Didn't receive the code?"}{" "}<span onClick={handleResendEmailOtp} style={{color:"#1B3A2A",fontWeight:700,cursor:"pointer",textDecoration:"underline"}}>{lang==="ar"?"إعادة الإرسال":"Resend"}</span></p>
+              <p onClick={()=>{setAuthStep("signup_info_sy");setAuthOtp("");setAuthError("");}} style={{textAlign:"center",marginTop:6,fontSize:12,color:"#AAA",cursor:"pointer"}}>← {lang==="ar"?"رجوع":"Back"}</p>
             </>)}
 
             {/* SIGNUP OTHER: name + phone + email + password */}
