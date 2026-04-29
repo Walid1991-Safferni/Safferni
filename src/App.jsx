@@ -33,21 +33,21 @@ const cities = [
 ];
 
 const routeMap=[
-  {from:"dam",to:"bei", seatMin:30,seatMax:40, car:140,van:200},
-  {from:"daa",to:"bei", seatMin:35,seatMax:40, car:150,van:220},
-  {from:"dam",to:"amm", seatMin:45,seatMax:55, car:190,van:250},
-  {from:"dam",to:"qaa", seatMin:45,seatMax:55, car:200,van:260},
-  {from:"qaa",to:"dam", seatMin:65,seatMax:75, car:260,van:320},
-  {from:"dam",to:"hom", seatMin:25,seatMax:35, car:110,van:150},
-  {from:"dam",to:"ale", seatMin:45,seatMax:55, car:180,van:240},
-  {from:"hom",to:"ale", seatMin:20,seatMax:30, car:90, van:130},
-  {from:"hom",to:"ham", seatMin:15,seatMax:20, car:65, van:90},
-  {from:"ham",to:"ale", seatMin:20,seatMax:30, car:90, van:130},
-  {from:"dam",to:"dar", seatMin:25,seatMax:35, car:110,van:150},
-  {from:"hom",to:"tar", seatMin:25,seatMax:35, car:110,van:150},
-  {from:"hom",to:"lat", seatMin:25,seatMax:35, car:110,van:150},
-  {from:"dam",to:"lat", seatMin:45,seatMax:55, car:180,van:240},
-  {from:"dam",to:"tar", seatMin:45,seatMax:55, car:180,van:240},
+  {from:"dam",to:"bei", seat:35, seatMin:30,seatMax:40, car:140,van:200},
+  {from:"daa",to:"bei", seat:40, seatMin:35,seatMax:40, car:150,van:220},
+  {from:"dam",to:"amm", seat:50, seatMin:45,seatMax:55, car:190,van:250},
+  {from:"dam",to:"qaa", seat:50, seatMin:45,seatMax:55, car:200,van:260},
+  {from:"qaa",to:"dam", seat:70, seatMin:65,seatMax:75, car:260,van:320},
+  {from:"dam",to:"hom", seat:30, seatMin:25,seatMax:35, car:110,van:150},
+  {from:"dam",to:"ale", seat:50, seatMin:45,seatMax:55, car:180,van:240},
+  {from:"hom",to:"ale", seat:25, seatMin:20,seatMax:30, car:90, van:130},
+  {from:"hom",to:"ham", seat:18, seatMin:15,seatMax:20, car:65, van:90},
+  {from:"ham",to:"ale", seat:25, seatMin:20,seatMax:30, car:90, van:130},
+  {from:"dam",to:"dar", seat:30, seatMin:25,seatMax:35, car:110,van:150},
+  {from:"hom",to:"tar", seat:30, seatMin:25,seatMax:35, car:110,van:150},
+  {from:"hom",to:"lat", seat:30, seatMin:25,seatMax:35, car:110,van:150},
+  {from:"dam",to:"lat", seat:50, seatMin:45,seatMax:55, car:180,van:240},
+  {from:"dam",to:"tar", seat:50, seatMin:45,seatMax:55, car:180,van:240},
 ];
 
 const getDests=(f)=>cities.filter(c=>c.id!==f).map(c=>c.id);
@@ -55,7 +55,7 @@ const findRoute=(a,b)=>routeMap.find(r=>r.from===a&&r.to===b)||routeMap.find(r=>
 const gc=(id)=>cities.find(c=>c.id===id);
 const genRef=()=>{const d=new Date();return`SAF-${d.getFullYear().toString().slice(-2)}${String(d.getMonth()+1).padStart(2,"0")}-${Math.floor(Math.random()*9000)+1000}`};
 const genAppRef=()=>{const d=new Date();return`DRV-${String(d.getDate()).padStart(2,"0")}${String(d.getMonth()+1).padStart(2,"0")}-${Math.floor(Math.random()*9000)+1000}`};
-const pricingRoutes=routeMap.map(r=>({from:gc(r.from),to:gc(r.to),seatMin:r.seatMin,seatMax:r.seatMax,car:r.car,van:r.van}));
+const pricingRoutes=routeMap.map(r=>({from:gc(r.from),to:gc(r.to),seat:r.seat,seatMin:r.seatMin,seatMax:r.seatMax,car:r.car,van:r.van}));
 const timeToMinutes=(t)=>{if(!t)return 0;const[h,m]=t.split(":").map(Number);return h*60+m};
 const formatTime=(t)=>{if(!t)return"—";const h=parseInt(t.slice(0,2));const m=t.slice(3,5);const ampm=h>=12?"PM":"AM";const h12=h===0?12:h>12?h-12:h;return`${h12}:${m} ${ampm}`};
 const fakeEmail=(phone)=>`${phone.replace(/\D/g,"")}@safferni.app`;
@@ -316,6 +316,11 @@ const [driverEditing,setDriverEditing]=useState(false);
   const [pwForm,setPwForm]=useState({current:"",next:""});
   const [pwMsg,setPwMsg]=useState("");
 
+  // Notifications
+  const [notifications,setNotifications]=useState([]);
+  const [showNotifications,setShowNotifications]=useState(false);
+  const [adminActivity,setAdminActivity]=useState([]);
+
   const t=T[lang];const b=t.b;const adm=t.admin;const drv=t.driver;const prof=t.profile;
   const isRTL=lang==="ar";
   const searchRef=useRef(null);
@@ -323,6 +328,7 @@ const [driverEditing,setDriverEditing]=useState(false);
   const isAdmin=user&&ADMIN_EMAILS.includes(user.email);
   const isDriverApplied=driverApproved||(driverApplication&&(driverApplication.status==="pending"||driverApplication.status==="approved"));
   const fade={animation:"fadeUp 0.7s ease both"};
+  const unreadCount=notifications.filter(n=>!n.read).length;
 
   useEffect(()=>{
     supabase.auth.getSession().then(({data:{session}})=>{
@@ -340,6 +346,20 @@ const [driverEditing,setDriverEditing]=useState(false);
   },[]);
 
   useEffect(()=>{if(user) checkDriverApplication();},[user]);
+
+  const timeAgo=(ts)=>{const diff=Date.now()-new Date(ts).getTime();const m=Math.floor(diff/60000);if(m<1)return lang==="ar"?"الآن":"just now";if(m<60)return lang==="ar"?`منذ ${m}د`:`${m}m ago`;const h=Math.floor(m/60);if(h<24)return lang==="ar"?`منذ ${h}س`:`${h}h ago`;const d=Math.floor(h/24);return lang==="ar"?`منذ ${d}ي`:`${d}d ago`;};
+  const createNotif=async(userId,type,title,message)=>{if(!userId)return;try{await supabase.from("notifications").insert({user_id:userId,type,title,message});}catch(e){}};
+  const markNotifRead=async(id)=>{await supabase.from("notifications").update({read:true}).eq("id",id);setNotifications(prev=>prev.map(n=>n.id===id?{...n,read:true}:n));};
+  const markAllRead=async()=>{if(!user)return;await supabase.from("notifications").update({read:true}).eq("user_id",user.id).eq("read",false);setNotifications(prev=>prev.map(n=>({...n,read:true})));};
+  const loadAdminActivity=async()=>{const[{data:apps},{data:bks},{data:edits}]=await Promise.all([supabase.from("driver_applications").select("id,full_name,status,created_at").order("created_at",{ascending:false}).limit(20),supabase.from("bookings").select("id,passenger_name,seats,status,created_at,trips(from_city,to_city,trip_date)").order("created_at",{ascending:false}).limit(20),supabase.from("trip_edit_requests").select("id,status,new_time,created_at,trips(from_city,to_city)").order("created_at",{ascending:false}).limit(10)]);const events=[...(apps||[]).map(a=>({type:"application",id:a.id,title:a.full_name,status:a.status,ts:a.created_at})),...(bks||[]).map(b=>({type:"booking",id:b.id,title:b.passenger_name,status:b.status,seats:b.seats,route:`${gc(b.trips?.from_city)?.[lang]||b.trips?.from_city||"?"}→${gc(b.trips?.to_city)?.[lang]||b.trips?.to_city||"?"}`,date:b.trips?.trip_date,ts:b.created_at})),...(edits||[]).map(e=>({type:"edit",id:e.id,status:e.status,route:`${gc(e.trips?.from_city)?.[lang]||e.trips?.from_city||"?"}→${gc(e.trips?.to_city)?.[lang]||e.trips?.to_city||"?"}`,newTime:e.new_time,ts:e.created_at}))].sort((a,b)=>new Date(b.ts)-new Date(a.ts));setAdminActivity(events);};
+
+  useEffect(()=>{
+    if(!user?.id){setNotifications([]);return;}
+    supabase.from("notifications").select("*").eq("user_id",user.id).order("created_at",{ascending:false}).limit(50).then(({data})=>{if(data)setNotifications(data);});
+    const ch=supabase.channel(`notifs-${user.id}`).on("postgres_changes",{event:"INSERT",schema:"public",table:"notifications",filter:`user_id=eq.${user.id}`},pl=>{setNotifications(prev=>[pl.new,...prev]);}).subscribe();
+    return()=>supabase.removeChannel(ch);
+  },[user?.id]);
+  useEffect(()=>{if(adminTab==="activity"&&isAdmin)loadAdminActivity();},[adminTab]);
   useEffect(()=>{if(page==="admin"&&isAdmin){loadAdminData();if(adminTab==="promoCodes") loadPromoCodes();}},[page,adminTab]);
   useEffect(()=>{if(page==="driver"&&user){setSelectedDriver(null);loadProfile(user);loadDriverData();}},[page,user]);
   useEffect(()=>{
@@ -513,8 +533,10 @@ const [driverEditing,setDriverEditing]=useState(false);
   };
 
   const confirmBooking=async(bookingId)=>{
+    const bk=tripDetailBookings.find(b=>b.id===bookingId);
     await supabase.rpc("driver_action_booking",{p_booking_id:bookingId,p_action:"confirm"});
     setTripDetailBookings(bs=>bs.map(b=>b.id===bookingId?{...b,status:"confirmed"}:b));
+    if(bk?.user_id&&selectedTripDetail) createNotif(bk.user_id,"booking_confirmed",lang==="ar"?"تم تأكيد حجزك ✅":"Booking Confirmed ✅",lang==="ar"?`تم تأكيد حجزك على رحلة ${gc(selectedTripDetail.from_city)?.[lang]||selectedTripDetail.from_city} إلى ${gc(selectedTripDetail.to_city)?.[lang]||selectedTripDetail.to_city} بتاريخ ${selectedTripDetail.trip_date}`:`Your booking on ${gc(selectedTripDetail.from_city)?.en||selectedTripDetail.from_city} → ${gc(selectedTripDetail.to_city)?.en||selectedTripDetail.to_city} on ${selectedTripDetail.trip_date} was confirmed by the driver`);
   };
 
   const rejectBooking=async(bookingId)=>{
@@ -524,6 +546,7 @@ const [driverEditing,setDriverEditing]=useState(false);
     if(bk&&selectedTripDetail){
       setSelectedTripDetail(t=>({...t,available_seats:(t.available_seats||0)+bk.seats}));
       setDriverTrips(ts=>ts.map(t=>t.id===selectedTripDetail.id?{...t,available_seats:(t.available_seats||0)+bk.seats}:t));
+      if(bk.user_id) createNotif(bk.user_id,"booking_rejected",lang==="ar"?"تم رفض حجزك":"Booking Rejected",lang==="ar"?`تم رفض حجزك على رحلة ${gc(selectedTripDetail.from_city)?.[lang]||selectedTripDetail.from_city} إلى ${gc(selectedTripDetail.to_city)?.[lang]||selectedTripDetail.to_city}`:`Your booking on ${gc(selectedTripDetail.from_city)?.en||selectedTripDetail.from_city} → ${gc(selectedTripDetail.to_city)?.en||selectedTripDetail.to_city} was rejected by the driver`);
     }
   };
 
@@ -548,6 +571,7 @@ const [driverEditing,setDriverEditing]=useState(false);
       const{data:trip}=await supabase.from("trips").select("available_seats").eq("id",bk.trip_id).single();
       if(trip) await supabase.from("trips").update({available_seats:trip.available_seats+(bk.seats||1)}).eq("id",bk.trip_id);
     }
+    if(bk?.trips?.driver_id) createNotif(bk.trips.driver_id,"booking_cancelled",lang==="ar"?"إلغاء حجز":"Booking Cancelled",lang==="ar"?`${bk.passenger_name||"راكب"} ألغى حجزه على رحلة ${gc(bk.trips.from_city)?.[lang]||bk.trips.from_city} إلى ${gc(bk.trips.to_city)?.[lang]||bk.trips.to_city} (${bk.trips.trip_date})`:`${bk.passenger_name||"A passenger"} cancelled their booking on ${gc(bk.trips.from_city)?.en||bk.trips.from_city} → ${gc(bk.trips.to_city)?.en||bk.trips.to_city} (${bk.trips.trip_date})`);
     loadPassengerBookings();
   };
 
@@ -606,9 +630,12 @@ const [driverEditing,setDriverEditing]=useState(false);
 
   const updateApplication=async(id,status)=>{
     await supabase.from("driver_applications").update({status,reviewed_by:user.id}).eq("id",id);
+    const app=applications.find(a=>a.id===id);
     if(status==="approved"){
-      const app=applications.find(a=>a.id===id);
       if(app?.user_id) await supabase.from("profiles").update({role:"driver"}).eq("id",app.user_id);
+      if(app?.user_id) createNotif(app.user_id,"application_approved",lang==="ar"?"تهانينا! طلبك موافق عليه 🎉":"Application Approved 🎉",lang==="ar"?"تم قبول طلبك كسائق! يمكنك الآن تسجيل الدخول والبدء بنشر الرحلات":"Your driver application has been approved! You can now log in and start posting trips.");
+    } else if(status==="denied"&&app?.user_id){
+      createNotif(app.user_id,"application_denied",lang==="ar"?"طلبك غير مقبول":"Application Not Approved",lang==="ar"?"نأسف، لم يتم قبول طلبك هذه المرة. يمكنك التواصل معنا للاستفسار":"We're sorry, your driver application was not approved this time. Please contact us for more information.");
     }
     loadAdminData();
   };
@@ -619,7 +646,12 @@ const [driverEditing,setDriverEditing]=useState(false);
     loadAdminData();
   };
 
-  const adminApproveTrip=async(id)=>{await supabase.from("trips").update({approved:true,status:"active"}).eq("id",id);loadAdminData();};
+  const adminApproveTrip=async(id)=>{
+    await supabase.from("trips").update({approved:true,status:"active"}).eq("id",id);
+    const trip=adminAllTrips.find(t=>t.id===id);
+    if(trip?.driver_id) createNotif(trip.driver_id,"trip_approved",lang==="ar"?"رحلتك موافق عليها 🚗":"Trip Approved 🚗",lang==="ar"?`تم الموافقة على رحلتك من ${gc(trip.from_city)?.[lang]||trip.from_city} إلى ${gc(trip.to_city)?.[lang]||trip.to_city} بتاريخ ${trip.trip_date} وهي الآن متاحة للحجز`:`Your trip from ${gc(trip.from_city)?.en||trip.from_city} to ${gc(trip.to_city)?.en||trip.to_city} on ${trip.trip_date} has been approved and is now live`);
+    loadAdminData();
+  };
   const adminCancelTrip=async(id)=>{await supabase.from("trips").update({status:"cancelled"}).eq("id",id);loadAdminData();};
 
   const adminDeleteTrip=async(id)=>{
@@ -762,12 +794,10 @@ const [driverEditing,setDriverEditing]=useState(false);
       const now=new Date();
       if((tripDateTime-now)<2*60*60*1000){setTripError(drv.noticeRequired);return false;}
     }
-    const routeLimits={"dam-bei":{min:35,max:40},"bei-dam":{min:35,max:40},"dam-hom":{min:15,max:25},"hom-dam":{min:15,max:25},"dam-ale":{min:35,max:50},"ale-dam":{min:35,max:50},"dam-amm":{min:60,max:70},"amm-dam":{min:60,max:70},"dam-qaa":{min:65,max:75},"qaa-dam":{min:65,max:75},"dam-daa":{min:20,max:30},"daa-dam":{min:20,max:30},"ale-hom":{min:25,max:30},"hom-ale":{min:25,max:30}};
-    const routeKey=`${tripForm.from}-${tripForm.to}`;
-    const limits=routeLimits[routeKey];
-    if(limits){
+    const driverRoute=findRoute(tripForm.from,tripForm.to);
+    if(driverRoute&&!driverRoute.comingSoon){
       const p=parseFloat(tripForm.pricePerSeat);
-      if(p<limits.min||p>limits.max){setTripError(lang==="ar"?`السعر يجب أن يكون بين $${limits.min} و $${limits.max} لهذا المسار`:`Price must be between $${limits.min} and $${limits.max} for this route`);return false;}
+      if(isNaN(p)||p<driverRoute.seatMin||p>driverRoute.seatMax){setTripError(lang==="ar"?`السعر يجب أن يكون بين $${driverRoute.seatMin} و $${driverRoute.seatMax} لهذا المسار`:`Price must be between $${driverRoute.seatMin} and $${driverRoute.seatMax} for this route`);return false;}
     }
     return true;
   };
@@ -839,6 +869,7 @@ const [driverEditing,setDriverEditing]=useState(false);
       :`🚗 *Seat Booking - Safferni*${isWomen?" 💜 Women Only":""}\n\n📋 Ref: ${ref}\n📍 Route: ${from?.en||selectedTrip.from_city} to ${to?.en||selectedTrip.to_city}\n📅 Date: ${selectedTrip.trip_date}\n⏰ Time: ${formatTime(selectedTrip.trip_time)}\n💰 Price: $${applyDiscount(selectedTrip.price_per_seat*tripBooking.seats).toFixed(2)}\n\n👤 Name: ${tripBooking.name}\n📞 Phone: ${tripBooking.phone}`;
     window.open(`https://wa.me/${WA_PHONE}?text=${encodeURIComponent(msg)}`,"_blank");
     setTripBooked(true);
+    if(selectedTrip?.driver_id) createNotif(selectedTrip.driver_id,"new_booking",lang==="ar"?"حجز جديد على رحلتك 👤":"New booking on your trip 👤",lang==="ar"?`${name} حجز ${tripBooking.seats} مقعد — ${gc(selectedTrip.from_city)?.[lang]||selectedTrip.from_city} إلى ${gc(selectedTrip.to_city)?.[lang]||selectedTrip.to_city} (${selectedTrip.trip_date})`:`${name} booked ${tripBooking.seats} seat(s) on ${gc(selectedTrip.from_city)?.en||selectedTrip.from_city} → ${gc(selectedTrip.to_city)?.en||selectedTrip.to_city} (${selectedTrip.trip_date})`);
   };
 
   const submitRating=async()=>{
@@ -857,7 +888,7 @@ const [driverEditing,setDriverEditing]=useState(false);
   const availDests=form.from?getDests(form.from).map(id=>gc(id)):[];
   const route=form.from&&form.to?findRoute(form.from,form.to):null;
   const eType=form.type;
-  const price=route&&!route.comingSoon?(eType==="seat"?`${route.seatMin}–${route.seatMax}`:eType==="car"?route.car:route.van):null;
+  const price=route&&!route.comingSoon?(eType==="seat"?route.seat:eType==="car"?route.car:route.van):null;
   const copyUSDT=()=>{
     if(navigator.clipboard){navigator.clipboard.writeText(USDT_ADDRESS).then(()=>{setCopied(true);setTimeout(()=>setCopied(false),2000)});}
     else{const el=document.createElement("textarea");el.value=USDT_ADDRESS;document.body.appendChild(el);el.select();document.execCommand("copy");document.body.removeChild(el);setCopied(true);setTimeout(()=>setCopied(false),2000);}
@@ -926,6 +957,7 @@ const [driverEditing,setDriverEditing]=useState(false);
             
           <div style={{display:"flex",gap:8,alignItems:"center",marginInlineStart:"auto"}}>
               {user?(<>
+                <div onClick={()=>setShowNotifications(v=>!v)} style={{position:"relative",cursor:"pointer",display:"flex",alignItems:"center",padding:"6px 9px",borderRadius:8,border:"1.5px solid #DDD",background:showNotifications?"#F0F7F3":"white"}}><span style={{fontSize:15,lineHeight:1}}>🔔</span>{unreadCount>0&&<span style={{position:"absolute",top:-5,right:-5,background:"#EF4444",color:"white",borderRadius:20,minWidth:16,height:16,fontSize:9,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",padding:"0 3px"}}>{unreadCount>9?"9+":unreadCount}</span>}</div>
                 <button onClick={()=>setPage("profile")} style={{background:page==="profile"?"#1B3A2A":"transparent",color:page==="profile"?"white":"#555",border:"1.5px solid #DDD",borderRadius:8,padding:"6px 14px",fontSize:12,cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>{t.nav.profile}</button>
                 <button onClick={handleLogout} style={{background:"transparent",border:"1.5px solid #DDD",borderRadius:8,padding:"6px 14px",fontSize:12,cursor:"pointer",fontWeight:700,color:"#555",fontFamily:"inherit"}}>{t.nav.logout}</button>
               </>):(<>
@@ -938,6 +970,7 @@ const [driverEditing,setDriverEditing]=useState(false);
           <div style={{display:"none"}} className="mnav">
             <div style={{display:"flex",alignItems:"center",gap:10}}>
               <button onClick={toggleLang} style={{background:"transparent",border:"1.5px solid #DDD",borderRadius:6,padding:"5px 12px",fontSize:11,cursor:"pointer",fontWeight:700,color:"#555",fontFamily:"inherit"}}>{lang==="ar"?"EN":"عربي"}</button>
+              {user&&<div onClick={()=>setShowNotifications(v=>!v)} style={{position:"relative",cursor:"pointer",padding:"5px 8px",borderRadius:6,border:"1.5px solid #DDD",background:showNotifications?"#F0F7F3":"white",display:"flex",alignItems:"center"}}><span style={{fontSize:15,lineHeight:1}}>🔔</span>{unreadCount>0&&<span style={{position:"absolute",top:-5,right:-5,background:"#EF4444",color:"white",borderRadius:20,minWidth:15,height:15,fontSize:9,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",padding:"0 2px"}}>{unreadCount>9?"9+":unreadCount}</span>}</div>}
               <div onClick={()=>setMenuOpen(!menuOpen)} style={{cursor:"pointer",padding:8,fontSize:20,lineHeight:1}}>{menuOpen?"✕":"☰"}</div>
             </div>
           </div>
@@ -1298,7 +1331,7 @@ const [driverEditing,setDriverEditing]=useState(false);
             ))}
           </div>
           <div style={{display:"flex",gap:8,marginBottom:28,justifyContent:"center",flexWrap:"wrap"}}>
-            {[["applications",adm.applications],["editRequests",adm.editRequests],["drivers",adm.drivers],["allTrips",adm.allTrips],["promoCodes",lang==="ar"?"كودات الخصم":"Promo Codes"]].map(([k,l])=>(
+            {[["applications",adm.applications],["editRequests",adm.editRequests],["drivers",adm.drivers],["allTrips",adm.allTrips],["promoCodes",lang==="ar"?"كودات الخصم":"Promo Codes"],["activity",lang==="ar"?"سجل النشاط 📋":"Activity Log 📋"]].map(([k,l])=>(
               <button key={k} onClick={()=>setAdminTab(k)} style={{padding:"10px 20px",borderRadius:10,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",border:"2px solid",borderColor:adminTab===k?"#1B3A2A":"#E8E6E1",background:adminTab===k?"#1B3A2A":"white",color:adminTab===k?"white":"#666"}}>{l}</button>
             ))}
           </div>
@@ -1442,6 +1475,41 @@ const [driverEditing,setDriverEditing]=useState(false);
               </div>
             ))}
           </div>)}
+
+          {adminTab==="activity"&&(<div>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:8}}>
+              <div>
+                <h3 style={{fontSize:16,fontWeight:800,color:"#1B3A2A",marginBottom:4}}>{lang==="ar"?"سجل النشاط الأخير":"Recent Activity Log"}</h3>
+                <p style={{fontSize:12,color:"#AAA",margin:0}}>{lang==="ar"?"آخر الطلبات والحجوزات وطلبات التعديل":"Latest applications, bookings, and edit requests"}</p>
+              </div>
+              <button onClick={loadAdminActivity} style={{background:"#1B3A2A",color:"white",border:"none",padding:"8px 18px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{lang==="ar"?"🔄 تحديث":"🔄 Refresh"}</button>
+            </div>
+            {adminActivity.length===0?<div style={{padding:"60px",textAlign:"center",color:"#CCC",background:"white",borderRadius:16,border:"1px solid #E8E6E1"}}><div style={{fontSize:36,marginBottom:8}}>📋</div><div style={{fontSize:14,fontWeight:600}}>{lang==="ar"?"لا توجد بيانات — انقر تحديث":"No data — click Refresh"}</div></div>:(
+              <div style={{background:"white",borderRadius:16,border:"1px solid #E8E6E1",overflow:"hidden"}}>
+                <div style={{display:"grid",gridTemplateColumns:"130px 1fr 90px 90px",padding:"12px 20px",background:"#1B3A2A",fontSize:11,fontWeight:700,color:"rgba(255,255,255,0.85)",textTransform:"uppercase",gap:12}}>
+                  <div>{lang==="ar"?"النوع":"Type"}</div>
+                  <div>{lang==="ar"?"التفاصيل":"Details"}</div>
+                  <div style={{textAlign:"center"}}>{lang==="ar"?"الحالة":"Status"}</div>
+                  <div style={{textAlign:"right"}}>{lang==="ar"?"الوقت":"Time"}</div>
+                </div>
+                {adminActivity.map((ev,i)=>{
+                  const typeLabel=ev.type==="application"?(lang==="ar"?"طلب سائق 👤":"Application 👤"):ev.type==="booking"?(lang==="ar"?"حجز 📋":"Booking 📋"):(lang==="ar"?"طلب تعديل ✏️":"Edit Request ✏️");
+                  const statusBg={pending:"#FFF3CD",approved:"#D1FAE5",denied:"#FEE2E2",confirmed:"#BBF7D0",cancelled:"#FEE2E2",active:"#D1FAE5"}[ev.status]||"#F3F4F6";
+                  const statusFg={pending:"#92400E",approved:"#065F46",denied:"#991B1B",confirmed:"#065F46",cancelled:"#991B1B",active:"#065F46"}[ev.status]||"#555";
+                  return(<div key={`${ev.type}-${ev.id}`} style={{display:"grid",gridTemplateColumns:"130px 1fr 90px 90px",padding:"13px 20px",borderBottom:i<adminActivity.length-1?"1px solid #F0EEEA":"none",fontSize:13,gap:12,alignItems:"center"}} onMouseEnter={e=>e.currentTarget.style.background="#FAFAF8"} onMouseLeave={e=>e.currentTarget.style.background="white"}>
+                    <div style={{fontWeight:700,color:"#444",fontSize:12}}>{typeLabel}</div>
+                    <div style={{color:"#333",fontWeight:600,fontSize:13}}>
+                      {ev.type==="application"&&ev.title}
+                      {ev.type==="booking"&&`${ev.title||"—"} · ${ev.seats} ${lang==="ar"?"مقعد":"seat(s)"} · ${ev.route||""} ${ev.date?`(${ev.date})`:""}`}
+                      {ev.type==="edit"&&`${ev.route||""} → ${ev.newTime||""}`}
+                    </div>
+                    <div style={{textAlign:"center"}}><span style={{padding:"3px 10px",borderRadius:20,fontSize:11,fontWeight:700,background:statusBg,color:statusFg}}>{ev.status||"—"}</span></div>
+                    <div style={{textAlign:"right",fontSize:11,color:"#AAA",fontWeight:600}}>{timeAgo(ev.ts)}</div>
+                  </div>);
+                })}
+              </div>
+            )}
+          </div>)}
         </section>
       )}
 
@@ -1462,7 +1530,7 @@ const [driverEditing,setDriverEditing]=useState(false);
                 <div><label style={lbl}>{drv.time}</label><select value={tripForm.time} onChange={e=>setTripForm({...tripForm,time:e.target.value})} style={inp}><option value="">--</option>{timeOptions.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}</select></div>
               </div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12,marginBottom:16}}>
-                <div><label style={lbl}>{drv.pricePerSeat} *</label><input type="number" value={tripForm.pricePerSeat} onChange={e=>setTripForm({...tripForm,pricePerSeat:e.target.value})} style={inp} placeholder="0"/></div>
+                <div>{(()=>{const dr=tripForm.from&&tripForm.to?findRoute(tripForm.from,tripForm.to):null;const lim=dr&&!dr.comingSoon?dr:null;return(<><label style={lbl}>{drv.pricePerSeat} *{lim&&<span style={{fontWeight:600,color:"#1B3A2A",marginInlineStart:4,fontSize:10}}>(${lim.seatMin}–${lim.seatMax})</span>}</label><input type="number" min={lim?.seatMin} max={lim?.seatMax} value={tripForm.pricePerSeat} onChange={e=>setTripForm({...tripForm,pricePerSeat:e.target.value})} style={inp} placeholder={lim?`${lim.seatMin}–${lim.seatMax}`:"0"}/></>)})()}</div>
                 <div><label style={lbl}>{drv.totalSeats}</label><select value={tripForm.totalSeats} onChange={e=>setTripForm({...tripForm,totalSeats:e.target.value})} style={inp}>{[2,3,4,5,6,7,8,9,10].map(n=><option key={n} value={n}>{n}</option>)}</select></div>
                 <div><label style={lbl}>{drv.carType}</label><input value={tripForm.carType} onChange={e=>setTripForm({...tripForm,carType:e.target.value})} style={inp}/></div>
               </div>
@@ -1943,7 +2011,7 @@ const [driverEditing,setDriverEditing]=useState(false);
               </div>
             </div>
             {route?.comingSoon&&form.to&&<div style={{background:"#FFF3CD",border:"1px solid #FFE082",borderRadius:12,padding:"14px 20px",marginBottom:18,textAlign:"center"}}><span style={{fontSize:14,fontWeight:700,color:"#92400E"}}>🚧 {lang==="ar"?"هذا المسار قريباً":"This route is coming soon"}</span></div>}
-            {price!==null&&<div style={{background:"linear-gradient(135deg,#F0F7F3,#E8F5ED)",borderRadius:12,padding:"14px 20px",marginBottom:18,display:"flex",justifyContent:"space-between",alignItems:"center"}}><span style={{fontSize:13,fontWeight:700,color:"#555"}}>{b.price}</span><span style={{fontSize:eType==="seat"?"22px":"28px",fontWeight:900,color:"#1B3A2A"}}>${price}</span></div>}
+            {price!==null&&<div style={{background:"linear-gradient(135deg,#F0F7F3,#E8F5ED)",borderRadius:12,padding:"14px 20px",marginBottom:18,display:"flex",justifyContent:"space-between",alignItems:"center"}}><span style={{fontSize:13,fontWeight:700,color:"#555"}}>{b.price}</span><span style={{fontSize:28,fontWeight:900,color:"#1B3A2A"}}>${price}</span></div>}
             <div style={{marginBottom:18}}><label style={lbl}>{b.payment} *</label>
               <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
                 {[["cash",b.cash,"💵"],["crypto",b.crypto,"₿"],["shamcash",b.shamcash,"📱"]].map(([k,l,ic])=>(<button key={k} onClick={()=>setForm({...form,payment:k})} style={{flex:1,minWidth:100,padding:"11px 10px",borderRadius:10,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",border:"2px solid",transition:"all 0.2s",borderColor:form.payment===k?"#1B3A2A":"#E8E6E1",background:form.payment===k?"#1B3A2A":"white",color:form.payment===k?"white":"#666"}}>{ic} {l}</button>))}
@@ -1980,7 +2048,7 @@ const [driverEditing,setDriverEditing]=useState(false);
           </div>
           {pricingRoutes.map((r,i)=>(<div key={i} style={{display:"grid",gridTemplateColumns:"1.8fr 1fr 1fr 1fr",padding:"14px 20px",borderBottom:i<pricingRoutes.length-1?"1px solid #F0EEEA":"none",fontSize:13,transition:"background 0.15s"}} onMouseEnter={e=>e.currentTarget.style.background="#FAFAF8"} onMouseLeave={e=>e.currentTarget.style.background="white"}>
             <div style={{fontWeight:800,color:"#1B3A2A"}}>{r.from[lang]} → {r.to[lang]}</div>
-            <div style={{textAlign:"center",fontWeight:700}}>${r.seatMin}–{r.seatMax}</div>
+            <div style={{textAlign:"center",fontWeight:700}}>${r.seat}</div>
             <div style={{textAlign:"center",fontWeight:700}}>${r.car}</div>
             <div style={{textAlign:"center",fontWeight:700}}>${r.van}</div>
           </div>))}
@@ -2027,6 +2095,37 @@ const [driverEditing,setDriverEditing]=useState(false);
         </div>
       )}
       {reviewSidebarDriver&&<div onClick={()=>setReviewSidebarDriver(null)} style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,0.3)",zIndex:299}}/>}
+
+      {user&&showNotifications&&(
+        <>
+          <div onClick={()=>setShowNotifications(false)} style={{position:"fixed",top:0,left:0,right:0,bottom:0,zIndex:149}}/>
+          <div style={{position:"fixed",top:68,[isRTL?"left":"right"]:16,width:360,maxWidth:"calc(100vw - 32px)",maxHeight:520,background:"white",borderRadius:16,boxShadow:"0 8px 40px rgba(0,0,0,0.18)",border:"1px solid #E8E6E1",zIndex:150,overflow:"hidden",display:"flex",flexDirection:"column"}}>
+            <div style={{padding:"16px 20px",borderBottom:"1px solid #F0EEEA",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}>
+              <span style={{fontSize:15,fontWeight:800,color:"#1B3A2A"}}>{lang==="ar"?"الإشعارات":"Notifications"}{unreadCount>0&&<span style={{background:"#EF4444",color:"white",borderRadius:20,padding:"2px 8px",fontSize:11,fontWeight:700,marginInlineStart:8}}>{unreadCount}</span>}</span>
+              {unreadCount>0&&<button onClick={markAllRead} style={{fontSize:11,fontWeight:700,color:"#1B3A2A",background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",textDecoration:"underline"}}>{lang==="ar"?"تعيين الكل مقروءاً":"Mark all read"}</button>}
+            </div>
+            <div style={{overflowY:"auto",flex:1}}>
+              {notifications.length===0?(<div style={{padding:"48px 20px",textAlign:"center",color:"#CCC"}}><div style={{fontSize:36,marginBottom:8}}>🔔</div><div style={{fontSize:13,fontWeight:600}}>{lang==="ar"?"لا توجد إشعارات بعد":"No notifications yet"}</div></div>)
+              :notifications.map((n,i)=>{
+                const icons={new_booking:"👤",booking_confirmed:"✅",booking_rejected:"❌",booking_cancelled:"🚫",application_approved:"🎉",application_denied:"😞",trip_approved:"🚗"};
+                return(<div key={n.id} onClick={()=>markNotifRead(n.id)} style={{padding:"14px 20px",borderBottom:i<notifications.length-1?"1px solid #F8F6F2":"none",background:n.read?"white":"#F0F7F3",cursor:"pointer",transition:"background 0.15s"}} onMouseEnter={e=>e.currentTarget.style.background="#F8F8F6"} onMouseLeave={e=>e.currentTarget.style.background=n.read?"white":"#F0F7F3"}>
+                  <div style={{display:"flex",gap:12,alignItems:"flex-start"}}>
+                    <span style={{fontSize:20,lineHeight:1,marginTop:2,flexShrink:0}}>{icons[n.type]||"🔔"}</span>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:3}}>
+                        <span style={{fontSize:13,fontWeight:800,color:"#1B3A2A"}}>{n.title}</span>
+                        {!n.read&&<span style={{width:8,height:8,borderRadius:"50%",background:"#1B3A2A",flexShrink:0,marginTop:4,marginInlineStart:8}}/>}
+                      </div>
+                      <p style={{fontSize:12,color:"#666",margin:"0 0 4px",lineHeight:1.5}}>{n.message}</p>
+                      <span style={{fontSize:10,color:"#AAA",fontWeight:600}}>{timeAgo(n.created_at)}</span>
+                    </div>
+                  </div>
+                </div>);
+              })}
+            </div>
+          </div>
+        </>
+      )}
 
       <footer style={{borderTop:"1px solid #E8E6E1",padding:"20px",textAlign:"center",color:"#BBB",fontSize:12,background:"white",fontWeight:500}}>© 2026 {t.brand} — {t.footer}</footer>
 

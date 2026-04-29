@@ -508,3 +508,45 @@ BEGIN
   RETURN jsonb_build_object('success', false, 'error', 'Invalid action');
 END;
 $$;
+
+
+-- ============================================================
+-- PART 6: NOTIFICATIONS
+-- Run this once to add the notifications table.
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS notifications (
+  id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id    uuid REFERENCES auth.users(id) ON DELETE CASCADE,
+  type       text NOT NULL,
+  title      text NOT NULL,
+  message    text NOT NULL,
+  read       boolean DEFAULT false,
+  created_at timestamptz DEFAULT now()
+);
+
+ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
+
+-- Users can only read their own notifications
+DROP POLICY IF EXISTS "notifications_select" ON notifications;
+CREATE POLICY "notifications_select" ON notifications
+  FOR SELECT USING (auth.uid() = user_id);
+
+-- Any authenticated user can insert a notification for any user
+-- (needed for cross-user notifications: driver notifying passenger, etc.)
+DROP POLICY IF EXISTS "notifications_insert" ON notifications;
+CREATE POLICY "notifications_insert" ON notifications
+  FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+
+-- Users can mark their own notifications as read
+DROP POLICY IF EXISTS "notifications_update_own" ON notifications;
+CREATE POLICY "notifications_update_own" ON notifications
+  FOR UPDATE USING (auth.uid() = user_id);
+
+-- Users can delete their own notifications
+DROP POLICY IF EXISTS "notifications_delete_own" ON notifications;
+CREATE POLICY "notifications_delete_own" ON notifications
+  FOR DELETE USING (auth.uid() = user_id);
+
+-- Index for fast per-user queries
+CREATE INDEX IF NOT EXISTS notifications_user_id_idx ON notifications(user_id, created_at DESC);
