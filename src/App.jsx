@@ -295,7 +295,7 @@ export default function App(){
 
   // Passenger profile page
   const [profileTab,setProfileTab]=useState("profile");
-  const [profileEdit,setProfileEdit]=useState({fullName:"",phone:"",email:""});
+  const [profileEdit,setProfileEdit]=useState({fullName:"",phone:"",email:"",emergencyEmail:""});
  const [profileSaved,setProfileSaved]=useState(false);
 const [profileEditing,setProfileEditing]=useState(false);
 const [driverEditing,setDriverEditing]=useState(false);
@@ -333,7 +333,7 @@ const [driverEditing,setDriverEditing]=useState(false);
   useEffect(()=>{if(page==="driver"&&user){setSelectedDriver(null);loadProfile(user);loadDriverData();}},[page,user]);
   useEffect(()=>{
     if(page==="profile"&&user){
-      setProfileEdit({fullName:profile?.full_name||"",phone:profile?.phone||"",email:profile?.email||user.email||""});
+      setProfileEdit({fullName:profile?.full_name||"",phone:profile?.phone||"",email:profile?.email||user.email||"",emergencyEmail:profile?.emergency_contact_email||""});
       setApplyForm(f=>({...f,fullName:profile?.full_name||"",phone:profile?.phone||""}));
       loadPassengerBookings();
     }
@@ -496,9 +496,30 @@ const [driverEditing,setDriverEditing]=useState(false);
 
   const saveProfile=async()=>{
     if(!user) return;
-    await supabase.from("profiles").update({full_name:profileEdit.fullName,phone:profileEdit.phone}).eq("id",user.id);
-    setProfile(p=>({...p,full_name:profileEdit.fullName,phone:profileEdit.phone}));
+    await supabase.from("profiles").update({full_name:profileEdit.fullName,phone:profileEdit.phone,emergency_contact_email:profileEdit.emergencyEmail}).eq("id",user.id);
+    setProfile(p=>({...p,full_name:profileEdit.fullName,phone:profileEdit.phone,emergency_contact_email:profileEdit.emergencyEmail}));
     setProfileSaved(true);setTimeout(()=>setProfileSaved(false),3000);
+  };
+
+  const confirmBooking=async(bookingId)=>{
+    await supabase.rpc("driver_action_booking",{p_booking_id:bookingId,p_action:"confirm"});
+    setTripDetailBookings(bs=>bs.map(b=>b.id===bookingId?{...b,status:"confirmed"}:b));
+  };
+
+  const rejectBooking=async(bookingId)=>{
+    const bk=tripDetailBookings.find(b=>b.id===bookingId);
+    await supabase.rpc("driver_action_booking",{p_booking_id:bookingId,p_action:"reject"});
+    setTripDetailBookings(bs=>bs.map(b=>b.id===bookingId?{...b,status:"cancelled"}:b));
+    if(bk&&selectedTripDetail){
+      setSelectedTripDetail(t=>({...t,available_seats:(t.available_seats||0)+bk.seats}));
+      setDriverTrips(ts=>ts.map(t=>t.id===selectedTripDetail.id?{...t,available_seats:(t.available_seats||0)+bk.seats}:t));
+    }
+  };
+
+  const markTripCompleted=async(tripId)=>{
+    await supabase.from("trips").update({status:"completed"}).eq("id",tripId);
+    setDriverTrips(ts=>ts.map(t=>t.id===tripId?{...t,status:"completed"}:t));
+    setSelectedTripDetail(t=>t?.id===tripId?{...t,status:"completed"}:t);
   };
 
   const cancelBooking=async(bookingId)=>{
@@ -855,7 +876,7 @@ const [driverEditing,setDriverEditing]=useState(false);
   };
 
   const navLinks=[["home",t.nav.home],["contact",t.nav.contact],...(driverApproved?[["driver",t.nav.driver]]:[]),...(isAdmin?[["admin",t.nav.admin]]:[])];
-  const statusBadge=(s)=>({padding:"4px 12px",borderRadius:20,fontSize:11,fontWeight:700,background:s==="active"?"#D1FAE5":s==="pending"?"#FFF3CD":s==="completed"?"#E0F2FE":"#FEE2E2",color:s==="active"?"#065F46":s==="pending"?"#92400E":s==="completed"?"#0369A1":"#991B1B"});
+  const statusBadge=(s)=>({padding:"4px 12px",borderRadius:20,fontSize:11,fontWeight:700,background:s==="active"?"#D1FAE5":s==="confirmed"?"#BBF7D0":s==="pending"?"#FFF3CD":s==="completed"?"#E0F2FE":"#FEE2E2",color:s==="active"?"#065F46":s==="confirmed"?"#065F46":s==="pending"?"#92400E":s==="completed"?"#0369A1":"#991B1B"});
 
   const timeOptions=Array.from({length:96},(_,i)=>{
     const h=Math.floor(i/4);const m=(i%4)*15;
@@ -1077,14 +1098,20 @@ const [driverEditing,setDriverEditing]=useState(false);
                 <label style={lbl}>{lang==="ar"?"رقم الهاتف":"Phone Number"}</label>
                 {profileEditing?<input value={profileEdit.phone} onChange={e=>setProfileEdit(p=>({...p,phone:e.target.value}))} style={{...inp,direction:"ltr",textAlign:"left"}}/>:<div style={{fontSize:14,fontWeight:600,color:"#333",padding:"11px 0",direction:"ltr",textAlign:"left"}}>{profileEdit.phone||"—"}</div>}
               </div>
-              <div style={{marginBottom:20}}>
+              <div style={{marginBottom:14}}>
                 <label style={lbl}>{lang==="ar"?"البريد الإلكتروني":"Email"}</label>
                 <div style={{fontSize:14,fontWeight:600,color:"#AAA",padding:"11px 0"}}>{profileEdit.email||"—"}</div>
+              </div>
+              <div style={{marginBottom:20,paddingBottom:20,borderBottom:"1px solid #F0F0F0"}}>
+                <label style={lbl}>{lang==="ar"?"جهة الاتصال للطوارئ 🛡️":"Emergency Contact 🛡️"}</label>
+                {profileEditing
+                  ?<><input type="email" value={profileEdit.emergencyEmail} onChange={e=>setProfileEdit(p=>({...p,emergencyEmail:e.target.value}))} style={inp} placeholder={lang==="ar"?"البريد الإلكتروني لشخص مقرّب":"Email of a close person"}/><p style={{fontSize:11,color:"#AAA",marginTop:4,marginBottom:0}}>{lang==="ar"?"سيتلقى هذا البريد تفاصيل حجوزاتك عند التأكيد":"This email address will receive your booking details once confirmed"}</p></>
+                  :<div style={{fontSize:14,fontWeight:600,color:profileEdit.emergencyEmail?"#333":"#CCC",padding:"11px 0"}}>{profileEdit.emergencyEmail||"—"}</div>}
               </div>
               {profileEditing&&(<>
                 {profileSaved&&<div style={{marginBottom:12,padding:"10px 16px",background:"#F0FDF4",border:"1px solid #BBF7D0",borderRadius:10,color:"#166534",fontSize:13,fontWeight:700}}>{prof.saved}</div>}
                 <div style={{display:"flex",gap:10,marginBottom:24}}>
-                  <button onClick={()=>{setProfileEditing(false);setProfileEdit({fullName:profile?.full_name||"",phone:profile?.phone||"",email:profile?.email||user.email||""});}} style={{flex:1,background:"white",color:"#666",border:"1.5px solid #DDD",padding:"12px",borderRadius:10,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{lang==="ar"?"إلغاء":"Cancel"}</button>
+                  <button onClick={()=>{setProfileEditing(false);setProfileEdit({fullName:profile?.full_name||"",phone:profile?.phone||"",email:profile?.email||user.email||"",emergencyEmail:profile?.emergency_contact_email||""});}} style={{flex:1,background:"white",color:"#666",border:"1.5px solid #DDD",padding:"12px",borderRadius:10,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{lang==="ar"?"إلغاء":"Cancel"}</button>
                   <button onClick={()=>{saveProfile();setProfileEditing(false);}} style={{flex:2,background:"#1B3A2A",color:"white",border:"none",padding:"12px",borderRadius:10,fontSize:14,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>{prof.saveChanges}</button>
                 </div>
               </>)}
@@ -1601,18 +1628,26 @@ const [driverEditing,setDriverEditing]=useState(false);
                 <div style={{background:"#F0F7F3",borderRadius:14,padding:"14px 18px",marginBottom:20}}>
                   <div style={{fontWeight:900,fontSize:15,color:"#1B3A2A"}}>{fc?.[lang]||trip.from_city} → {tc?.[lang]||trip.to_city}</div>
                   <div style={{fontSize:12,color:"#555",marginTop:4}}>{trip.trip_date} · {formatTime(trip.trip_time)} · {trip.total_seats-trip.available_seats}/{trip.total_seats} {lang==="ar"?"مقعد محجوز":"seats booked"}</div>
+                  {trip.status==="active"&&<button onClick={()=>markTripCompleted(trip.id)} style={{marginTop:10,background:"#0369A1",color:"white",border:"none",padding:"7px 18px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>✓ {lang==="ar"?"تحديد كمكتملة":"Mark as Completed"}</button>}
+                  {trip.status==="completed"&&<div style={{marginTop:8,fontSize:12,fontWeight:700,color:"#0369A1"}}>✓ {lang==="ar"?"الرحلة مكتملة":"Trip completed"}</div>}
                 </div>
                 {tripDetailLoading?<p style={{textAlign:"center",color:"#AAA",padding:"24px"}}>{lang==="ar"?"جاري التحميل...":"Loading..."}</p>
                 :tripDetailBookings.length===0?<p style={{textAlign:"center",color:"#AAA",padding:"24px"}}>{lang==="ar"?"لا توجد حجوزات بعد":"No bookings yet"}</p>
                 :tripDetailBookings.map((bk,i)=>(
                   <div key={bk.id} style={{background:"#FAFAF8",borderRadius:12,padding:"14px 16px",border:"1px solid #E8E6E1",marginBottom:8}}>
-                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10,flexWrap:"wrap"}}>
                       <div>
                         <div style={{fontWeight:800,fontSize:14,color:"#1B3A2A",marginBottom:2}}>{bk.passenger_name}</div>
                         <div style={{fontSize:12,color:"#555"}}>{bk.passenger_phone}</div>
                         <div style={{fontSize:11,color:"#888",marginTop:4}}>💺 {bk.seats} {lang==="ar"?"مقعد":"seat(s)"} · {bk.payment_method} · 📋 {bk.ref_code}</div>
                       </div>
-                      <span style={statusBadge(bk.status)}>{bk.status}</span>
+                      <div style={{display:"flex",flexDirection:"column",gap:6,alignItems:"flex-end"}}>
+                        <span style={statusBadge(bk.status)}>{bk.status}</span>
+                        {bk.status==="pending"&&<div style={{display:"flex",gap:6}}>
+                          <button onClick={()=>confirmBooking(bk.id)} style={{background:"#1B3A2A",color:"white",border:"none",padding:"5px 12px",borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{lang==="ar"?"قبول":"Confirm"}</button>
+                          <button onClick={()=>rejectBooking(bk.id)} style={{background:"#EF4444",color:"white",border:"none",padding:"5px 12px",borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{lang==="ar"?"رفض":"Reject"}</button>
+                        </div>}
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -1787,6 +1822,7 @@ const [driverEditing,setDriverEditing]=useState(false);
                           {trip.avg_rating>0&&<span style={{fontSize:11,color:"#888"}}>({trip.rating_count})</span>}
                           <button onClick={async(e)=>{e.stopPropagation();setReviewSidebarDriver(trip.driver_id);await loadDriverReviews(trip.driver_id);}} style={{background:"transparent",border:"1px solid #DDD",borderRadius:20,padding:"2px 10px",fontSize:11,fontWeight:700,color:"#555",cursor:"pointer",fontFamily:"inherit"}}>{lang==="ar"?"التقييمات":"See reviews"}</button>
                           <button onClick={async(e)=>{e.stopPropagation();await openDriverPublicPage(trip.driver_id);}} style={{background:"transparent",border:"1px solid #C7D2CC",borderRadius:20,padding:"2px 10px",fontSize:11,fontWeight:700,color:"#1B3A2A",cursor:"pointer",fontFamily:"inherit"}}>👤 {lang==="ar"?"السائق":"Driver"}</button>
+                          <button onClick={e=>{e.stopPropagation();const fc=gc(trip.from_city);const tc=gc(trip.to_city);const txt=encodeURIComponent(`🚗 سفّرني | Safferni\n${fc?.ar||trip.from_city} ← → ${tc?.ar||trip.to_city}\n📅 ${trip.trip_date}  ⏰ ${formatTime(trip.trip_time)}\n💵 $${trip.price_per_seat}/${lang==="ar"?"مقعد":"seat"}\n👉 safferni.com`);window.open(`https://wa.me/?text=${txt}`,"_blank");}} style={{background:"transparent",border:"1px solid #25D366",borderRadius:20,padding:"2px 10px",fontSize:11,fontWeight:700,color:"#25D366",cursor:"pointer",fontFamily:"inherit"}}>📤 {lang==="ar"?"شارك":"Share"}</button>
                         </div>
                       </div>
                       <div style={{display:"flex",alignItems:"center",gap:12}}>

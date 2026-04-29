@@ -458,3 +458,53 @@ BEGIN
   RETURN jsonb_build_object('success', true);
 END;
 $$;
+
+
+-- ============================================================
+-- PART 5: EMERGENCY CONTACT + DRIVER BOOKING ACTIONS
+-- ============================================================
+
+-- Emergency contact email on profiles
+ALTER TABLE profiles
+  ADD COLUMN IF NOT EXISTS emergency_contact_email text;
+
+-- Driver can confirm or reject a booking atomically
+CREATE OR REPLACE FUNCTION driver_action_booking(
+  p_booking_id uuid,
+  p_action      text  -- 'confirm' or 'reject'
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_trip_id   uuid;
+  v_seats     int;
+  v_driver_id uuid;
+BEGIN
+  SELECT b.trip_id, b.seats, t.driver_id
+  INTO v_trip_id, v_seats, v_driver_id
+  FROM bookings b
+  JOIN trips t ON t.id = b.trip_id
+  WHERE b.id = p_booking_id AND b.status = 'pending';
+
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object('success', false, 'error', 'Booking not found or already actioned');
+  END IF;
+
+  IF v_driver_id != auth.uid() THEN
+    RETURN jsonb_build_object('success', false, 'error', 'Not authorized');
+  END IF;
+
+  IF p_action = 'confirm' THEN
+    UPDATE bookings SET status = 'confirmed' WHERE id = p_booking_id;
+    RETURN jsonb_build_object('success', true);
+  ELSIF p_action = 'reject' THEN
+    UPDATE bookings SET status = 'cancelled' WHERE id = p_booking_id;
+    UPDATE trips SET available_seats = available_seats + v_seats WHERE id = v_trip_id;
+    RETURN jsonb_build_object('success', true);
+  END IF;
+
+  RETURN jsonb_build_object('success', false, 'error', 'Invalid action');
+END;
+$$;
