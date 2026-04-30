@@ -394,9 +394,10 @@ const [driverEditing,setDriverEditing]=useState(false);
     });
     const{data:{subscription}}=supabase.auth.onAuthStateChange((event,session)=>{
       if(event==="PASSWORD_RECOVERY"){setPage("login");setAuthStep("forgot_newpass");return;}
-      if(event==="SIGNED_OUT"||event==="TOKEN_REFRESHED"||event==="SIGNED_IN"){
-        // Ignore auth events fired after an explicit logout (race condition / tab-focus refresh)
-        if(didLogOut.current&&session?.user){supabase.auth.signOut({scope:"global"}).catch(()=>{});return;}
+      if(event==="SIGNED_OUT"){didLogOut.current=false;}
+      if((event==="TOKEN_REFRESHED"||event==="SIGNED_IN")&&didLogOut.current&&session?.user){
+        // Stale session resurfaced after explicit logout — kill it
+        supabase.auth.signOut({scope:"global"}).catch(()=>{});return;
       }
       setUser(session?.user??null);
       if(session?.user) loadProfile(session.user);
@@ -457,7 +458,6 @@ const [driverEditing,setDriverEditing]=useState(false);
     setUser(null);setProfile(null);setDriverApproved(false);setDriverApplication(null);setPage("home");
     await supabase.auth.signOut({scope:"global"}).catch(()=>{});
     Object.keys(localStorage).filter(k=>k.startsWith("sb-")).forEach(k=>localStorage.removeItem(k));
-    setTimeout(()=>{didLogOut.current=false;},3000);
   };
 
   // ─── AUTH FLOW ────────────────────────────────────────────────────────────
@@ -472,6 +472,7 @@ const [driverEditing,setDriverEditing]=useState(false);
   // Step 1: Login with email + password
   const handleLogin=async()=>{
     if(!authForm.email||!authForm.password){setAuthError(t.auth.error);return;}
+    didLogOut.current=false;
     setAuthLoading(true);setAuthError("");
     const{error}=await supabase.auth.signInWithPassword({email:authForm.email,password:authForm.password});
     if(error) setAuthError(t.auth.error);
@@ -483,6 +484,7 @@ const [driverEditing,setDriverEditing]=useState(false);
   const handleSignupSyriaStart=async()=>{
     if(!authForm.fullName||!authForm.email||!authForm.password){setAuthError(t.auth.error);return;}
     if(authForm.password.length<8){setAuthError(lang==="ar"?"كلمة المرور يجب أن تكون ٨ أحرف على الأقل":"Password must be at least 8 characters");return;}
+    didLogOut.current=false;
     setAuthLoading(true);setAuthError("");
     const email=authForm.email.trim().toLowerCase();
     const{data:existingEmail}=await supabase.from("profiles").select("id").eq("email",email).maybeSingle();
@@ -525,6 +527,7 @@ const [driverEditing,setDriverEditing]=useState(false);
   // Signup Other: send SMS OTP
   const handleSignupOtherStart=async()=>{
     if(!authForm.fullName||!authForm.phone||detectCC(authForm.phone).num.length<4||!authForm.email||!authForm.password){setAuthError(t.auth.error);return;}
+    didLogOut.current=false;
     setAuthLoading(true);setAuthError("");
     const email=authForm.email.trim().toLowerCase();
     const phone=fullPhone();
