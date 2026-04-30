@@ -847,7 +847,7 @@ const [driverEditing,setDriverEditing]=useState(false);
   const searchTrips=async()=>{
     if(!searchDate){setTripsLoaded(true);setTrips([]);return;}
     setTripsLoaded(false);
-    let query=supabase.from("trips").select("*").eq("trip_date",searchDate).eq("status","active").eq("approved",true).gt("available_seats",0).order("trip_time");
+    let query=supabase.from("trips").select("*").eq("trip_date",searchDate).eq("status","active").eq("approved",true).order("trip_time");
     if(searchFrom) query=query.eq("from_city",searchFrom);
     if(searchTo) query=query.eq("to_city",searchTo);
     query=query.eq("gender_type",searchGender);
@@ -1921,8 +1921,12 @@ const [driverEditing,setDriverEditing]=useState(false);
                           <GenderBadge type={trip.gender_type} lang={lang}/>
                         </div>
                         <div style={{fontSize:12,color:"#888"}}>{formatTime(trip.trip_time)} · {trip.car_type||""}</div>
-                        {trip.available_seats<=2&&trip.available_seats>0&&<div style={{fontSize:11,fontWeight:700,color:"#DC2626",marginTop:3}}>🔴 {lang==="ar"?`${trip.available_seats===1?"مقعد واحد متبقي فقط!":"مقعدان متبقيان فقط!"}`:trip.available_seats===1?"Only 1 seat left!":"Only 2 seats left!"}</div>}
-                        <div style={{fontSize:12,color:"#888",marginTop:2}}>{trip.available_seats} {b.seatsLeft}</div>
+                        {trip.available_seats<=0
+                          ?<div style={{fontSize:11,fontWeight:700,color:"#991B1B",marginTop:3}}>🔴 {lang==="ar"?"اكتملت المقاعد":"Fully Booked"}</div>
+                          :trip.available_seats<=2
+                            ?<div style={{fontSize:11,fontWeight:700,color:"#DC2626",marginTop:3}}>🔴 {lang==="ar"?`${trip.available_seats===1?"مقعد واحد متبقي فقط!":"مقعدان متبقيان فقط!"}`:trip.available_seats===1?"Only 1 seat left!":"Only 2 seats left!"}</div>
+                            :<div style={{fontSize:12,color:"#888",marginTop:2}}>{trip.available_seats} {b.seatsLeft}</div>
+                        }
                         <div style={{display:"flex",alignItems:"center",gap:8,marginTop:4,flexWrap:"wrap"}}>
                           {trip.avg_rating>0&&<StarRating value={Math.round(trip.avg_rating)} readOnly/>}
                           {trip.avg_rating>0&&<span style={{fontSize:11,color:"#888"}}>({trip.rating_count})</span>}
