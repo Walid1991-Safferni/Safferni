@@ -225,6 +225,7 @@ export default function App(){
   const [bookingRef,setBookingRef]=useState("");
   const [error,setError]=useState("");
   const [copied,setCopied]=useState(false);
+  const [shareCopiedId,setShareCopiedId]=useState(null);
 
   // Trip search
   const [searchDate,setSearchDate]=useState("");
@@ -348,6 +349,15 @@ const [driverEditing,setDriverEditing]=useState(false);
   },[]);
 
   useEffect(()=>{if(user) checkDriverApplication();},[user]);
+
+  useEffect(()=>{
+    const tripId=new URLSearchParams(window.location.search).get("trip");
+    if(!tripId) return;
+    window.history.replaceState({},"",window.location.pathname);
+    supabase.from("trips").select("*").eq("id",tripId).eq("status","active").eq("approved",true).maybeSingle().then(({data})=>{
+      if(data){setSelectedTrip(data);setTripBooked(false);setRatingSubmitted(false);setTripRating(0);setTripBooking({name:"",phone:"",seats:1,payment:"cash"});}
+    });
+  },[]);
 
   const timeAgo=(ts)=>{const diff=Date.now()-new Date(ts).getTime();const m=Math.floor(diff/60000);if(m<1)return lang==="ar"?"الآن":"just now";if(m<60)return lang==="ar"?`منذ ${m}د`:`${m}m ago`;const h=Math.floor(m/60);if(h<24)return lang==="ar"?`منذ ${h}س`:`${h}h ago`;const d=Math.floor(h/24);return lang==="ar"?`منذ ${d}ي`:`${d}d ago`;};
   const createNotif=async(userId,type,title,message)=>{if(!userId)return;try{await supabase.from("notifications").insert({user_id:userId,type,title,message});}catch(e){}};
@@ -1932,7 +1942,7 @@ const [driverEditing,setDriverEditing]=useState(false);
                           {trip.avg_rating>0&&<span style={{fontSize:11,color:"#888"}}>({trip.rating_count})</span>}
                           <button onClick={async(e)=>{e.stopPropagation();setReviewSidebarDriver(trip.driver_id);await loadDriverReviews(trip.driver_id);}} style={{background:"transparent",border:"1px solid #DDD",borderRadius:20,padding:"2px 10px",fontSize:11,fontWeight:700,color:"#555",cursor:"pointer",fontFamily:"inherit"}}>{lang==="ar"?"التقييمات":"See reviews"}</button>
                           <button onClick={async(e)=>{e.stopPropagation();await openDriverPublicPage(trip.driver_id);}} style={{background:"transparent",border:"1px solid #C7D2CC",borderRadius:20,padding:"2px 10px",fontSize:11,fontWeight:700,color:"#1B3A2A",cursor:"pointer",fontFamily:"inherit"}}>👤 {lang==="ar"?"السائق":"Driver"}</button>
-                          <button onClick={e=>{e.stopPropagation();const fc=gc(trip.from_city);const tc=gc(trip.to_city);const txt=encodeURIComponent(`🚗 سفّرني | Safferni\n${fc?.ar||trip.from_city} ← → ${tc?.ar||trip.to_city}\n📅 ${trip.trip_date}  ⏰ ${formatTime(trip.trip_time)}\n💵 $${trip.price_per_seat}/${lang==="ar"?"مقعد":"seat"}\n👉 safferni.com`);window.open(`https://wa.me/?text=${txt}`,"_blank");}} style={{background:"transparent",border:"1px solid #25D366",borderRadius:20,padding:"2px 10px",fontSize:11,fontWeight:700,color:"#25D366",cursor:"pointer",fontFamily:"inherit"}}>📤 {lang==="ar"?"شارك":"Share"}</button>
+                          <button onClick={e=>{e.stopPropagation();const link=`${window.location.origin}${window.location.pathname}?trip=${trip.id}`;navigator.clipboard?.writeText(link).catch(()=>{const el=document.createElement("textarea");el.value=link;document.body.appendChild(el);el.select();document.execCommand("copy");document.body.removeChild(el);});setShareCopiedId(trip.id);setTimeout(()=>setShareCopiedId(null),2000);}} style={{background:shareCopiedId===trip.id?"#D1FAE5":"transparent",border:`1px solid ${shareCopiedId===trip.id?"#34D399":"#25D366"}`,borderRadius:20,padding:"2px 10px",fontSize:11,fontWeight:700,color:shareCopiedId===trip.id?"#065F46":"#25D366",cursor:"pointer",fontFamily:"inherit",transition:"all 0.2s"}}>{shareCopiedId===trip.id?"✓ "+(lang==="ar"?"تم النسخ":"Copied!"):"📤 "+(lang==="ar"?"شارك":"Share")}</button>
                         </div>
                       </div>
                       <div style={{display:"flex",alignItems:"center",gap:12}}>
