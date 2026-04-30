@@ -550,3 +550,91 @@ CREATE POLICY "notifications_delete_own" ON notifications
 
 -- Index for fast per-user queries
 CREATE INDEX IF NOT EXISTS notifications_user_id_idx ON notifications(user_id, created_at DESC);
+
+
+-- ============================================================
+-- PART 7: RACE CONDITION FIXES
+-- Run in Supabase SQL Editor if you've already run Parts 1-6.
+-- ============================================================
+
+-- ── Atomic passenger booking cancellation ─────────────────
+-- Replaces the old 3-step read/cancel/update with a single
+-- transaction. Two concurrent cancels on the same booking
+-- cannot both restore seats.
+
+CREATE OR REPLACE FUNCTION cancel_passenger_booking(p_booking_id uuid)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_booking bookings%ROWTYPE;
+  v_trip    trips%ROWTYPE;
+BEGIN
+  -- Lock the booking row; only the owner's non-cancelled booking matches
+  SELECT * INTO v_booking
+  FROM bookings
+  WHERE id = p_booking_id
+    AND user_id = auth.uid()
+    AND status != 'cancelled'
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object('success', false, 'error', 'not_found');
+  END IF;
+
+  SELECT * INTO v_trip FROM trips WHERE id = v_booking.trip_id FOR UPDATE;
+
+  -- Server-side 24-hour enforcement (mirrors the frontend UX check)
+  IF (v_trip.trip_date::timestamp + COALESCE(v_trip.trip_time, '00:00'::time)) < now() + interval '24 hours' THEN
+    RETURN jsonb_build_object('success', false, 'error', 'too_late');
+  END IF;
+
+  UPDATE bookings SET status = 'cancelled' WHERE id = p_booking_id;
+  UPDATE trips SET available_seats = available_seats + v_booking.seats WHERE id = v_booking.trip_id;
+
+  RETURN jsonb_build_object('success', true, 'driver_id', v_trip.driver_id);
+END;
+$$;
+
+
+-- ── Atomic promo code validation + increment ──────────────
+-- Uses UPDATE...WHERE as a single atomic compare-and-swap.
+-- If two users try to use the last remaining promo at the
+-- same time, only one UPDATE will match (uses_count < max_uses)
+-- and the other gets 'invalid_or_exhausted'.
+
+CREATE OR REPLACE FUNCTION use_promo_code(p_code text)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_id uuid;
+BEGIN
+  UPDATE promo_codes
+  SET uses_count = uses_count + 1
+  WHERE code = upper(p_code)
+    AND active = true
+    AND (max_uses IS NULL OR uses_count < max_uses)
+  RETURNING id INTO v_id;
+
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object('success', false, 'error', 'invalid_or_exhausted');
+  END IF;
+
+  RETURN jsonb_build_object('success', true);
+END;
+$$;
+
+
+-- ── Admin role setup ──────────────────────────────────────
+-- The RLS policies above use profiles.role = 'admin'.
+-- Run this once (with your actual admin email) so the admin
+-- user is recognized at the database level, not just in the
+-- frontend VITE_ADMIN_EMAILS check.
+--
+-- UPDATE profiles SET role = 'admin'
+-- WHERE id = (SELECT id FROM auth.users WHERE email = 'your-admin@example.com');

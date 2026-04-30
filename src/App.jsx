@@ -657,10 +657,10 @@ const [driverEditing,setDriverEditing]=useState(false);
       }
     }
     if(!window.confirm(prof.cancelConfirm)) return;
-    await supabase.from("bookings").update({status:"cancelled"}).eq("id",bookingId);
-    if(bk?.trip_id){
-      const{data:trip}=await supabase.from("trips").select("available_seats").eq("id",bk.trip_id).single();
-      if(trip) await supabase.from("trips").update({available_seats:trip.available_seats+(bk.seats||1)}).eq("id",bk.trip_id);
+    const{data:result,error}=await supabase.rpc("cancel_passenger_booking",{p_booking_id:bookingId});
+    if(error||!result?.success){
+      if(result?.error==="too_late") alert(lang==="ar"?"لا يمكن إلغاء الحجز قبل أقل من 24 ساعة من موعد الرحلة":"Bookings cannot be cancelled less than 24 hours before departure");
+      return;
     }
     if(bk?.trips?.driver_id) createNotif(bk.trips.driver_id,"booking_cancelled",lang==="ar"?"إلغاء حجز":"Booking Cancelled",lang==="ar"?`${bk.passenger_name||"راكب"} ألغى حجزه على رحلة ${gc(bk.trips.from_city)?.[lang]||bk.trips.from_city} إلى ${gc(bk.trips.to_city)?.[lang]||bk.trips.to_city} (${bk.trips.trip_date})`:`${bk.passenger_name||"A passenger"} cancelled their booking on ${gc(bk.trips.from_city)?.en||bk.trips.from_city} → ${gc(bk.trips.to_city)?.en||bk.trips.to_city} (${bk.trips.trip_date})`);
     loadPassengerBookings();
@@ -962,7 +962,7 @@ const [driverEditing,setDriverEditing]=useState(false);
       return;
     }
     if(booking) setLastBookingId(booking.booking_id||booking.id);
-    if(promoDiscount?.id) await supabase.from("promo_codes").update({uses_count:(promoDiscount.uses_count||0)+1}).eq("id",promoDiscount.id);
+    if(promoCode) await supabase.rpc("use_promo_code",{p_code:promoCode});
     const from=gc(selectedTrip.from_city);const to=gc(selectedTrip.to_city);
     const isWomen=selectedTrip.gender_type==="women_only";
     const msg=lang==="ar"
