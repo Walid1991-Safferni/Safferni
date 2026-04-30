@@ -80,22 +80,74 @@ const SeatMap=({total,available})=>(
   </div>
 );
 
-const PhoneInput=({cc,setCC,num,setNum,lang,inp})=>(
-  <div style={{display:"flex",gap:8}}>
-    <select value={cc} onChange={e=>setCC(e.target.value)} style={{...inp,width:"120px",direction:"ltr",padding:"11px 6px",flexShrink:0}}>
-      {COUNTRY_CODES.map(c=><option key={c.v} value={c.v}>{c.f} {c.v}</option>)}
-    </select>
-    <input value={num} onChange={e=>setNum(e.target.value)} style={{...inp,flex:1,direction:"ltr",textAlign:"left"}} placeholder={lang==="ar"?"رقم الهاتف":"Phone number"} type="tel"/>
-  </div>
-);
-
-const COUNTRY_CODES = [
-  {v:"+963",f:"🇸🇾"},{v:"+962",f:"🇯🇴"},{v:"+961",f:"🇱🇧"},{v:"+966",f:"🇸🇦"},{v:"+971",f:"🇦🇪"},
-  {v:"+965",f:"🇰🇼"},{v:"+974",f:"🇶🇦"},{v:"+973",f:"🇧🇭"},{v:"+968",f:"🇴🇲"},{v:"+967",f:"🇾🇪"},
-  {v:"+964",f:"🇮🇶"},{v:"+20",f:"🇪🇬"},{v:"+212",f:"🇲🇦"},{v:"+213",f:"🇩🇿"},{v:"+216",f:"🇹🇳"},
-  {v:"+218",f:"🇱🇾"},{v:"+249",f:"🇸🇩"},{v:"+970",f:"🇵🇸"},{v:"+90",f:"🇹🇷"},{v:"+44",f:"🇬🇧"},
-  {v:"+1",f:"🇺🇸"},{v:"+49",f:"🇩🇪"},{v:"+33",f:"🇫🇷"},{v:"+39",f:"🇮🇹"},{v:"+34",f:"🇪🇸"},
+const COUNTRY_CODES=[
+  {v:"+963",f:"🇸🇾",name:"Syria"},{v:"+962",f:"🇯🇴",name:"Jordan"},{v:"+961",f:"🇱🇧",name:"Lebanon"},
+  {v:"+966",f:"🇸🇦",name:"Saudi Arabia"},{v:"+971",f:"🇦🇪",name:"UAE"},{v:"+965",f:"🇰🇼",name:"Kuwait"},
+  {v:"+974",f:"🇶🇦",name:"Qatar"},{v:"+973",f:"🇧🇭",name:"Bahrain"},{v:"+968",f:"🇴🇲",name:"Oman"},
+  {v:"+967",f:"🇾🇪",name:"Yemen"},{v:"+964",f:"🇮🇶",name:"Iraq"},{v:"+970",f:"🇵🇸",name:"Palestine"},
+  {v:"+20",f:"🇪🇬",name:"Egypt"},{v:"+212",f:"🇲🇦",name:"Morocco"},{v:"+213",f:"🇩🇿",name:"Algeria"},
+  {v:"+216",f:"🇹🇳",name:"Tunisia"},{v:"+218",f:"🇱🇾",name:"Libya"},{v:"+249",f:"🇸🇩",name:"Sudan"},
+  {v:"+90",f:"🇹🇷",name:"Turkey"},{v:"+98",f:"🇮🇷",name:"Iran"},{v:"+92",f:"🇵🇰",name:"Pakistan"},
+  {v:"+93",f:"🇦🇫",name:"Afghanistan"},{v:"+994",f:"🇦🇿",name:"Azerbaijan"},{v:"+995",f:"🇬🇪",name:"Georgia"},
+  {v:"+374",f:"🇦🇲",name:"Armenia"},{v:"+7",f:"🇷🇺",name:"Russia"},{v:"+380",f:"🇺🇦",name:"Ukraine"},
+  {v:"+44",f:"🇬🇧",name:"UK"},{v:"+49",f:"🇩🇪",name:"Germany"},{v:"+33",f:"🇫🇷",name:"France"},
+  {v:"+39",f:"🇮🇹",name:"Italy"},{v:"+34",f:"🇪🇸",name:"Spain"},{v:"+31",f:"🇳🇱",name:"Netherlands"},
+  {v:"+32",f:"🇧🇪",name:"Belgium"},{v:"+41",f:"🇨🇭",name:"Switzerland"},{v:"+43",f:"🇦🇹",name:"Austria"},
+  {v:"+46",f:"🇸🇪",name:"Sweden"},{v:"+47",f:"🇳🇴",name:"Norway"},{v:"+45",f:"🇩🇰",name:"Denmark"},
+  {v:"+358",f:"🇫🇮",name:"Finland"},{v:"+48",f:"🇵🇱",name:"Poland"},{v:"+30",f:"🇬🇷",name:"Greece"},
+  {v:"+40",f:"🇷🇴",name:"Romania"},{v:"+36",f:"🇭🇺",name:"Hungary"},{v:"+420",f:"🇨🇿",name:"Czech Republic"},
+  {v:"+351",f:"🇵🇹",name:"Portugal"},{v:"+1",f:"🇺🇸",name:"USA / Canada"},{v:"+52",f:"🇲🇽",name:"Mexico"},
+  {v:"+55",f:"🇧🇷",name:"Brazil"},{v:"+54",f:"🇦🇷",name:"Argentina"},{v:"+57",f:"🇨🇴",name:"Colombia"},
+  {v:"+56",f:"🇨🇱",name:"Chile"},{v:"+86",f:"🇨🇳",name:"China"},{v:"+81",f:"🇯🇵",name:"Japan"},
+  {v:"+82",f:"🇰🇷",name:"South Korea"},{v:"+91",f:"🇮🇳",name:"India"},{v:"+60",f:"🇲🇾",name:"Malaysia"},
+  {v:"+65",f:"🇸🇬",name:"Singapore"},{v:"+62",f:"🇮🇩",name:"Indonesia"},{v:"+61",f:"🇦🇺",name:"Australia"},
+  {v:"+64",f:"🇳🇿",name:"New Zealand"},
 ];
+const SORTED_CODES=[...COUNTRY_CODES].sort((a,b)=>b.v.length-a.v.length);
+const detectCC=(val="")=>{const m=SORTED_CODES.find(c=>val.startsWith(c.v));return m?{cc:m.v,num:val.slice(m.v.length)}:{cc:"+963",num:val};};
+
+const PhoneField=({value="",onChange,lang,inp})=>{
+  const {cc:initCC}=detectCC(value);
+  const [cc,setCc]=useState(initCC);
+  const [search,setSearch]=useState("");
+  const [open,setOpen]=useState(false);
+  const num=detectCC(value).num;
+  const filtered=COUNTRY_CODES.filter(c=>!search||c.name.toLowerCase().includes(search.toLowerCase())||c.v.includes(search));
+  const pickCC=v=>{setCc(v);setOpen(false);setSearch("");onChange(v+num);};
+  const flag=COUNTRY_CODES.find(c=>c.v===cc)?.f||"🌍";
+  return(
+    <div style={{display:"flex",gap:8}}>
+      <div style={{position:"relative",flexShrink:0}}>
+        <button type="button" onClick={()=>setOpen(o=>!o)} onBlur={()=>setTimeout(()=>setOpen(false),150)}
+          style={{...inp,width:90,display:"flex",alignItems:"center",justifyContent:"space-between",gap:4,cursor:"pointer",background:"white",padding:"11px 10px"}}>
+          <span style={{fontSize:16}}>{flag}</span><span style={{fontSize:12,fontWeight:700,color:"#333"}}>{cc}</span><span style={{fontSize:9,color:"#AAA"}}>▾</span>
+        </button>
+        {open&&(
+          <div style={{position:"absolute",top:"calc(100% + 4px)",left:0,zIndex:300,background:"white",border:"1px solid #E8E6E1",borderRadius:12,boxShadow:"0 8px 32px rgba(0,0,0,0.12)",width:250,display:"flex",flexDirection:"column",overflow:"hidden"}}>
+            <input autoFocus value={search} onChange={e=>setSearch(e.target.value)}
+              placeholder={lang==="ar"?"ابحث عن دولة...":"Search country..."}
+              style={{border:"none",borderBottom:"1px solid #E8E6E1",padding:"10px 12px",fontSize:13,outline:"none",fontFamily:"inherit",background:"#FAFAF9"}}/>
+            <div style={{overflowY:"auto",maxHeight:200}}>
+              {filtered.length===0
+                ?<div style={{padding:"12px",color:"#AAA",textAlign:"center",fontSize:13}}>{lang==="ar"?"لا توجد نتائج":"No results"}</div>
+                :filtered.map(c=>(
+                  <div key={c.v} onMouseDown={()=>pickCC(c.v)}
+                    style={{padding:"8px 12px",cursor:"pointer",display:"flex",alignItems:"center",gap:8,fontSize:13,background:cc===c.v?"#F0F7F3":"white"}}>
+                    <span style={{fontSize:17}}>{c.f}</span>
+                    <span style={{flex:1,fontWeight:cc===c.v?700:400,color:"#222"}}>{c.name}</span>
+                    <span style={{color:"#888",fontSize:12,fontWeight:600}}>{c.v}</span>
+                  </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+      <input value={num} onChange={e=>onChange(cc+e.target.value)} type="tel"
+        style={{...inp,flex:1,direction:"ltr",textAlign:"left"}}
+        placeholder={lang==="ar"?"رقم الهاتف":"Phone number"}/>
+    </div>
+  );
+};
 
 const T={
   ar:{
@@ -250,7 +302,7 @@ export default function App(){
   // AUTH STATE — new unified flow
   // authStep: "choice" | "login" | "signup_country" | "signup_info_sy" | "signup_otp_email" | "signup_info_other" | "signup_otp_sms" | "forgot_phone" | "forgot_newpass"
   const [authStep,setAuthStep]=useState("choice");
-  const [authForm,setAuthForm]=useState({fullName:"",email:"",countryCode:"+963",phoneNumber:"",phone:"",password:""});
+  const [authForm,setAuthForm]=useState({fullName:"",email:"",phone:"+963",password:""});
   const [authOtp,setAuthOtp]=useState("");
   const [authError,setAuthError]=useState("");
   const [authLoading,setAuthLoading]=useState(false);
@@ -411,11 +463,11 @@ const [driverEditing,setDriverEditing]=useState(false);
   // ─── AUTH FLOW ────────────────────────────────────────────────────────────
 
   const resetAuth=()=>{
-    setAuthStep("choice");setAuthForm({fullName:"",email:"",countryCode:"+963",phoneNumber:"",phone:"",password:""});
+    setAuthStep("choice");setAuthForm({fullName:"",email:"",phone:"+963",password:""});
     setAuthOtp("");setAuthError("");setAuthSuccess("");setPendingPhone("");setAuthLoading(false);
   };
 
-  const fullPhone=()=>`${authForm.countryCode}${authForm.phoneNumber}`;
+  const fullPhone=()=>authForm.phone;
 
   // Step 1: Login with email + password
   const handleLogin=async()=>{
@@ -472,7 +524,7 @@ const [driverEditing,setDriverEditing]=useState(false);
 
   // Signup Other: send SMS OTP
   const handleSignupOtherStart=async()=>{
-    if(!authForm.fullName||!authForm.phoneNumber||!authForm.email||!authForm.password){setAuthError(t.auth.error);return;}
+    if(!authForm.fullName||!authForm.phone||detectCC(authForm.phone).num.length<4||!authForm.email||!authForm.password){setAuthError(t.auth.error);return;}
     setAuthLoading(true);setAuthError("");
     const email=authForm.email.trim().toLowerCase();
     const phone=fullPhone();
@@ -1099,7 +1151,7 @@ const [driverEditing,setDriverEditing]=useState(false);
               <div style={{marginBottom:14}}><label style={lbl}>{t.auth.email} *</label><input type="email" value={authForm.email} onChange={e=>setAuthForm(f=>({...f,email:e.target.value}))} style={inp}/></div>
               <div style={{marginBottom:14}}>
                 <label style={lbl}>{t.auth.phone} *</label>
-                <PhoneInput cc={authForm.countryCode} setCC={v=>setAuthForm(f=>({...f,countryCode:v}))} num={authForm.phoneNumber} setNum={v=>setAuthForm(f=>({...f,phoneNumber:v}))} lang={lang} inp={inp}/>
+                <PhoneField value={authForm.phone} onChange={v=>setAuthForm(f=>({...f,phone:v}))} lang={lang} inp={inp}/>
               </div>
               <div style={{marginBottom:8}}><label style={lbl}>{t.auth.password} *</label><input type="password" value={authForm.password} onChange={e=>setAuthForm(f=>({...f,password:e.target.value}))} style={inp} onKeyDown={e=>e.key==="Enter"&&handleSignupOtherStart()}/></div>
               <p style={{fontSize:11,color:"#AAA",marginBottom:20}}>{t.auth.passwordHint}</p>
@@ -1181,7 +1233,7 @@ const [driverEditing,setDriverEditing]=useState(false);
               </div>
               <div style={{marginBottom:14}}>
                 <label style={lbl}>{lang==="ar"?"رقم الهاتف":"Phone Number"}</label>
-                {profileEditing?<input value={profileEdit.phone} onChange={e=>setProfileEdit(p=>({...p,phone:e.target.value}))} style={{...inp,direction:"ltr",textAlign:"left"}}/>:<div style={{fontSize:14,fontWeight:600,color:"#333",padding:"11px 0",direction:"ltr",textAlign:"left"}}>{profileEdit.phone||"—"}</div>}
+                {profileEditing?<PhoneField value={profileEdit.phone} onChange={v=>setProfileEdit(p=>({...p,phone:v}))} lang={lang} inp={inp}/>:<div style={{fontSize:14,fontWeight:600,color:"#333",padding:"11px 0",direction:"ltr",textAlign:"left"}}>{profileEdit.phone||"—"}</div>}
               </div>
               <div style={{marginBottom:14}}>
                 <label style={lbl}>{lang==="ar"?"البريد الإلكتروني":"Email"}</label>
@@ -1286,7 +1338,7 @@ const [driverEditing,setDriverEditing]=useState(false);
                   <h3 style={{fontSize:17,fontWeight:800,color:"#1B3A2A",marginBottom:6}}>{t.apply.title}</h3>
                   <p style={{fontSize:13,color:"#AAA",marginBottom:20}}>{t.apply.desc}</p>
                   <div style={{marginBottom:14}}><label style={lbl}>{t.apply.fullName} *</label><input value={applyForm.fullName||profile?.full_name||""} onChange={e=>setApplyForm(f=>({...f,fullName:e.target.value}))} style={inp}/></div>
-                  <div style={{marginBottom:14}}><label style={lbl}>{t.apply.phone} *</label><input value={applyForm.phone||profile?.phone||""} onChange={e=>setApplyForm(f=>({...f,phone:e.target.value}))} style={{...inp,direction:"ltr",textAlign:"left"}} placeholder="+963..."/></div>
+                  <div style={{marginBottom:14}}><label style={lbl}>{t.apply.phone} *</label><PhoneField value={applyForm.phone||profile?.phone||""} onChange={v=>setApplyForm(f=>({...f,phone:v}))} lang={lang} inp={inp}/></div>
                   <div style={{marginBottom:14}}><label style={lbl}>{lang==="ar"?"تاريخ الميلاد (يجب أن يكون عمرك +18)":"Date of Birth (must be 18+)"}</label><input type="date" value={applyForm.dob} max={new Date(new Date().setFullYear(new Date().getFullYear()-18)).toISOString().split("T")[0]} onChange={e=>setApplyForm(f=>({...f,dob:e.target.value}))} style={inp}/></div>
                   <div style={{marginBottom:14}}><label style={lbl}>{lang==="ar"?"نوع السيارة والسنة *":"Car Kind & Year *"}</label><input value={applyForm.carKindYear} onChange={e=>setApplyForm(f=>({...f,carKindYear:e.target.value}))} style={inp} placeholder={lang==="ar"?"مثال: تويوتا كامري 2020":"e.g. Toyota Camry 2020"}/></div>
                   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:14}}>
@@ -1333,7 +1385,7 @@ const [driverEditing,setDriverEditing]=useState(false);
             <h2 style={{fontSize:24,fontWeight:900,marginBottom:8,color:"#1B3A2A",textAlign:"center"}}>{t.apply.title}</h2>
             <p style={{fontSize:13,color:"#AAA",textAlign:"center",marginBottom:28}}>{t.apply.desc}</p>
             <div style={{marginBottom:16}}><label style={lbl}>{t.apply.fullName} *</label><input value={applyForm.fullName} onChange={e=>setApplyForm({...applyForm,fullName:e.target.value})} style={inp}/></div>
-            <div style={{marginBottom:16}}><label style={lbl}>{t.apply.phone} *</label><input value={applyForm.phone} onChange={e=>setApplyForm({...applyForm,phone:e.target.value})} style={{...inp,direction:"ltr",textAlign:"left"}} placeholder="+963..."/></div>
+            <div style={{marginBottom:16}}><label style={lbl}>{t.apply.phone} *</label><PhoneField value={applyForm.phone} onChange={v=>setApplyForm({...applyForm,phone:v})} lang={lang} inp={inp}/></div>
             <div style={{marginBottom:16}}><label style={lbl}>{lang==="ar"?"تاريخ الميلاد (يجب أن يكون عمرك +18)":"Date of Birth (must be 18+)"}</label><input type="date" value={applyForm.dob} max={new Date(new Date().setFullYear(new Date().getFullYear()-18)).toISOString().split("T")[0]} onChange={e=>setApplyForm({...applyForm,dob:e.target.value})} style={inp}/></div>
             <div style={{marginBottom:16}}><label style={lbl}>{lang==="ar"?"نوع السيارة والسنة *":"Car Kind & Year *"}</label><input value={applyForm.carKindYear} onChange={e=>setApplyForm({...applyForm,carKindYear:e.target.value})} style={inp} placeholder={lang==="ar"?"مثال: تويوتا كامري 2020":"e.g. Toyota Camry 2020"}/></div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:16}}>
@@ -2007,7 +2059,7 @@ const [driverEditing,setDriverEditing]=useState(false);
                   <GenderBadge type={selectedTrip.gender_type} lang={lang}/>
                 </div>
                 <div style={{marginBottom:12}}><label style={lbl}>{b.name} *</label><input value={tripBooking.name} onChange={e=>setTripBooking({...tripBooking,name:e.target.value})} style={inp}/></div>
-                <div style={{marginBottom:12}}><label style={lbl}>{b.phone} *</label><input type="tel" value={tripBooking.phone} onChange={e=>setTripBooking({...tripBooking,phone:e.target.value})} style={inp} placeholder="+963..."/></div>
+                <div style={{marginBottom:12}}><label style={lbl}>{b.phone} *</label><PhoneField value={tripBooking.phone} onChange={v=>setTripBooking({...tripBooking,phone:v})} lang={lang} inp={inp}/></div>
                 <div style={{marginBottom:12}}><label style={lbl}>{b.passengers}</label><select value={tripBooking.seats} onChange={e=>setTripBooking({...tripBooking,seats:parseInt(e.target.value)})} style={inp}>{Array.from({length:Math.min(selectedTrip.available_seats,10)},(_,i)=><option key={i+1} value={i+1}>{i+1}</option>)}</select></div>
                 <div style={{marginBottom:12}}>
                   <label style={lbl}>{lang==="ar"?"كود الخصم (اختياري)":"Promo Code (optional)"}</label>
@@ -2081,7 +2133,7 @@ const [driverEditing,setDriverEditing]=useState(false);
             </div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:18}}>
               <div><label style={lbl}>{b.name} *</label><input type="text" value={form.name} onChange={e=>setForm({...form,name:e.target.value})} style={inp}/></div>
-              <div><label style={lbl}>{b.phone} *</label><input type="tel" value={form.phone} onChange={e=>setForm({...form,phone:e.target.value})} style={inp} placeholder="+963..."/></div>
+              <div><label style={lbl}>{b.phone} *</label><PhoneField value={form.phone} onChange={v=>setForm({...form,phone:v})} lang={lang} inp={inp}/></div>
             </div>
             <div style={{marginBottom:18}}><label style={lbl}>{b.notes}</label><textarea value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})} style={{...inp,minHeight:65,resize:"vertical"}} rows={2}/></div>
             {error&&<div style={{marginBottom:14,padding:"10px 16px",background:"#FEF2F2",border:"1px solid #FECACA",borderRadius:10,color:"#B91C1C",fontSize:13,fontWeight:700}}>{error}</div>}
