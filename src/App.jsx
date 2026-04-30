@@ -271,6 +271,8 @@ export default function App(){
   const [adminTab,setAdminTab]=useState("applications");
   const [tripFilterDriver,setTripFilterDriver]=useState("");
   const [tripFilterDate,setTripFilterDate]=useState("");
+  const [draggedTripId,setDraggedTripId]=useState(null);
+  const [dragOverStatus,setDragOverStatus]=useState(null);
   const [dashStats,setDashStats]=useState({activeTrips:0,totalDrivers:0,bookingsToday:0,popularRoute:"—"});
   const [selectedDriver,setSelectedDriver]=useState(null);
   const [driverProfile,setDriverProfile]=useState({fullName:"",dob:"",idNumber:"",carKindYear:"",carPlate:"",transportLicense:"",driverLicense:"",hasWifi:false,hasWater:false,hasAc:false});
@@ -658,13 +660,20 @@ const [driverEditing,setDriverEditing]=useState(false);
     loadAdminData();
   };
 
-  const adminApproveTrip=async(id)=>{
-    await supabase.from("trips").update({approved:true,status:"active"}).eq("id",id);
-    const trip=adminAllTrips.find(t=>t.id===id);
-    if(trip?.driver_id) createNotif(trip.driver_id,"trip_approved",lang==="ar"?"رحلتك موافق عليها 🚗":"Trip Approved 🚗",lang==="ar"?`تم الموافقة على رحلتك من ${gc(trip.from_city)?.[lang]||trip.from_city} إلى ${gc(trip.to_city)?.[lang]||trip.to_city} بتاريخ ${trip.trip_date} وهي الآن متاحة للحجز`:`Your trip from ${gc(trip.from_city)?.en||trip.from_city} to ${gc(trip.to_city)?.en||trip.to_city} on ${trip.trip_date} has been approved and is now live`);
+  const adminApproveTrip=async(id)=>adminMoveTripTo(id,"active");
+  const adminCancelTrip=async(id)=>adminMoveTripTo(id,"cancelled");
+  const adminMoveTripTo=async(id,newStatus)=>{
+    if(newStatus==="active"){
+      await supabase.from("trips").update({approved:true,status:"active"}).eq("id",id);
+      const trip=adminAllTrips.find(t=>t.id===id);
+      if(trip?.driver_id) createNotif(trip.driver_id,"trip_approved",lang==="ar"?"رحلتك موافق عليها 🚗":"Trip Approved 🚗",lang==="ar"?`تم الموافقة على رحلتك من ${gc(trip.from_city)?.[lang]||trip.from_city} إلى ${gc(trip.to_city)?.[lang]||trip.to_city} بتاريخ ${trip.trip_date} وهي الآن متاحة للحجز`:`Your trip from ${gc(trip.from_city)?.en||trip.from_city} to ${gc(trip.to_city)?.en||trip.to_city} on ${trip.trip_date} has been approved and is now live`);
+    } else if(newStatus==="pending"){
+      await supabase.from("trips").update({approved:false,status:"pending"}).eq("id",id);
+    } else if(newStatus==="cancelled"){
+      await supabase.from("trips").update({status:"cancelled"}).eq("id",id);
+    }
     loadAdminData();
   };
-  const adminCancelTrip=async(id)=>{await supabase.from("trips").update({status:"cancelled"}).eq("id",id);loadAdminData();};
 
   const adminDeleteTrip=async(id)=>{
     await supabase.from("bookings").delete().eq("trip_id",id);
@@ -1420,15 +1429,21 @@ const [driverEditing,setDriverEditing]=useState(false);
             <div style={{display:"flex",gap:20,alignItems:"flex-start",flexWrap:"wrap"}}>
             {["pending","active","cancelled"].map(status=>{
               const filtered=filteredAdminTrips.filter(t=>t.status===status);
-              return(<div key={status} style={{flex:1,minWidth:280}}>
+              const colColor=status==="active"?"#065F46":status==="cancelled"?"#991B1B":"#92400E";
+              const isDragTarget=dragOverStatus===status;
+              return(<div key={status} style={{flex:1,minWidth:280,transition:"background 0.15s",borderRadius:16,padding:"8px",background:isDragTarget?"#F0F7F3":"transparent",border:isDragTarget?"2px dashed #1B3A2A":"2px dashed transparent"}}
+                onDragOver={e=>{e.preventDefault();setDragOverStatus(status);}}
+                onDragLeave={e=>{if(!e.currentTarget.contains(e.relatedTarget))setDragOverStatus(null);}}
+                onDrop={e=>{e.preventDefault();setDragOverStatus(null);if(draggedTripId){const trip=adminAllTrips.find(t=>t.id===draggedTripId);if(trip&&trip.status!==status)adminMoveTripTo(draggedTripId,status);setDraggedTripId(null);}}}>
                 <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12}}>
-                  <h3 style={{fontSize:15,fontWeight:800,color:status==="active"?"#065F46":status==="cancelled"?"#991B1B":"#92400E"}}>{status==="pending"?adm.notApprovedYet:status==="active"?(lang==="ar"?"نشط":"Active"):(lang==="ar"?"ملغى":"Cancelled")} ({filtered.length})</h3>
+                  <h3 style={{fontSize:15,fontWeight:800,color:colColor}}>{status==="pending"?adm.notApprovedYet:status==="active"?(lang==="ar"?"نشط":"Active"):(lang==="ar"?"ملغى":"Cancelled")} ({filtered.length})</h3>
                   <div style={{flex:1,height:1,background:"#E8E6E1"}}/>
                 </div>
-                {filtered.length===0?<p style={{color:"#CCC",fontSize:13,paddingInlineStart:8}}>{adm.noTrips}</p>:
-                filtered.map((trip,i)=>{
+                {isDragTarget&&filtered.length===0&&<div style={{height:80,borderRadius:12,border:"2px dashed #1B3A2A",display:"flex",alignItems:"center",justifyContent:"center",color:"#1B3A2A",fontSize:13,fontWeight:700,opacity:0.5}}>{lang==="ar"?"أفلت هنا":"Drop here"}</div>}
+                {!isDragTarget&&filtered.length===0&&<p style={{color:"#CCC",fontSize:13,paddingInlineStart:8}}>{adm.noTrips}</p>}
+                {filtered.map((trip,i)=>{
                   const fc=gc(trip.from_city);const tc=gc(trip.to_city);
-                  return(<div key={trip.id} style={{background:"white",borderRadius:14,padding:"18px 20px",border:"1px solid #E8E6E1",marginBottom:10,animation:`fadeUp 0.3s ease ${0.03*i}s both`}}>
+                  return(<div key={trip.id} draggable onDragStart={()=>setDraggedTripId(trip.id)} onDragEnd={()=>{setDraggedTripId(null);setDragOverStatus(null);}} style={{background:"white",borderRadius:14,padding:"18px 20px",border:`1px solid ${draggedTripId===trip.id?"#1B3A2A":"#E8E6E1"}`,marginBottom:10,animation:`fadeUp 0.3s ease ${0.03*i}s both`,cursor:"grab",opacity:draggedTripId===trip.id?0.5:1}}>
                     <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:10}}>
                       <div style={{flex:1}}>
                         <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
@@ -1440,6 +1455,7 @@ const [driverEditing,setDriverEditing]=useState(false);
                       </div>
                       <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
                         {status==="pending"&&<button onClick={()=>adminApproveTrip(trip.id)} style={{background:"#1B3A2A",color:"white",border:"none",padding:"6px 12px",borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{adm.approveTrip}</button>}
+                        {status==="active"&&<button onClick={()=>{if(window.confirm(lang==="ar"?"إعادة الرحلة إلى قيد المراجعة؟":"Revert trip back to pending?"))adminMoveTripTo(trip.id,"pending")}} style={{background:"#F59E0B",color:"white",border:"none",padding:"6px 12px",borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{lang==="ar"?"إلغاء الموافقة":"Revert"}</button>}
                         <button onClick={async()=>{setExpandedTrip(expandedTrip===trip.id?null:trip.id);if(expandedTrip!==trip.id) await loadTripPassengers(trip.id);}} style={{background:"#3B82F6",color:"white",border:"none",padding:"6px 12px",borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{lang==="ar"?"الحجوزات":"Bookings"}</button>
                         <button onClick={()=>{if(window.confirm("Delete?")) adminDeleteTrip(trip.id)}} style={{background:"#EF4444",color:"white",border:"none",padding:"6px 12px",borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{adm.deleteTrip}</button>
                       </div>
