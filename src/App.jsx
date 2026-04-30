@@ -111,6 +111,8 @@ const PhoneField=({value="",onChange,lang,inp})=>{
   const [cc,setCc]=useState(initCC);
   const [search,setSearch]=useState("");
   const [open,setOpen]=useState(false);
+  // Sync cc state when value prop changes externally (e.g. profile loads after mount)
+  useEffect(()=>{const detected=detectCC(value).cc;if(detected!==cc)setCc(detected);},[value]);
   const num=detectCC(value).num;
   const filtered=COUNTRY_CODES.filter(c=>!search||c.name.toLowerCase().includes(search.toLowerCase())||c.v.includes(search));
   const pickCC=v=>{setCc(v);setOpen(false);setSearch("");onChange(v+num);};
@@ -441,7 +443,7 @@ const [driverEditing,setDriverEditing]=useState(false);
   },[page,user,profile]);
 
   const loadProfile=async(u)=>{
-    const{data}=await supabase.from("profiles").select("*").eq("id",u.id).single();
+    const{data}=await supabase.from("profiles").select("*").eq("id",u.id).maybeSingle();
     setProfile(data);
     setDriverApproved(data?.role==="driver");
     setLoading(false);
@@ -628,11 +630,13 @@ const [driverEditing,setDriverEditing]=useState(false);
 
   const rejectBooking=async(bookingId)=>{
     const bk=tripDetailBookings.find(b=>b.id===bookingId);
-    await supabase.rpc("driver_action_booking",{p_booking_id:bookingId,p_action:"reject"});
+    const tripId=selectedTripDetail?.id;
+    const{error}=await supabase.rpc("driver_action_booking",{p_booking_id:bookingId,p_action:"reject"});
+    if(error) return;
     setTripDetailBookings(bs=>bs.map(b=>b.id===bookingId?{...b,status:"cancelled"}:b));
-    if(bk&&selectedTripDetail){
+    if(bk&&tripId){
       setSelectedTripDetail(t=>({...t,available_seats:(t.available_seats||0)+bk.seats}));
-      setDriverTrips(ts=>ts.map(t=>t.id===selectedTripDetail.id?{...t,available_seats:(t.available_seats||0)+bk.seats}:t));
+      setDriverTrips(ts=>ts.map(t=>t.id===tripId?{...t,available_seats:(t.available_seats||0)+bk.seats}:t));
       if(bk.user_id) createNotif(bk.user_id,"booking_rejected",lang==="ar"?"تم رفض حجزك":"Booking Rejected",lang==="ar"?`تم رفض حجزك على رحلة ${gc(selectedTripDetail.from_city)?.[lang]||selectedTripDetail.from_city} إلى ${gc(selectedTripDetail.to_city)?.[lang]||selectedTripDetail.to_city}`:`Your booking on ${gc(selectedTripDetail.from_city)?.en||selectedTripDetail.from_city} → ${gc(selectedTripDetail.to_city)?.en||selectedTripDetail.to_city} was rejected by the driver`);
     }
   };
@@ -827,7 +831,7 @@ const [driverEditing,setDriverEditing]=useState(false);
   };
 
   const openDriverPublicPage=async(driverId)=>{
-    const{data:prof}=await supabase.from("profiles").select("full_name,car_type,has_wifi,has_water,has_ac").eq("id",driverId).single();
+    const{data:prof}=await supabase.from("profiles").select("full_name,car_type,has_wifi,has_water,has_ac").eq("id",driverId).maybeSingle();
     const{data:reviews}=await supabase.from("trip_reviews").select("*").eq("driver_id",driverId).order("created_at",{ascending:false});
     setDriverPublicPage({profile:prof,reviews:reviews||[]});
   };
@@ -860,7 +864,7 @@ const [driverEditing,setDriverEditing]=useState(false);
     if(!user) return;
     await loadProfile(user);
     const{data:myApp}=await supabase.from("driver_applications").select("*").eq("user_id",user.id).order("created_at",{ascending:false}).limit(1).maybeSingle();
-    const{data:myProfileData}=await supabase.from("profiles").select("*").eq("id",user.id).single();
+    const{data:myProfileData}=await supabase.from("profiles").select("*").eq("id",user.id).maybeSingle();
     setDriverProfile({fullName:myProfileData?.full_name||"",dob:myProfileData?.date_of_birth||"",idNumber:myProfileData?.id_number||"",carKindYear:myProfileData?.car_type||myApp?.car_type||"",carPlate:myProfileData?.car_plate||"",transportLicense:myProfileData?.transport_license||"",driverLicense:myProfileData?.driver_license||"",hasWifi:myProfileData?.has_wifi||false,hasWater:myProfileData?.has_water||false,hasAc:myProfileData?.has_ac||false});
     const{data:myTrips}=await supabase.from("trips").select("*").eq("driver_id",user.id).order("trip_date",{ascending:false});
     setDriverTrips(myTrips||[]);
