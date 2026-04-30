@@ -217,6 +217,7 @@ export default function App(){
   const [user,setUser]=useState(null);
   const [profile,setProfile]=useState(null);
   const [driverApproved,setDriverApproved]=useState(false);
+  const didLogOut=useRef(false);
   const [loading,setLoading]=useState(true);
 
   // Booking form
@@ -341,6 +342,10 @@ const [driverEditing,setDriverEditing]=useState(false);
     });
     const{data:{subscription}}=supabase.auth.onAuthStateChange((event,session)=>{
       if(event==="PASSWORD_RECOVERY"){setPage("login");setAuthStep("forgot_newpass");return;}
+      if(event==="SIGNED_OUT"||event==="TOKEN_REFRESHED"||event==="SIGNED_IN"){
+        // Ignore auth events fired after an explicit logout (race condition / tab-focus refresh)
+        if(didLogOut.current&&session?.user){supabase.auth.signOut({scope:"global"}).catch(()=>{});return;}
+      }
       setUser(session?.user??null);
       if(session?.user) loadProfile(session.user);
       else{setProfile(null);setDriverApproved(false);setLoading(false);}
@@ -396,8 +401,11 @@ const [driverEditing,setDriverEditing]=useState(false);
   };
 
   const handleLogout=async()=>{
-    await supabase.auth.signOut();
-    setUser(null);setProfile(null);setDriverApproved(false);setPage("home");
+    didLogOut.current=true;
+    setUser(null);setProfile(null);setDriverApproved(false);setDriverApplication(null);setPage("home");
+    await supabase.auth.signOut({scope:"global"}).catch(()=>{});
+    Object.keys(localStorage).filter(k=>k.startsWith("sb-")).forEach(k=>localStorage.removeItem(k));
+    setTimeout(()=>{didLogOut.current=false;},3000);
   };
 
   // ─── AUTH FLOW ────────────────────────────────────────────────────────────
@@ -518,7 +526,7 @@ const [driverEditing,setDriverEditing]=useState(false);
     const{error}=await supabase.auth.updateUser({password:authForm.password});
     if(error){setAuthError(t.auth.error);setAuthLoading(false);return;}
     const email=currentUser?.email||authForm.email;
-    await supabase.auth.signOut();
+    await supabase.auth.signOut({scope:"global"}).catch(()=>{});
     await supabase.auth.signInWithPassword({email,password:authForm.password});
     setAuthSuccess(t.auth.passwordUpdated);
     setTimeout(()=>{resetAuth();setPage("home");},1500);
@@ -615,8 +623,11 @@ const [driverEditing,setDriverEditing]=useState(false);
       alert(lang==="ar"?"لا يمكن حذف الحساب لأن لديك رحلات قادمة نشطة كراكب أو كسائق. يرجى إلغاؤها أولاً.":"Cannot delete account because you have upcoming active trips as a passenger or driver. Please cancel them first.");
       return;
     }
-    await supabase.auth.signOut();
-    setUser(null);setProfile(null);setDriverApproved(false);setPage("home");
+    didLogOut.current=true;
+    await supabase.auth.signOut({scope:"global"}).catch(()=>{});
+    Object.keys(localStorage).filter(k=>k.startsWith("sb-")).forEach(k=>localStorage.removeItem(k));
+    setUser(null);setProfile(null);setDriverApproved(false);setDriverApplication(null);setPage("home");
+    setTimeout(()=>{didLogOut.current=false;},3000);
   };
 
   // ─── BOOKING HELPERS ──────────────────────────────────────────────────────
