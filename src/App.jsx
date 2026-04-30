@@ -371,7 +371,7 @@ const [driverEditing,setDriverEditing]=useState(false);
   const [upcomingBookings,setUpcomingBookings]=useState([]);
   const [pastBookings,setPastBookings]=useState([]);
   const [profileLoading,setProfileLoading]=useState(false);
-  const [pwForm,setPwForm]=useState({current:"",next:""});
+  const [pwForm,setPwForm]=useState({next:""});
   const [pwMsg,setPwMsg]=useState("");
 
   // Notifications
@@ -423,7 +423,7 @@ const [driverEditing,setDriverEditing]=useState(false);
   const createNotif=async(userId,type,title,message)=>{if(!userId)return;try{await supabase.from("notifications").insert({user_id:userId,type,title,message});}catch(e){}};
   const markNotifRead=async(id)=>{await supabase.from("notifications").update({read:true}).eq("id",id);setNotifications(prev=>prev.map(n=>n.id===id?{...n,read:true}:n));};
   const markAllRead=async()=>{if(!user)return;await supabase.from("notifications").update({read:true}).eq("user_id",user.id).eq("read",false);setNotifications(prev=>prev.map(n=>({...n,read:true})));};
-  const loadAdminActivity=async()=>{const[{data:apps},{data:bks},{data:edits}]=await Promise.all([supabase.from("driver_applications").select("id,full_name,status,created_at").order("created_at",{ascending:false}).limit(20),supabase.from("bookings").select("id,passenger_name,seats,status,created_at,trips(from_city,to_city,trip_date)").order("created_at",{ascending:false}).limit(20),supabase.from("trip_edit_requests").select("id,status,new_time,created_at,trips(from_city,to_city)").order("created_at",{ascending:false}).limit(10)]);const events=[...(apps||[]).map(a=>({type:"application",id:a.id,title:a.full_name,status:a.status,ts:a.created_at})),...(bks||[]).map(b=>({type:"booking",id:b.id,title:b.passenger_name,status:b.status,seats:b.seats,route:`${gc(b.trips?.from_city)?.[lang]||b.trips?.from_city||"?"}→${gc(b.trips?.to_city)?.[lang]||b.trips?.to_city||"?"}`,date:b.trips?.trip_date,ts:b.created_at})),...(edits||[]).map(e=>({type:"edit",id:e.id,status:e.status,route:`${gc(e.trips?.from_city)?.[lang]||e.trips?.from_city||"?"}→${gc(e.trips?.to_city)?.[lang]||e.trips?.to_city||"?"}`,newTime:e.new_time,ts:e.created_at}))].sort((a,b)=>new Date(b.ts)-new Date(a.ts));setAdminActivity(events);};
+  const loadAdminActivity=async()=>{const[{data:apps},{data:bks},{data:edits}]=await Promise.all([supabase.from("driver_applications").select("id,full_name,status,created_at").order("created_at",{ascending:false}).limit(20),supabase.from("bookings").select("id,passenger_name,seats,status,created_at,trips(from_city,to_city,trip_date)").order("created_at",{ascending:false}).limit(20),supabase.from("trip_edit_requests").select("id,status,requested_time,created_at,trips(from_city,to_city)").order("created_at",{ascending:false}).limit(10)]);const events=[...(apps||[]).map(a=>({type:"application",id:a.id,title:a.full_name,status:a.status,ts:a.created_at})),...(bks||[]).map(b=>({type:"booking",id:b.id,title:b.passenger_name,status:b.status,seats:b.seats,route:`${gc(b.trips?.from_city)?.[lang]||b.trips?.from_city||"?"}→${gc(b.trips?.to_city)?.[lang]||b.trips?.to_city||"?"}`,date:b.trips?.trip_date,ts:b.created_at})),...(edits||[]).map(e=>({type:"edit",id:e.id,status:e.status,route:`${gc(e.trips?.from_city)?.[lang]||e.trips?.from_city||"?"}→${gc(e.trips?.to_city)?.[lang]||e.trips?.to_city||"?"}`,newTime:e.requested_time,ts:e.created_at}))].sort((a,b)=>new Date(b.ts)-new Date(a.ts));setAdminActivity(events);};
 
   useEffect(()=>{
     if(!user?.id){setNotifications([]);return;}
@@ -670,7 +670,7 @@ const [driverEditing,setDriverEditing]=useState(false);
     if(!pwForm.next||pwForm.next.length<8){setPwMsg(lang==="ar"?"كلمة المرور يجب أن تكون ٨ أحرف على الأقل":"Password must be at least 8 characters");return;}
     const{error}=await supabase.auth.updateUser({password:pwForm.next});
     if(error) setPwMsg(t.auth.error);
-    else{setPwMsg(prof.passwordChanged+" ✓");setPwForm({current:"",next:""});}
+    else{setPwMsg(prof.passwordChanged+" ✓");setPwForm({next:""});}
     setTimeout(()=>setPwMsg(""),3000);
   };
 
@@ -1001,6 +1001,7 @@ const [driverEditing,setDriverEditing]=useState(false);
   const handleSubmit=()=>{
     if(!user){resetAuth();setPage("login");return;}
     if(!form.from||!form.to||!form.date||!form.name||!form.phone){setError(b.fillAll);return;}
+    if(!route||route.comingSoon||price==null){setError(b.fillAll);return;}
     if(form.payment==="shamcash") return;
     setError("");
     const ref=genRef();setBookingRef(ref);
