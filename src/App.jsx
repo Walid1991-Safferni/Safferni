@@ -962,12 +962,10 @@ const [driverEditing,setDriverEditing]=useState(false);
             <div onClick={()=>setPage("home")} style={{display:"flex",alignItems:"center",gap:10,cursor:"pointer"}}><LogoSVG/><span style={{fontSize:20,fontWeight:900,color:"#1B3A2A"}}>{t.brand}</span></div>
              
           </div>
-          <div style={{display:"flex",alignItems:"center",gap:18,position:"absolute",left:"50%",transform:"translateX(-50%)"}} className="dnav">
+          <div style={{display:"flex",alignItems:"center",gap:20,position:"absolute",left:"50%",transform:"translateX(-50%)"}} className="dnav">
             {navLinks.map(([k,l])=>(<span key={k} onClick={()=>setPage(k)} style={{cursor:"pointer",fontSize:13,fontWeight:600,color:page===k?"#1B3A2A":"#999"}}>{l}</span>))}
-            {!isDriverApplied&&user&&<span onClick={()=>setPage("apply")} style={{cursor:"pointer",fontSize:13,fontWeight:600,color:page==="apply"?"#1B3A2A":"#999"}}>{t.nav.apply}</span>}
-          
-            
-          <div style={{display:"flex",gap:8,alignItems:"center",marginInlineStart:"auto"}}>
+          </div>
+          <div style={{display:"flex",gap:8,alignItems:"center",marginInlineStart:"auto"}} className="dnav">
               {user?(<>
                 <div onClick={()=>setShowNotifications(v=>!v)} style={{position:"relative",cursor:"pointer",display:"flex",alignItems:"center",padding:"6px 9px",borderRadius:8,border:"1.5px solid #DDD",background:showNotifications?"#F0F7F3":"white"}}><span style={{fontSize:15,lineHeight:1}}>🔔</span>{unreadCount>0&&<span style={{position:"absolute",top:-5,right:-5,background:"#EF4444",color:"white",borderRadius:20,minWidth:16,height:16,fontSize:9,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",padding:"0 3px"}}>{unreadCount>9?"9+":unreadCount}</span>}</div>
                 <button onClick={()=>setPage("profile")} style={{background:page==="profile"?"#1B3A2A":"transparent",color:page==="profile"?"white":"#555",border:"1.5px solid #DDD",borderRadius:8,padding:"6px 14px",fontSize:12,cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>{t.nav.profile}</button>
@@ -976,7 +974,6 @@ const [driverEditing,setDriverEditing]=useState(false);
                 <button onClick={()=>{resetAuth();setPage("login");}} style={{background:"#1B3A2A",color:"white",border:"none",padding:"8px 18px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{t.nav.login}</button>
                 <button onClick={scrollToSearch} style={{background:"#F0F7F3",color:"#1B3A2A",border:"1.5px solid #1B3A2A",padding:"8px 18px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{t.nav.book}</button>
               </>)}
-            </div>
             <button onClick={toggleLang} style={{background:"transparent",border:"1.5px solid #DDD",borderRadius:8,padding:"6px 14px",fontSize:12,cursor:"pointer",fontWeight:700,color:"#555",fontFamily:"inherit"}}>{lang==="ar"?"EN":"عربي"}</button>
           </div>
           <div style={{display:"none"}} className="mnav">
@@ -989,10 +986,10 @@ const [driverEditing,setDriverEditing]=useState(false);
         </div>     
         {menuOpen&&(<div style={{animation:"slideDown 0.3s ease",borderTop:"1px solid #E8E6E1",padding:"12px 0 16px"}}>
           {navLinks.map(([k,l])=>(<div key={k} onClick={()=>{setPage(k);setMenuOpen(false)}} style={{padding:"10px 24px",cursor:"pointer",fontSize:15,fontWeight:page===k?700:400,color:page===k?"#1B3A2A":"#444"}}>{l}</div>))}
-          {user&&!isDriverApplied&&<div onClick={()=>{setPage("apply");setMenuOpen(false)}} style={{padding:"10px 24px",cursor:"pointer",fontSize:15,color:"#444"}}>{t.nav.apply}</div>}
           {user&&<div onClick={()=>{setPage("profile");setMenuOpen(false)}} style={{padding:"10px 24px",cursor:"pointer",fontSize:15,fontWeight:700,color:"#1B3A2A"}}>{t.nav.profile}</div>}
           {user?(<div onClick={()=>{handleLogout();setMenuOpen(false)}} style={{padding:"10px 24px",cursor:"pointer",fontSize:15,color:"#444"}}>{t.nav.logout}</div>):(<div onClick={()=>{resetAuth();setPage("login");setMenuOpen(false)}} style={{padding:"10px 24px",cursor:"pointer",fontSize:15,color:"#1B3A2A",fontWeight:700}}>{t.nav.login}</div>)}
           <div style={{padding:"8px 24px"}}><button onClick={()=>{scrollToSearch();setMenuOpen(false)}} style={{background:"#1B3A2A",color:"white",border:"none",padding:"10px 24px",borderRadius:8,fontSize:14,fontWeight:700,cursor:"pointer",width:"100%",fontFamily:"inherit"}}>{t.nav.book}</button></div>
+          {user&&!isDriverApplied&&<div onClick={()=>{setPage("apply");setMenuOpen(false)}} style={{padding:"10px 24px",borderTop:"1px solid #F0EEEA",cursor:"pointer",fontSize:15,fontWeight:700,color:"#1B3A2A",marginTop:4}}>{t.nav.apply} →</div>}
         </div>)}
         <style>{`@media(max-width:700px){.dnav{display:none!important}.mnav{display:flex!important}}`}</style>
       </nav>
@@ -2141,6 +2138,13 @@ const [driverEditing,setDriverEditing]=useState(false);
         </>
       )}
 
+      {page==="home"&&user&&!isDriverApplied&&(
+        <div style={{background:"linear-gradient(135deg,#1B3A2A,#2D5A3D)",padding:"48px 24px",textAlign:"center"}}>
+          <h3 style={{fontSize:22,fontWeight:900,color:"white",marginBottom:8}}>{lang==="ar"?"هل تريد أن تصبح سائقاً؟":"Want to become a driver?"}</h3>
+          <p style={{fontSize:14,color:"rgba(255,255,255,0.75)",maxWidth:480,margin:"0 auto 24px"}}>{lang==="ar"?"انضم لفريق سفّرني وابدأ بنشر رحلاتك":"Join the Safferni team and start posting your trips"}</p>
+          <button onClick={()=>setPage("apply")} style={{background:"white",color:"#1B3A2A",border:"none",padding:"14px 40px",borderRadius:12,fontSize:15,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>{t.nav.apply}</button>
+        </div>
+      )}
       <footer style={{borderTop:"1px solid #E8E6E1",padding:"20px",textAlign:"center",color:"#BBB",fontSize:12,background:"white",fontWeight:500}}>© 2026 {t.brand} — {t.footer}</footer>
 
       <a href={`https://wa.me/${WA_PHONE}`} target="_blank" rel="noopener noreferrer" style={{position:"fixed",bottom:24,[isRTL?"left":"right"]:24,zIndex:999,width:56,height:56,borderRadius:"50%",background:"#25D366",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 4px 16px rgba(0,0,0,0.2)",transition:"transform 0.2s",cursor:"pointer",textDecoration:"none"}} onMouseEnter={e=>e.currentTarget.style.transform="scale(1.1)"} onMouseLeave={e=>e.currentTarget.style.transform="scale(1)"}>
