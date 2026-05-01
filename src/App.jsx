@@ -542,9 +542,12 @@ const [driverEditing,setDriverEditing]=useState(false);
     ]);
     if(existingPhone){setAuthError("PHONE_EXISTS");setAuthLoading(false);return;}
     if(existingEmail){setAuthError(lang==="ar"?"هذا البريد الإلكتروني مسجل مسبقاً. سجّل الدخول بدلاً من ذلك.":"This email is already registered. Please log in instead.");setAuthLoading(false);return;}
-    const _sendRes=await fetch(SEND_OTP_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({phone})});
-    const _sendData=await _sendRes.json();
-    if(!_sendData?.success){setAuthError(_sendData?.error||t.auth.error);setAuthLoading(false);return;}
+    if(!OTP_WORKER_URL){setAuthError("OTP service not configured");setAuthLoading(false);return;}
+    try{
+      const _sendRes=await fetch(SEND_OTP_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({phone})});
+      const _sendData=await _sendRes.json();
+      if(!_sendData?.success){setAuthError(_sendData?.error||t.auth.error);setAuthLoading(false);return;}
+    }catch(e){setAuthError(t.auth.error);setAuthLoading(false);console.error("send-otp failed:",e);return;}
     setPendingPhone(phone);
     setAuthStep("signup_otp_sms");
     setAuthLoading(false);
