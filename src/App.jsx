@@ -173,12 +173,11 @@ const T={
     auth:{
       login:"تسجيل الدخول",signup:"إنشاء حساب",
       email:"البريد الإلكتروني",password:"كلمة المرور",
-      fullName:"الاسم الكامل",phone:"رقم الهاتف",
+      fullName:"الاسم الكامل",phone:"رقم الهاتف",dob:"تاريخ الميلاد",
       loginBtn:"دخول",signupBtn:"إنشاء حساب",
       noAccount:"ليس لديك حساب؟",haveAccount:"لديك حساب؟",
       error:"حدث خطأ، حاول مرة أخرى",
       forgotPassword:"نسيت كلمة المرور؟",
-      recoverByPhone:"استرداد عبر رقم الهاتف",
       sendOtp:"إرسال كود التحقق",
       verifyOtp:"تحقق من الكود",
       newPassword:"كلمة المرور الجديدة",
@@ -187,10 +186,13 @@ const T={
       otpSent:"تم إرسال كود التحقق إلى",
       otpWrong:"الكود غير صحيح، حاول مرة أخرى",
       passwordUpdated:"تم تحديث كلمة المرور بنجاح!",
-      verifyPhone:"تحقق من رقم هاتفك",
       createAccount:"إنشاء الحساب",
-      setPassword:"أنشئ كلمة مرورك",
       passwordHint:"ستستخدم هذه الكلمة لتسجيل الدخول لاحقاً بالبريد الإلكتروني",
+      locationQ:"هل أنت حالياً في سوريا؟",
+      inSyria:"نعم، أنا في سوريا",
+      notInSyria:"لا، أنا خارج سوريا",
+      sendSmsCode:"إرسال كود SMS",
+      emailOtpSent:"تم إرسال كود التحقق إلى بريدك الإلكتروني",
     },
     apply:{title:"سجّل كسائق",desc:"انضم إلى فريق سفّرني وابدأ بنشر رحلاتك",alreadyApplied:"طلبك قيد المراجعة أو تم قبوله",fullName:"الاسم الكامل",phone:"رقم الهاتف",city:"مدينتك",carType:"نوع السيارة",carModel:"موديل السيارة",licensePlate:"رقم اللوحة",notes:"ملاحظات إضافية",submit:"تقديم الطلب",success:"تم إرسال طلبك! سنراجعه ونتواصل معك قريباً.",fillAll:"يرجى ملء جميع الحقول المطلوبة"},
     admin:{title:"لوحة الإدارة",applications:"طلبات السائقين",editRequests:"طلبات تعديل الوقت",drivers:"السائقون",allTrips:"كل الرحلات",pending:"قيد المراجعة",approved:"مقبول",denied:"مرفوض",approve:"قبول",deny:"رفض",approveTrip:"قبول الرحلة",noApps:"لا توجد طلبات",noTrips:"لا توجد رحلات",revokeAndDelete:"إلغاء وحذف رحلاته",cancelTrip:"إلغاء",deleteTrip:"حذف",filterByDriver:"فلتر حسب السائق",filterByDate:"فلتر حسب التاريخ",allDrivers:"كل السائقين",phone:"الهاتف",city:"المدينة",car:"السيارة",requestedTime:"الوقت المطلوب",currentTime:"الوقت الحالي",driver:"السائق",bookings:"حجوزات",notApprovedYet:"قيد المراجعة"},
@@ -227,12 +229,11 @@ const T={
     auth:{
       login:"Login",signup:"Sign Up",
       email:"Email Address",password:"Password",
-      fullName:"Full Name",phone:"Phone Number",
+      fullName:"Full Name",phone:"Phone Number",dob:"Date of Birth",
       loginBtn:"Login",signupBtn:"Create Account",
       noAccount:"Don't have an account?",haveAccount:"Already have an account?",
       error:"An error occurred, please try again",
       forgotPassword:"Forgot your password?",
-      recoverByPhone:"Recover via phone number",
       sendOtp:"Send Verification Code",
       verifyOtp:"Verify Code",
       newPassword:"New Password",
@@ -241,10 +242,13 @@ const T={
       otpSent:"Verification code sent to",
       otpWrong:"Incorrect code, please try again",
       passwordUpdated:"Password updated successfully!",
-      verifyPhone:"Verify your phone number",
       createAccount:"Create Account",
-      setPassword:"Set your password",
       passwordHint:"You'll use this password to log in later with your email",
+      locationQ:"Are you currently located in Syria?",
+      inSyria:"Yes, I'm in Syria",
+      notInSyria:"No, I'm outside Syria",
+      sendSmsCode:"Send SMS Code",
+      emailOtpSent:"Verification code sent to your email",
     },
     apply:{title:"Become a Driver",desc:"Join the Safferni team and start posting your trips",alreadyApplied:"Your application is under review or already approved",fullName:"Full Name",phone:"Phone Number",city:"Your City",carType:"Car Type",carModel:"Car Model",licensePlate:"License Plate",notes:"Additional Notes",submit:"Submit Application",success:"Application submitted! We'll review it and get back to you soon.",fillAll:"Please fill all required fields"},
     admin:{title:"Admin Panel",applications:"Driver Applications",editRequests:"Time Edit Requests",drivers:"Drivers",allTrips:"All Trips",pending:"Pending",approved:"Approved",denied:"Denied",approve:"Approve",deny:"Deny",approveTrip:"Approve Trip",noApps:"No applications",noTrips:"No trips",revokeAndDelete:"Revoke & Delete Trips",cancelTrip:"Cancel",deleteTrip:"Delete",filterByDriver:"Filter by Driver",filterByDate:"Filter by Date",allDrivers:"All Drivers",phone:"Phone",city:"City",car:"Car",requestedTime:"Requested Time",currentTime:"Current Time",driver:"Driver",bookings:"bookings",notApprovedYet:"Pending Review"},
@@ -305,9 +309,9 @@ export default function App(){
   const [tripDetailLoading,setTripDetailLoading]=useState(false);
 
   // AUTH STATE — new unified flow
-  // authStep: "choice" | "login" | "signup_country" | "signup_info_sy" | "signup_otp_email" | "signup_info_other" | "signup_otp_sms" | "forgot_phone" | "forgot_newpass"
+  // authStep: "choice" | "login" | "signup_country" | "signup_info_sy" | "signup_pending_email" | "signup_info_other" | "signup_otp_sms" | "forgot_phone" | "forgot_newpass"
   const [authStep,setAuthStep]=useState("choice");
-  const [authForm,setAuthForm]=useState({fullName:"",email:"",phone:"+963",password:""});
+  const [authForm,setAuthForm]=useState({fullName:"",email:"",phone:"+963",password:"",dob:""});
   const [authOtp,setAuthOtp]=useState("");
   const [authError,setAuthError]=useState("");
   const [authLoading,setAuthLoading]=useState(false);
@@ -468,7 +472,7 @@ const [driverEditing,setDriverEditing]=useState(false);
   // ─── AUTH FLOW ────────────────────────────────────────────────────────────
 
   const resetAuth=()=>{
-    setAuthStep("choice");setAuthForm({fullName:"",email:"",phone:"+963",password:""});
+    setAuthStep("choice");setAuthForm({fullName:"",email:"",phone:"+963",password:"",dob:""});
     setAuthOtp("");setAuthError("");setAuthSuccess("");setPendingPhone("");setAuthLoading(false);
   };
 
@@ -485,9 +489,9 @@ const [driverEditing,setDriverEditing]=useState(false);
     setAuthLoading(false);
   };
 
-  // Signup Syria: send email OTP
+  // Signup Syria: send email OTP code
   const handleSignupSyriaStart=async()=>{
-    if(!authForm.fullName||!authForm.email||!authForm.password){setAuthError(t.auth.error);return;}
+    if(!authForm.fullName||!authForm.dob||!authForm.email||!authForm.phone||!authForm.password){setAuthError(t.auth.error);return;}
     if(authForm.password.length<8){setAuthError(lang==="ar"?"كلمة المرور يجب أن تكون ٨ أحرف على الأقل":"Password must be at least 8 characters");return;}
     didLogOut.current=false;
     setAuthLoading(true);setAuthError("");
@@ -512,7 +516,7 @@ const [driverEditing,setDriverEditing]=useState(false);
     const{error:pwErr}=await supabase.auth.updateUser({password:authForm.password});
     if(pwErr){setAuthError(lang==="ar"?"فشل في تعيين كلمة المرور، حاول مرة أخرى":"Failed to set password, please try again");setAuthLoading(false);return;}
     const role=ADMIN_EMAILS.includes(email)?"admin":"passenger";
-    const newProfile={id:uid,email,full_name:authForm.fullName,phone:"",role};
+    const newProfile={id:uid,email,full_name:authForm.fullName,phone:authForm.phone,role,date_of_birth:authForm.dob};
     await supabase.from("profiles").upsert(newProfile);
     setProfile(newProfile);
     resetAuth();setPage("home");
@@ -550,7 +554,7 @@ const [driverEditing,setDriverEditing]=useState(false);
     setAuthLoading(false);
   };
 
-  // Signup Other: verify WhatsApp OTP and create account
+  // Signup Other: verify SMS OTP and create account
   const handleSignupOtherVerify=async()=>{
     if(!authOtp){setAuthError(t.auth.error);return;}
     setAuthLoading(true);setAuthError("");
@@ -569,14 +573,14 @@ const [driverEditing,setDriverEditing]=useState(false);
     setAuthLoading(false);
   };
 
-  // Resend WhatsApp OTP
+  // Resend SMS OTP
   const handleResendPhoneOtp=async()=>{
     setAuthLoading(true);setAuthError("");
     const phone=pendingPhone||fullPhone();
     const _r=await fetch(SEND_OTP_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({phone})});
     const _d=await _r.json();
     if(!_d?.success){setAuthError(_d?.error||t.auth.error);}
-    else{setAuthError(lang==="ar"?"تم إعادة إرسال الكود عبر واتساب":"Code resent via WhatsApp");}
+    else{setAuthError(lang==="ar"?"تم إعادة إرسال الكود عبر SMS":"Code resent via SMS");}
     setAuthLoading(false);
   };
 
@@ -1107,20 +1111,19 @@ const [driverEditing,setDriverEditing]=useState(false);
               <LogoSVG/>
               <h2 style={{fontSize:22,fontWeight:900,color:"#1B3A2A",marginTop:12}}>
                 {authStep==="choice"||authStep==="login"?t.auth.login
-                :authStep==="signup_info_other"||authStep==="signup_otp_sms"?t.auth.signup
                 :authStep==="forgot_phone"||authStep==="forgot_newpass"?t.auth.forgotPassword
-                :t.auth.login}
+                :t.auth.signup}
               </h2>
             </div>
 
             {authSuccess&&<div style={{marginBottom:16,padding:"12px 16px",background:"#F0FDF4",border:"1px solid #BBF7D0",borderRadius:10,color:"#166534",fontSize:13,fontWeight:700,textAlign:"center"}}>{authSuccess}</div>}
             {authError&&authError!=="PHONE_EXISTS"&&<div style={{marginBottom:16,padding:"10px 16px",background:"#FEF2F2",border:"1px solid #FECACA",borderRadius:10,color:"#B91C1C",fontSize:13,fontWeight:700}}>{authError}</div>}
 
-            {/* CHOICE */}
+            {/* CHOICE: login or sign up */}
             {authStep==="choice"&&(
               <div style={{display:"flex",flexDirection:"column",gap:12}}>
                 <button onClick={()=>{setAuthStep("login");setAuthError("");}} style={{width:"100%",background:"#1B3A2A",color:"white",border:"none",padding:"14px",borderRadius:12,fontSize:15,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>{t.auth.loginBtn}</button>
-                <button onClick={()=>{setAuthStep("signup_info_other");setAuthError("");}} style={{width:"100%",background:"white",color:"#1B3A2A",border:"2px solid #1B3A2A",padding:"14px",borderRadius:12,fontSize:15,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>{t.auth.signupBtn}</button>
+                <button onClick={()=>{setAuthStep("signup_country");setAuthError("");}} style={{width:"100%",background:"white",color:"#1B3A2A",border:"2px solid #1B3A2A",padding:"14px",borderRadius:12,fontSize:15,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>{t.auth.signupBtn}</button>
               </div>
             )}
 
@@ -1130,11 +1133,51 @@ const [driverEditing,setDriverEditing]=useState(false);
               <div style={{marginBottom:8}}><label style={lbl}>{t.auth.password}</label><input type="password" value={authForm.password} onChange={e=>setAuthForm(f=>({...f,password:e.target.value}))} style={inp} onKeyDown={e=>e.key==="Enter"&&handleLogin()}/></div>
               <p onClick={()=>{setAuthStep("forgot_phone");setAuthError("");}} style={{textAlign:"end",fontSize:12,color:"#1B3A2A",fontWeight:700,cursor:"pointer",marginBottom:20}}>{t.auth.forgotPassword}</p>
               <button onClick={handleLogin} disabled={authLoading} style={{width:"100%",background:"#1B3A2A",color:"white",border:"none",padding:"14px",borderRadius:12,fontSize:15,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>{authLoading?"...":t.auth.loginBtn}</button>
-              <p style={{textAlign:"center",marginTop:16,fontSize:13,color:"#888"}}>{t.auth.noAccount}{" "}<span onClick={()=>{setAuthStep("signup_info_other");setAuthError("");}} style={{color:"#1B3A2A",fontWeight:700,cursor:"pointer"}}>{t.auth.signupBtn}</span></p>
-              <p onClick={()=>setAuthStep("choice")} style={{textAlign:"center",marginTop:8,fontSize:12,color:"#AAA",cursor:"pointer"}}>{t.auth.backToLogin}</p>
+              <p style={{textAlign:"center",marginTop:16,fontSize:13,color:"#888"}}>{t.auth.noAccount}{" "}<span onClick={()=>{setAuthStep("signup_country");setAuthError("");}} style={{color:"#1B3A2A",fontWeight:700,cursor:"pointer"}}>{t.auth.signupBtn}</span></p>
+              <p onClick={()=>setAuthStep("choice")} style={{textAlign:"center",marginTop:8,fontSize:12,color:"#AAA",cursor:"pointer"}}>← {lang==="ar"?"رجوع":"Back"}</p>
             </>)}
 
-            {/* SIGNUP: name + phone + email + password */}
+            {/* SIGNUP: country selection */}
+            {authStep==="signup_country"&&(
+              <div>
+                <p style={{textAlign:"center",fontSize:14,color:"#555",marginBottom:24,fontWeight:600}}>{t.auth.locationQ}</p>
+                <div style={{display:"flex",flexDirection:"column",gap:12}}>
+                  <button onClick={()=>{setAuthStep("signup_info_sy");setAuthError("");setAuthForm(f=>({...f,phone:"+963"}));}} style={{width:"100%",background:"#1B3A2A",color:"white",border:"none",padding:"14px",borderRadius:12,fontSize:15,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>🇸🇾 {t.auth.inSyria}</button>
+                  <button onClick={()=>{setAuthStep("signup_info_other");setAuthError("");setAuthForm(f=>({...f,phone:"+"}));}} style={{width:"100%",background:"white",color:"#1B3A2A",border:"2px solid #1B3A2A",padding:"14px",borderRadius:12,fontSize:15,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>🌍 {t.auth.notInSyria}</button>
+                </div>
+                <p onClick={()=>{setAuthStep("choice");setAuthError("");}} style={{textAlign:"center",marginTop:20,fontSize:12,color:"#AAA",cursor:"pointer"}}>← {lang==="ar"?"رجوع":"Back"}</p>
+              </div>
+            )}
+
+            {/* SIGNUP SYRIA: name + DOB + email + phone + password */}
+            {authStep==="signup_info_sy"&&(<>
+              <div style={{marginBottom:14}}><label style={lbl}>{t.auth.fullName} *</label><input value={authForm.fullName} onChange={e=>setAuthForm(f=>({...f,fullName:e.target.value}))} style={inp}/></div>
+              <div style={{marginBottom:14}}><label style={lbl}>{t.auth.dob} *</label><input type="date" value={authForm.dob} onChange={e=>setAuthForm(f=>({...f,dob:e.target.value}))} style={inp}/></div>
+              <div style={{marginBottom:14}}><label style={lbl}>{t.auth.email} *</label><input type="email" value={authForm.email} onChange={e=>setAuthForm(f=>({...f,email:e.target.value}))} style={inp}/></div>
+              <div style={{marginBottom:14}}>
+                <label style={lbl}>{t.auth.phone} *</label>
+                <PhoneField value={authForm.phone} onChange={v=>setAuthForm(f=>({...f,phone:v}))} lang={lang} inp={inp}/>
+              </div>
+              <div style={{marginBottom:8}}><label style={lbl}>{t.auth.password} *</label><input type="password" value={authForm.password} onChange={e=>setAuthForm(f=>({...f,password:e.target.value}))} style={inp} onKeyDown={e=>e.key==="Enter"&&handleSignupSyriaStart()}/></div>
+              <p style={{fontSize:11,color:"#AAA",marginBottom:20}}>{t.auth.passwordHint}</p>
+              <button onClick={handleSignupSyriaStart} disabled={authLoading} style={{width:"100%",background:"#1B3A2A",color:"white",border:"none",padding:"14px",borderRadius:12,fontSize:15,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>{authLoading?"...":(lang==="ar"?"إرسال كود التحقق بالبريد":"Send Email Code")}</button>
+              <p style={{textAlign:"center",marginTop:16,fontSize:13,color:"#888"}}>{t.auth.haveAccount}{" "}<span onClick={()=>{setAuthStep("login");setAuthError("");}} style={{color:"#1B3A2A",fontWeight:700,cursor:"pointer"}}>{t.auth.loginBtn}</span></p>
+              <p onClick={()=>{setAuthStep("signup_country");setAuthError("");}} style={{textAlign:"center",marginTop:8,fontSize:12,color:"#AAA",cursor:"pointer"}}>← {lang==="ar"?"رجوع":"Back"}</p>
+            </>)}
+
+            {/* SIGNUP SYRIA OTP: verify email code */}
+            {authStep==="signup_otp_email"&&(<>
+              <div style={{background:"#F0FDF4",border:"1px solid #BBF7D0",borderRadius:12,padding:"12px 16px",marginBottom:20,textAlign:"center"}}>
+                <p style={{fontSize:13,color:"#166534",fontWeight:700}}>✉️ {t.auth.emailOtpSent}</p>
+                <p style={{fontSize:12,color:"#555",marginTop:4}}>{authForm.email}</p>
+              </div>
+              <div style={{marginBottom:20}}><label style={lbl}>{lang==="ar"?"كود التحقق":"Verification Code"} *</label><input type="text" inputMode="numeric" maxLength={6} value={authOtp} onChange={e=>setAuthOtp(e.target.value.trim())} style={{...inp,textAlign:"center",fontSize:28,letterSpacing:6}} placeholder="— — — — — —" onKeyDown={e=>e.key==="Enter"&&handleSignupSyriaVerify()}/></div>
+              <button onClick={handleSignupSyriaVerify} disabled={authLoading} style={{width:"100%",background:"#1B3A2A",color:"white",border:"none",padding:"14px",borderRadius:12,fontSize:15,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>{authLoading?"...":t.auth.verifyOtp}</button>
+              <p onClick={handleResendEmailOtp} style={{textAlign:"center",marginTop:12,fontSize:12,color:"#1B3A2A",cursor:"pointer",fontWeight:600}}>{lang==="ar"?"لم تستلم الكود؟ إعادة الإرسال":"Didn't receive it? Resend"}</p>
+              <p onClick={()=>{setAuthStep("signup_info_sy");setAuthOtp("");setAuthError("");}} style={{textAlign:"center",marginTop:4,fontSize:12,color:"#AAA",cursor:"pointer"}}>← {lang==="ar"?"رجوع":"Back"}</p>
+            </>)}
+
+            {/* SIGNUP NON-SYRIA: name + email + phone + password */}
             {authStep==="signup_info_other"&&(<>
               <div style={{marginBottom:14}}><label style={lbl}>{t.auth.fullName} *</label><input value={authForm.fullName} onChange={e=>setAuthForm(f=>({...f,fullName:e.target.value}))} style={inp}/></div>
               <div style={{marginBottom:14}}><label style={lbl}>{t.auth.email} *</label><input type="email" value={authForm.email} onChange={e=>setAuthForm(f=>({...f,email:e.target.value}))} style={inp}/></div>
@@ -1148,17 +1191,18 @@ const [driverEditing,setDriverEditing]=useState(false);
                 <span style={{color:"#B91C1C"}}>{lang==="ar"?"هذا الرقم مسجل مسبقاً.":"This phone number is already registered."}</span>{" "}
                 <span onClick={()=>{setAuthStep("login");setAuthError("");}} style={{color:"#1B3A2A",fontWeight:800,cursor:"pointer",textDecoration:"underline"}}>{lang==="ar"?"سجّل الدخول بدلاً من ذلك":"Log in instead"}</span>
               </div>}
-              <button onClick={handleSignupOtherStart} disabled={authLoading} style={{width:"100%",background:"#1B3A2A",color:"white",border:"none",padding:"14px",borderRadius:12,fontSize:15,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>{authLoading?"...":(lang==="ar"?"إرسال كود واتساب":"Send WhatsApp Code")}</button>
+              <button onClick={handleSignupOtherStart} disabled={authLoading} style={{width:"100%",background:"#1B3A2A",color:"white",border:"none",padding:"14px",borderRadius:12,fontSize:15,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>{authLoading?"...":t.auth.sendSmsCode}</button>
               <p style={{textAlign:"center",marginTop:16,fontSize:13,color:"#888"}}>{t.auth.haveAccount}{" "}<span onClick={()=>{setAuthStep("login");setAuthError("");}} style={{color:"#1B3A2A",fontWeight:700,cursor:"pointer"}}>{t.auth.loginBtn}</span></p>
-              <p onClick={()=>{setAuthStep("choice");setAuthError("");}} style={{textAlign:"center",marginTop:8,fontSize:12,color:"#AAA",cursor:"pointer"}}>← {lang==="ar"?"رجوع":"Back"}</p>
+              <p onClick={()=>{setAuthStep("signup_country");setAuthError("");}} style={{textAlign:"center",marginTop:8,fontSize:12,color:"#AAA",cursor:"pointer"}}>← {lang==="ar"?"رجوع":"Back"}</p>
             </>)}
 
-            {/* SIGNUP OTP: verify WhatsApp code */}
+            {/* SIGNUP NON-SYRIA OTP: verify SMS code */}
             {authStep==="signup_otp_sms"&&(<>
               <div style={{background:"#F0FDF4",border:"1px solid #BBF7D0",borderRadius:12,padding:"12px 16px",marginBottom:20,textAlign:"center"}}>
-                <p style={{fontSize:13,color:"#166534",fontWeight:700}}>💬 {lang==="ar"?`تم إرسال كود التحقق عبر واتساب إلى ${pendingPhone||fullPhone()}`:`WhatsApp verification code sent to ${pendingPhone||fullPhone()}`}</p>
+                <p style={{fontSize:13,color:"#166534",fontWeight:700}}>📱 {lang==="ar"?`تم إرسال كود التحقق عبر SMS إلى`:`SMS verification code sent to`}</p>
+                <p style={{fontSize:12,color:"#555",marginTop:4,direction:"ltr"}}>{pendingPhone||fullPhone()}</p>
               </div>
-              <div style={{marginBottom:20}}><label style={lbl}>{lang==="ar"?"كود التحقق":"Verification Code"} *</label><input type="text" inputMode="text" maxLength={8} value={authOtp} onChange={e=>setAuthOtp(e.target.value.trim())} style={{...inp,textAlign:"center",fontSize:26,letterSpacing:4}} placeholder="- - - - - - - -" onKeyDown={e=>e.key==="Enter"&&handleSignupOtherVerify()}/></div>
+              <div style={{marginBottom:20}}><label style={lbl}>{lang==="ar"?"كود التحقق":"Verification Code"} *</label><input type="text" inputMode="numeric" maxLength={6} value={authOtp} onChange={e=>setAuthOtp(e.target.value.trim())} style={{...inp,textAlign:"center",fontSize:28,letterSpacing:6}} placeholder="— — — — — —" onKeyDown={e=>e.key==="Enter"&&handleSignupOtherVerify()}/></div>
               <button onClick={handleSignupOtherVerify} disabled={authLoading} style={{width:"100%",background:"#1B3A2A",color:"white",border:"none",padding:"14px",borderRadius:12,fontSize:15,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>{authLoading?"...":t.auth.verifyOtp}</button>
               <p onClick={handleResendPhoneOtp} style={{textAlign:"center",marginTop:12,fontSize:12,color:"#1B3A2A",cursor:"pointer",fontWeight:600}}>{lang==="ar"?"لم تستلم الكود؟ إعادة الإرسال":"Didn't receive it? Resend"}</p>
               <p onClick={()=>{setAuthStep("signup_info_other");setAuthOtp("");setAuthError("");}} style={{textAlign:"center",marginTop:4,fontSize:12,color:"#AAA",cursor:"pointer"}}>← {lang==="ar"?"رجوع":"Back"}</p>
