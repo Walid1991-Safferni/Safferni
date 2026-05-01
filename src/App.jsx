@@ -526,7 +526,7 @@ const [driverEditing,setDriverEditing]=useState(false);
     setAuthLoading(false);
   };
 
-  // Signup Other: send SMS OTP
+  // Signup Other: send WhatsApp OTP via Twilio Verify
   const handleSignupOtherStart=async()=>{
     if(!authForm.fullName||!authForm.phone||detectCC(authForm.phone).num.length<4||!authForm.email||!authForm.password){setAuthError(t.auth.error);return;}
     didLogOut.current=false;
@@ -539,29 +539,38 @@ const [driverEditing,setDriverEditing]=useState(false);
     ]);
     if(existingPhone){setAuthError("PHONE_EXISTS");setAuthLoading(false);return;}
     if(existingEmail){setAuthError(lang==="ar"?"هذا البريد الإلكتروني مسجل مسبقاً. سجّل الدخول بدلاً من ذلك.":"This email is already registered. Please log in instead.");setAuthLoading(false);return;}
-    const{error}=await supabase.auth.signInWithOtp({phone});
-    if(error){setAuthError(error.message||t.auth.error);setAuthLoading(false);return;}
+    const{data,error}=await supabase.functions.invoke("send-otp",{body:{phone}});
+    if(error||!data?.success){setAuthError(data?.error||error?.message||t.auth.error);setAuthLoading(false);return;}
     setPendingPhone(phone);
     setAuthStep("signup_otp_sms");
     setAuthLoading(false);
   };
 
-  // Signup Other: verify SMS OTP and create account
+  // Signup Other: verify WhatsApp OTP and create account
   const handleSignupOtherVerify=async()=>{
     if(!authOtp){setAuthError(t.auth.error);return;}
     setAuthLoading(true);setAuthError("");
     const phone=pendingPhone||fullPhone();
-    const{data,error}=await supabase.auth.verifyOtp({phone,token:authOtp,type:"sms"});
-    if(error){setAuthError(t.auth.otpWrong);setAuthLoading(false);return;}
-    const uid=data.user?.id;
-    if(uid){
-      const email=authForm.email.trim().toLowerCase();
-      const{error:updateErr}=await supabase.auth.updateUser({email,password:authForm.password});
-      if(updateErr){setAuthError(lang==="ar"?"البريد الإلكتروني مسجل مسبقاً":"This email is already registered");setAuthLoading(false);return;}
-      const role=ADMIN_EMAILS.includes(email)?"admin":"passenger";
-      await supabase.from("profiles").upsert({id:uid,email,full_name:authForm.fullName,phone,role});
+    const email=authForm.email.trim().toLowerCase();
+    const{data,error}=await supabase.functions.invoke("verify-otp-signup",{body:{phone,code:authOtp,fullName:authForm.fullName,email,password:authForm.password}});
+    if(error||!data?.success){
+      if(data?.error==="invalid_code"){setAuthError(t.auth.otpWrong);}
+      else if(data?.error==="email_exists"){setAuthError(lang==="ar"?"البريد الإلكتروني مسجل مسبقاً":"This email is already registered");}
+      else{setAuthError(t.auth.error);}
+      setAuthLoading(false);return;
     }
+    if(data.session) await supabase.auth.setSession({access_token:data.session.access_token,refresh_token:data.session.refresh_token});
     resetAuth();setPage("home");
+    setAuthLoading(false);
+  };
+
+  // Resend WhatsApp OTP
+  const handleResendPhoneOtp=async()=>{
+    setAuthLoading(true);setAuthError("");
+    const phone=pendingPhone||fullPhone();
+    const{data,error}=await supabase.functions.invoke("send-otp",{body:{phone}});
+    if(error||!data?.success){setAuthError(data?.error||t.auth.error);}
+    else{setAuthError(lang==="ar"?"تم إعادة إرسال الكود عبر واتساب":"Code resent via WhatsApp");}
     setAuthLoading(false);
   };
 
@@ -1167,19 +1176,20 @@ const [driverEditing,setDriverEditing]=useState(false);
                 <span style={{color:"#B91C1C"}}>{lang==="ar"?"هذا الرقم مسجل مسبقاً.":"This phone number is already registered."}</span>{" "}
                 <span onClick={()=>{setAuthStep("login");setAuthError("");}} style={{color:"#1B3A2A",fontWeight:800,cursor:"pointer",textDecoration:"underline"}}>{lang==="ar"?"سجّل الدخول بدلاً من ذلك":"Log in instead"}</span>
               </div>}
-              <button onClick={handleSignupOtherStart} disabled={authLoading} style={{width:"100%",background:"#1B3A2A",color:"white",border:"none",padding:"14px",borderRadius:12,fontSize:15,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>{authLoading?"...":(lang==="ar"?"إرسال كود SMS":"Send SMS Code")}</button>
+              <button onClick={handleSignupOtherStart} disabled={authLoading} style={{width:"100%",background:"#1B3A2A",color:"white",border:"none",padding:"14px",borderRadius:12,fontSize:15,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>{authLoading?"...":(lang==="ar"?"إرسال كود واتساب":"Send WhatsApp Code")}</button>
               <p style={{textAlign:"center",marginTop:16,fontSize:13,color:"#888"}}>{t.auth.haveAccount}{" "}<span onClick={()=>{setAuthStep("login");setAuthError("");}} style={{color:"#1B3A2A",fontWeight:700,cursor:"pointer"}}>{t.auth.loginBtn}</span></p>
               <p onClick={()=>{setAuthStep("signup_country");setAuthError("");}} style={{textAlign:"center",marginTop:8,fontSize:12,color:"#AAA",cursor:"pointer"}}>← {lang==="ar"?"رجوع":"Back"}</p>
             </>)}
 
-            {/* SIGNUP OTHER OTP: verify SMS code */}
+            {/* SIGNUP OTHER OTP: verify WhatsApp code */}
             {authStep==="signup_otp_sms"&&(<>
               <div style={{background:"#F0FDF4",border:"1px solid #BBF7D0",borderRadius:12,padding:"12px 16px",marginBottom:20,textAlign:"center"}}>
-                <p style={{fontSize:13,color:"#166534",fontWeight:700}}>📱 {lang==="ar"?`${t.auth.otpSent} ${pendingPhone||fullPhone()}`:`${t.auth.otpSent} ${pendingPhone||fullPhone()}`}</p>
+                <p style={{fontSize:13,color:"#166534",fontWeight:700}}>💬 {lang==="ar"?`تم إرسال كود التحقق عبر واتساب إلى ${pendingPhone||fullPhone()}`:`WhatsApp verification code sent to ${pendingPhone||fullPhone()}`}</p>
               </div>
               <div style={{marginBottom:20}}><label style={lbl}>{lang==="ar"?"كود التحقق":"Verification Code"} *</label><input type="text" inputMode="text" maxLength={8} value={authOtp} onChange={e=>setAuthOtp(e.target.value.trim())} style={{...inp,textAlign:"center",fontSize:26,letterSpacing:4}} placeholder="- - - - - - - -" onKeyDown={e=>e.key==="Enter"&&handleSignupOtherVerify()}/></div>
               <button onClick={handleSignupOtherVerify} disabled={authLoading} style={{width:"100%",background:"#1B3A2A",color:"white",border:"none",padding:"14px",borderRadius:12,fontSize:15,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>{authLoading?"...":t.auth.verifyOtp}</button>
-              <p onClick={()=>{setAuthStep("signup_info_other");setAuthOtp("");setAuthError("");}} style={{textAlign:"center",marginTop:12,fontSize:12,color:"#AAA",cursor:"pointer"}}>← {lang==="ar"?"رجوع":"Back"}</p>
+              <p onClick={handleResendPhoneOtp} style={{textAlign:"center",marginTop:12,fontSize:12,color:"#1B3A2A",cursor:"pointer",fontWeight:600}}>{lang==="ar"?"لم تستلم الكود؟ إعادة الإرسال":"Didn't receive it? Resend"}</p>
+              <p onClick={()=>{setAuthStep("signup_info_other");setAuthOtp("");setAuthError("");}} style={{textAlign:"center",marginTop:4,fontSize:12,color:"#AAA",cursor:"pointer"}}>← {lang==="ar"?"رجوع":"Back"}</p>
             </>)}
 
             {/* FORGOT STEP 1: email */}
