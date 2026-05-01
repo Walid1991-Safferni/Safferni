@@ -615,12 +615,14 @@ const [driverEditing,setDriverEditing]=useState(false);
   const handleForgotNewPass=async()=>{
     if(!authForm.password||authForm.password.length<8){setAuthError(lang==="ar"?"كلمة المرور يجب أن تكون ٨ أحرف على الأقل":"Password must be at least 8 characters");return;}
     setAuthLoading(true);setAuthError("");
-    const{data:{user:currentUser}}=await supabase.auth.getUser();
+    const{data:meData}=await supabase.auth.getUser();
+    const currentUser=meData?.user;
     const{error}=await supabase.auth.updateUser({password:authForm.password});
     if(error){setAuthError(t.auth.error);setAuthLoading(false);return;}
     const email=currentUser?.email||authForm.email;
     await supabase.auth.signOut({scope:"global"}).catch(()=>{});
-    await supabase.auth.signInWithPassword({email,password:authForm.password});
+    const{error:loginErr}=await supabase.auth.signInWithPassword({email,password:authForm.password});
+    if(loginErr){setAuthError(t.auth.error);setAuthLoading(false);return;}
     setAuthSuccess(t.auth.passwordUpdated);
     setTimeout(()=>{resetAuth();setPage("home");},1500);
     setAuthLoading(false);
@@ -663,7 +665,8 @@ const [driverEditing,setDriverEditing]=useState(false);
 
   const confirmBooking=async(bookingId)=>{
     const bk=tripDetailBookings.find(b=>b.id===bookingId);
-    await supabase.rpc("driver_action_booking",{p_booking_id:bookingId,p_action:"confirm"});
+    const{error}=await supabase.rpc("driver_action_booking",{p_booking_id:bookingId,p_action:"confirm"});
+    if(error) return;
     setTripDetailBookings(bs=>bs.map(b=>b.id===bookingId?{...b,status:"confirmed"}:b));
     if(bk?.user_id&&selectedTripDetail) createNotif(bk.user_id,"booking_confirmed",lang==="ar"?"تم تأكيد حجزك ✅":"Booking Confirmed ✅",lang==="ar"?`تم تأكيد حجزك على رحلة ${gc(selectedTripDetail.from_city)?.[lang]||selectedTripDetail.from_city} إلى ${gc(selectedTripDetail.to_city)?.[lang]||selectedTripDetail.to_city} بتاريخ ${selectedTripDetail.trip_date}`:`Your booking on ${gc(selectedTripDetail.from_city)?.en||selectedTripDetail.from_city} → ${gc(selectedTripDetail.to_city)?.en||selectedTripDetail.to_city} on ${selectedTripDetail.trip_date} was confirmed by the driver`);
   };
@@ -819,7 +822,8 @@ const [driverEditing,setDriverEditing]=useState(false);
     if(!reviewForm.rating||!bookingId||!user) return;
     const{data:myBooking}=await supabase.from("bookings").select("id").eq("id",bookingId).eq("user_id",user.id).neq("status","cancelled").maybeSingle();
     if(!myBooking) return;
-    await supabase.from("trip_reviews").insert({trip_id:tripId,booking_id:bookingId,driver_id:driverId,passenger_name:tripBooking.name||profile?.full_name||"Anonymous",rating:reviewForm.rating,review_text:reviewForm.text});
+    const{error:reviewErr}=await supabase.from("trip_reviews").insert({trip_id:tripId,booking_id:bookingId,driver_id:driverId,passenger_name:tripBooking.name||profile?.full_name||"Anonymous",rating:reviewForm.rating,review_text:reviewForm.text});
+    if(reviewErr) return;
     const{data:reviews}=await supabase.from("trip_reviews").select("rating").eq("driver_id",driverId);
     if(reviews&&reviews.length>0){
       const avg=reviews.reduce((a,r)=>a+r.rating,0)/reviews.length;
@@ -1017,7 +1021,8 @@ const [driverEditing,setDriverEditing]=useState(false);
 
   const submitRating=async()=>{
     if(!tripRating||!lastBookingId||!selectedTrip) return;
-    await supabase.from("trip_ratings").insert({trip_id:selectedTrip.id,booking_id:lastBookingId,rating:tripRating});
+    const{error:ratingErr}=await supabase.from("trip_ratings").insert({trip_id:selectedTrip.id,booking_id:lastBookingId,rating:tripRating});
+    if(ratingErr) return;
     const{data:ratings}=await supabase.from("trip_ratings").select("rating").eq("trip_id",selectedTrip.id);
     if(ratings&&ratings.length>0){
       const avg=ratings.reduce((a,r)=>a+r.rating,0)/ratings.length;
