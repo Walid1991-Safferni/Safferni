@@ -3,9 +3,6 @@ import { createClient } from "@supabase/supabase-js";
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON = import.meta.env.VITE_SUPABASE_ANON_KEY;
-const OTP_WORKER_URL = (import.meta.env.VITE_OTP_WORKER_URL || "").replace(/\/+$/, "");
-const SEND_OTP_URL = OTP_WORKER_URL ? `${OTP_WORKER_URL}/send-otp` : "";
-const VERIFY_OTP_URL = OTP_WORKER_URL ? `${OTP_WORKER_URL}/verify-otp` : "";
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON);
 const SHEET_URL = import.meta.env.VITE_SHEET_URL;
 const USDT_ADDRESS = import.meta.env.VITE_USDT_ADDRESS;
@@ -456,9 +453,12 @@ const [driverEditing,setDriverEditing]=useState(false);
     if(data){setProfile(data);setDriverApproved(data?.role==="driver");setLoading(false);return;}
     // No profile yet — race-free creation from pending signup data
     const stash=pendingSignupData.current;
-    if(stash&&stash.email===u.email){
-      const role=ADMIN_EMAILS.includes(u.email||"")?"admin":"passenger";
-      const newProfile={id:u.id,email:u.email,full_name:stash.full_name,phone:stash.phone||"",role,date_of_birth:stash.date_of_birth||null};
+    const matchesEmail=stash?.email&&stash.email===u.email;
+    const matchesPhone=stash?.phone&&stash.phone===u.phone;
+    if(stash&&(matchesEmail||matchesPhone)){
+      const profileEmail=stash.email||u.email||null;
+      const role=profileEmail&&ADMIN_EMAILS.includes(profileEmail)?"admin":"passenger";
+      const newProfile={id:u.id,email:profileEmail,full_name:stash.full_name,phone:stash.phone||u.phone||"",role,date_of_birth:stash.date_of_birth||null};
       const{error:upErr}=await supabase.from("profiles").upsert(newProfile);
       if(upErr){console.error("profile upsert failed",upErr);setLoading(false);return;}
       pendingSignupData.current=null;
@@ -491,14 +491,20 @@ const [driverEditing,setDriverEditing]=useState(false);
 
   const fullPhone=()=>authForm.phone;
 
-  // Step 1: Login with email + password
+  // Step 1: Login with email or phone + password
   const handleLogin=async()=>{
-    if(!authForm.email.trim()||!authForm.password){setAuthError(lang==="ar"?"يرجى إدخال البريد الإلكتروني وكلمة المرور":"Enter your email and password");return;}
+    const idInput=authForm.email.trim();
+    if(!idInput||!authForm.password){setAuthError(lang==="ar"?"يرجى إدخال البريد/الهاتف وكلمة المرور":"Enter your email/phone and password");return;}
     didLogOut.current=false;
     setAuthLoading(true);setAuthError("");
-    const{error}=await supabase.auth.signInWithPassword({email:authForm.email.trim().toLowerCase(),password:authForm.password});
+    // Detect: starts with + or only digits/spaces/dashes (no @) → phone, else email
+    const isPhone=/^\+?[\d\s-]+$/.test(idInput)&&!idInput.includes("@");
+    const credentials=isPhone
+      ?{phone:idInput.replace(/[\s-]/g,""),password:authForm.password}
+      :{email:idInput.toLowerCase(),password:authForm.password};
+    const{error}=await supabase.auth.signInWithPassword(credentials);
     if(error){
-      if(error.message?.toLowerCase().includes("invalid")) setAuthError(lang==="ar"?"البريد الإلكتروني أو كلمة المرور غير صحيحة":"Invalid email or password");
+      if(error.message?.toLowerCase().includes("invalid")) setAuthError(lang==="ar"?"بيانات الدخول غير صحيحة":"Invalid credentials");
       else setAuthError(error.message||t.auth.error);
     } else {resetAuth();setPage("home");}
     setAuthLoading(false);
@@ -548,7 +554,7 @@ const [driverEditing,setDriverEditing]=useState(false);
     setAuthLoading(false);
   };
 
-  // Signup Other: send SMS OTP via Twilio Verify
+  // Signup Other: send SMS OTP via Supabase phone auth (Twilio configured in Supabase dashboard)
   const handleSignupOtherStart=async()=>{
     if(!authForm.fullName.trim()||detectCC(authForm.phone).num.length<6||!authForm.email.trim()||!authForm.password){setAuthError(lang==="ar"?"يرجى ملء جميع الحقول":"Please fill all fields");return;}
     if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(authForm.email.trim())){setAuthError(lang==="ar"?"البريد الإلكتروني غير صالح":"Invalid email address");return;}
@@ -563,47 +569,35 @@ const [driverEditing,setDriverEditing]=useState(false);
     ]);
     if(existingPhone){setAuthPhoneExists(true);setAuthLoading(false);return;}
     if(existingEmail){setAuthError(lang==="ar"?"هذا البريد الإلكتروني مسجل مسبقاً. سجّل الدخول بدلاً من ذلك.":"This email is already registered. Please log in instead.");setAuthLoading(false);return;}
-    try{
-      const _sendRes=await fetch(SEND_OTP_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({phone})});
-      const _sendData=await _sendRes.json();
-      if(!_sendData?.success){setAuthError(_sendData?.error||t.auth.error);setAuthLoading(false);return;}
-    }catch(e){setAuthError(lang==="ar"?"تعذّر الاتصال بخدمة التحقق":"Could not reach verification service");setAuthLoading(false);return;}
+    const{error}=await supabase.auth.signInWithOtp({phone,options:{shouldCreateUser:true}});
+    if(error){setAuthError(error.message||t.auth.error);setAuthLoading(false);return;}
+    // Stash for race-free profile creation in loadProfile
+    pendingSignupData.current={phone,email,full_name:authForm.fullName.trim()};
     setPendingPhone(phone);
     setAuthStep("signup_otp_sms");
     setAuthLoading(false);
   };
 
-  // Signup Other: verify SMS OTP and create account
+  // Signup Other: verify SMS OTP — profile created in loadProfile via stash
   const handleSignupOtherVerify=async()=>{
     if(!authOtp){setAuthError(t.auth.error);return;}
     setAuthLoading(true);setAuthError("");
     const phone=pendingPhone||fullPhone();
-    const email=authForm.email.trim().toLowerCase();
-    try{
-      const _verifyRes=await fetch(VERIFY_OTP_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({phone,code:authOtp,fullName:authForm.fullName.trim(),email,password:authForm.password})});
-      const data=await _verifyRes.json();
-      if(!data?.success){
-        if(data?.error==="invalid_code"){setAuthError(t.auth.otpWrong);}
-        else if(data?.error==="email_exists"){setAuthError(lang==="ar"?"البريد الإلكتروني مسجل مسبقاً":"This email is already registered");}
-        else{setAuthError(data?.error||t.auth.error);}
-        setAuthLoading(false);return;
-      }
-      if(data.session) await supabase.auth.setSession({access_token:data.session.access_token,refresh_token:data.session.refresh_token});
-      resetAuth();setPage("home");
-    }catch(e){setAuthError(lang==="ar"?"تعذّر الاتصال بخدمة التحقق":"Could not reach verification service");}
+    const{error}=await supabase.auth.verifyOtp({phone,token:authOtp,type:"sms"});
+    if(error){setAuthError(t.auth.otpWrong);setAuthLoading(false);return;}
+    const{error:pwErr}=await supabase.auth.updateUser({password:authForm.password});
+    if(pwErr){setAuthError((lang==="ar"?"فشل في تعيين كلمة المرور: ":"Failed to set password: ")+(pwErr.message||""));setAuthLoading(false);return;}
+    resetAuth();setPage("home");
     setAuthLoading(false);
   };
 
-  // Resend SMS OTP
+  // Resend SMS OTP via Supabase phone auth
   const handleResendPhoneOtp=async()=>{
     setAuthLoading(true);setAuthError("");setAuthSuccess("");
     const phone=pendingPhone||fullPhone();
-    try{
-      const _r=await fetch(SEND_OTP_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({phone})});
-      const _d=await _r.json();
-      if(!_d?.success){setAuthError(_d?.error||t.auth.error);}
-      else{setAuthSuccess(lang==="ar"?"تم إعادة إرسال الكود عبر SMS":"Code resent via SMS");}
-    }catch(e){setAuthError(lang==="ar"?"تعذّر الاتصال":"Could not reach service");}
+    const{error}=await supabase.auth.signInWithOtp({phone,options:{shouldCreateUser:true}});
+    if(error){setAuthError(error.message||t.auth.error);}
+    else{setAuthSuccess(lang==="ar"?"تم إعادة إرسال الكود عبر SMS":"Code resent via SMS");}
     setAuthLoading(false);
   };
 
@@ -1158,7 +1152,7 @@ const [driverEditing,setDriverEditing]=useState(false);
 
             {/* LOGIN */}
             {authStep==="login"&&(<>
-              <div style={{marginBottom:16}}><label style={lbl}>{t.auth.email}</label><input type="email" value={authForm.email} onChange={e=>setAuthForm(f=>({...f,email:e.target.value}))} style={inp}/></div>
+              <div style={{marginBottom:16}}><label style={lbl}>{lang==="ar"?"البريد الإلكتروني أو رقم الهاتف":"Email or Phone Number"}</label><input type="text" value={authForm.email} onChange={e=>setAuthForm(f=>({...f,email:e.target.value}))} style={inp} placeholder={lang==="ar"?"name@email.com أو ‎+963...":"name@email.com or +963..."}/></div>
               <div style={{marginBottom:8}}><label style={lbl}>{t.auth.password}</label><input type="password" value={authForm.password} onChange={e=>setAuthForm(f=>({...f,password:e.target.value}))} style={inp} onKeyDown={e=>e.key==="Enter"&&handleLogin()}/></div>
               <p onClick={()=>{setAuthStep("forgot_phone");setAuthError("");}} style={{textAlign:"end",fontSize:12,color:"#1B3A2A",fontWeight:700,cursor:"pointer",marginBottom:20}}>{t.auth.forgotPassword}</p>
               <button onClick={handleLogin} disabled={authLoading} style={{width:"100%",background:"#1B3A2A",color:"white",border:"none",padding:"14px",borderRadius:12,fontSize:15,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>{authLoading?"...":t.auth.loginBtn}</button>
