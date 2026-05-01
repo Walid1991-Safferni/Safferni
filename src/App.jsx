@@ -3,6 +3,8 @@ import { createClient } from "@supabase/supabase-js";
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const SEND_OTP_URL = import.meta.env.VITE_SEND_OTP_URL;
+const VERIFY_OTP_URL = import.meta.env.VITE_VERIFY_OTP_URL;
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON);
 const SHEET_URL = import.meta.env.VITE_SHEET_URL;
 const USDT_ADDRESS = import.meta.env.VITE_USDT_ADDRESS;
@@ -539,8 +541,9 @@ const [driverEditing,setDriverEditing]=useState(false);
     ]);
     if(existingPhone){setAuthError("PHONE_EXISTS");setAuthLoading(false);return;}
     if(existingEmail){setAuthError(lang==="ar"?"هذا البريد الإلكتروني مسجل مسبقاً. سجّل الدخول بدلاً من ذلك.":"This email is already registered. Please log in instead.");setAuthLoading(false);return;}
-    const{data,error}=await supabase.functions.invoke("send-otp",{body:{phone}});
-    if(error||!data?.success){setAuthError(data?.error||error?.message||t.auth.error);setAuthLoading(false);return;}
+    const _sendRes=await fetch(SEND_OTP_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({phone})});
+    const _sendData=await _sendRes.json();
+    if(!_sendData?.success){setAuthError(_sendData?.error||t.auth.error);setAuthLoading(false);return;}
     setPendingPhone(phone);
     setAuthStep("signup_otp_sms");
     setAuthLoading(false);
@@ -552,8 +555,9 @@ const [driverEditing,setDriverEditing]=useState(false);
     setAuthLoading(true);setAuthError("");
     const phone=pendingPhone||fullPhone();
     const email=authForm.email.trim().toLowerCase();
-    const{data,error}=await supabase.functions.invoke("verify-otp-signup",{body:{phone,code:authOtp,fullName:authForm.fullName,email,password:authForm.password}});
-    if(error||!data?.success){
+    const _verifyRes=await fetch(VERIFY_OTP_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({phone,code:authOtp,fullName:authForm.fullName,email,password:authForm.password})});
+    const data=await _verifyRes.json();
+    if(!data?.success){
       if(data?.error==="invalid_code"){setAuthError(t.auth.otpWrong);}
       else if(data?.error==="email_exists"){setAuthError(lang==="ar"?"البريد الإلكتروني مسجل مسبقاً":"This email is already registered");}
       else{setAuthError(t.auth.error);}
@@ -568,8 +572,9 @@ const [driverEditing,setDriverEditing]=useState(false);
   const handleResendPhoneOtp=async()=>{
     setAuthLoading(true);setAuthError("");
     const phone=pendingPhone||fullPhone();
-    const{data,error}=await supabase.functions.invoke("send-otp",{body:{phone}});
-    if(error||!data?.success){setAuthError(data?.error||t.auth.error);}
+    const _r=await fetch(SEND_OTP_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({phone})});
+    const _d=await _r.json();
+    if(!_d?.success){setAuthError(_d?.error||t.auth.error);}
     else{setAuthError(lang==="ar"?"تم إعادة إرسال الكود عبر واتساب":"Code resent via WhatsApp");}
     setAuthLoading(false);
   };
