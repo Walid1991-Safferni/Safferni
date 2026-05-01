@@ -173,12 +173,11 @@ const T={
     auth:{
       login:"تسجيل الدخول",signup:"إنشاء حساب",
       email:"البريد الإلكتروني",password:"كلمة المرور",
-      fullName:"الاسم الكامل",phone:"رقم الهاتف",
+      fullName:"الاسم الكامل",phone:"رقم الهاتف",dob:"تاريخ الميلاد",
       loginBtn:"دخول",signupBtn:"إنشاء حساب",
       noAccount:"ليس لديك حساب؟",haveAccount:"لديك حساب؟",
       error:"حدث خطأ، حاول مرة أخرى",
       forgotPassword:"نسيت كلمة المرور؟",
-      recoverByPhone:"استرداد عبر رقم الهاتف",
       sendOtp:"إرسال كود التحقق",
       verifyOtp:"تحقق من الكود",
       newPassword:"كلمة المرور الجديدة",
@@ -187,10 +186,13 @@ const T={
       otpSent:"تم إرسال كود التحقق إلى",
       otpWrong:"الكود غير صحيح، حاول مرة أخرى",
       passwordUpdated:"تم تحديث كلمة المرور بنجاح!",
-      verifyPhone:"تحقق من رقم هاتفك",
       createAccount:"إنشاء الحساب",
-      setPassword:"أنشئ كلمة مرورك",
       passwordHint:"ستستخدم هذه الكلمة لتسجيل الدخول لاحقاً بالبريد الإلكتروني",
+      locationQ:"هل أنت حالياً في سوريا؟",
+      inSyria:"نعم، أنا في سوريا",
+      notInSyria:"لا، أنا خارج سوريا",
+      sendSmsCode:"إرسال كود SMS",
+      emailOtpSent:"تم إرسال كود التحقق إلى بريدك الإلكتروني",
     },
     apply:{title:"سجّل كسائق",desc:"انضم إلى فريق سفّرني وابدأ بنشر رحلاتك",alreadyApplied:"طلبك قيد المراجعة أو تم قبوله",fullName:"الاسم الكامل",phone:"رقم الهاتف",city:"مدينتك",carType:"نوع السيارة",carModel:"موديل السيارة",licensePlate:"رقم اللوحة",notes:"ملاحظات إضافية",submit:"تقديم الطلب",success:"تم إرسال طلبك! سنراجعه ونتواصل معك قريباً.",fillAll:"يرجى ملء جميع الحقول المطلوبة"},
     admin:{title:"لوحة الإدارة",applications:"طلبات السائقين",editRequests:"طلبات تعديل الوقت",drivers:"السائقون",allTrips:"كل الرحلات",pending:"قيد المراجعة",approved:"مقبول",denied:"مرفوض",approve:"قبول",deny:"رفض",approveTrip:"قبول الرحلة",noApps:"لا توجد طلبات",noTrips:"لا توجد رحلات",revokeAndDelete:"إلغاء وحذف رحلاته",cancelTrip:"إلغاء",deleteTrip:"حذف",filterByDriver:"فلتر حسب السائق",filterByDate:"فلتر حسب التاريخ",allDrivers:"كل السائقين",phone:"الهاتف",city:"المدينة",car:"السيارة",requestedTime:"الوقت المطلوب",currentTime:"الوقت الحالي",driver:"السائق",bookings:"حجوزات",notApprovedYet:"قيد المراجعة"},
@@ -227,12 +229,11 @@ const T={
     auth:{
       login:"Login",signup:"Sign Up",
       email:"Email Address",password:"Password",
-      fullName:"Full Name",phone:"Phone Number",
+      fullName:"Full Name",phone:"Phone Number",dob:"Date of Birth",
       loginBtn:"Login",signupBtn:"Create Account",
       noAccount:"Don't have an account?",haveAccount:"Already have an account?",
       error:"An error occurred, please try again",
       forgotPassword:"Forgot your password?",
-      recoverByPhone:"Recover via phone number",
       sendOtp:"Send Verification Code",
       verifyOtp:"Verify Code",
       newPassword:"New Password",
@@ -241,10 +242,13 @@ const T={
       otpSent:"Verification code sent to",
       otpWrong:"Incorrect code, please try again",
       passwordUpdated:"Password updated successfully!",
-      verifyPhone:"Verify your phone number",
       createAccount:"Create Account",
-      setPassword:"Set your password",
       passwordHint:"You'll use this password to log in later with your email",
+      locationQ:"Are you currently located in Syria?",
+      inSyria:"Yes, I'm in Syria",
+      notInSyria:"No, I'm outside Syria",
+      sendSmsCode:"Send SMS Code",
+      emailOtpSent:"Verification code sent to your email",
     },
     apply:{title:"Become a Driver",desc:"Join the Safferni team and start posting your trips",alreadyApplied:"Your application is under review or already approved",fullName:"Full Name",phone:"Phone Number",city:"Your City",carType:"Car Type",carModel:"Car Model",licensePlate:"License Plate",notes:"Additional Notes",submit:"Submit Application",success:"Application submitted! We'll review it and get back to you soon.",fillAll:"Please fill all required fields"},
     admin:{title:"Admin Panel",applications:"Driver Applications",editRequests:"Time Edit Requests",drivers:"Drivers",allTrips:"All Trips",pending:"Pending",approved:"Approved",denied:"Denied",approve:"Approve",deny:"Deny",approveTrip:"Approve Trip",noApps:"No applications",noTrips:"No trips",revokeAndDelete:"Revoke & Delete Trips",cancelTrip:"Cancel",deleteTrip:"Delete",filterByDriver:"Filter by Driver",filterByDate:"Filter by Date",allDrivers:"All Drivers",phone:"Phone",city:"City",car:"Car",requestedTime:"Requested Time",currentTime:"Current Time",driver:"Driver",bookings:"bookings",notApprovedYet:"Pending Review"},
@@ -305,9 +309,9 @@ export default function App(){
   const [tripDetailLoading,setTripDetailLoading]=useState(false);
 
   // AUTH STATE — new unified flow
-  // authStep: "choice" | "login" | "signup_country" | "signup_info_sy" | "signup_otp_email" | "signup_info_other" | "signup_otp_sms" | "forgot_phone" | "forgot_newpass"
+  // authStep: "choice" | "login" | "signup_country" | "signup_info_sy" | "signup_pending_email" | "signup_info_other" | "signup_otp_sms" | "forgot_phone" | "forgot_newpass"
   const [authStep,setAuthStep]=useState("choice");
-  const [authForm,setAuthForm]=useState({fullName:"",email:"",phone:"+963",password:""});
+  const [authForm,setAuthForm]=useState({fullName:"",email:"",phone:"+963",password:"",dob:""});
   const [authOtp,setAuthOtp]=useState("");
   const [authError,setAuthError]=useState("");
   const [authLoading,setAuthLoading]=useState(false);
@@ -468,7 +472,7 @@ const [driverEditing,setDriverEditing]=useState(false);
   // ─── AUTH FLOW ────────────────────────────────────────────────────────────
 
   const resetAuth=()=>{
-    setAuthStep("choice");setAuthForm({fullName:"",email:"",phone:"+963",password:""});
+    setAuthStep("choice");setAuthForm({fullName:"",email:"",phone:"+963",password:"",dob:""});
     setAuthOtp("");setAuthError("");setAuthSuccess("");setPendingPhone("");setAuthLoading(false);
   };
 
@@ -485,9 +489,9 @@ const [driverEditing,setDriverEditing]=useState(false);
     setAuthLoading(false);
   };
 
-  // Signup Syria: send email OTP
+  // Signup Syria: send email OTP code
   const handleSignupSyriaStart=async()=>{
-    if(!authForm.fullName||!authForm.email||!authForm.password){setAuthError(t.auth.error);return;}
+    if(!authForm.fullName||!authForm.dob||!authForm.email||!authForm.phone||!authForm.password){setAuthError(t.auth.error);return;}
     if(authForm.password.length<8){setAuthError(lang==="ar"?"كلمة المرور يجب أن تكون ٨ أحرف على الأقل":"Password must be at least 8 characters");return;}
     didLogOut.current=false;
     setAuthLoading(true);setAuthError("");
@@ -512,7 +516,7 @@ const [driverEditing,setDriverEditing]=useState(false);
     const{error:pwErr}=await supabase.auth.updateUser({password:authForm.password});
     if(pwErr){setAuthError(lang==="ar"?"فشل في تعيين كلمة المرور، حاول مرة أخرى":"Failed to set password, please try again");setAuthLoading(false);return;}
     const role=ADMIN_EMAILS.includes(email)?"admin":"passenger";
-    const newProfile={id:uid,email,full_name:authForm.fullName,phone:"",role};
+    const newProfile={id:uid,email,full_name:authForm.fullName,phone:authForm.phone,role,date_of_birth:authForm.dob};
     await supabase.from("profiles").upsert(newProfile);
     setProfile(newProfile);
     resetAuth();setPage("home");
@@ -550,7 +554,7 @@ const [driverEditing,setDriverEditing]=useState(false);
     setAuthLoading(false);
   };
 
-  // Signup Other: verify WhatsApp OTP and create account
+  // Signup Other: verify SMS OTP and create account
   const handleSignupOtherVerify=async()=>{
     if(!authOtp){setAuthError(t.auth.error);return;}
     setAuthLoading(true);setAuthError("");
@@ -569,14 +573,14 @@ const [driverEditing,setDriverEditing]=useState(false);
     setAuthLoading(false);
   };
 
-  // Resend WhatsApp OTP
+  // Resend SMS OTP
   const handleResendPhoneOtp=async()=>{
     setAuthLoading(true);setAuthError("");
     const phone=pendingPhone||fullPhone();
     const _r=await fetch(SEND_OTP_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({phone})});
     const _d=await _r.json();
     if(!_d?.success){setAuthError(_d?.error||t.auth.error);}
-    else{setAuthError(lang==="ar"?"تم إعادة إرسال الكود عبر واتساب":"Code resent via WhatsApp");}
+    else{setAuthError(lang==="ar"?"تم إعادة إرسال الكود عبر SMS":"Code resent via SMS");}
     setAuthLoading(false);
   };
 
