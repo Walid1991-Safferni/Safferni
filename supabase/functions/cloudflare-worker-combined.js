@@ -42,7 +42,7 @@ async function handleSendOtp(request, env) {
           Authorization: 'Basic ' + btoa(`${env.TWILIO_ACCOUNT_SID}:${env.TWILIO_AUTH_TOKEN}`),
           'Content-Type': 'application/x-www-form-urlencoded',
         },
-        body: new URLSearchParams({ To: phone, Channel: 'whatsapp' }).toString(),
+        body: new URLSearchParams({ To: phone, Channel: 'sms' }).toString(),
       }
     );
 
