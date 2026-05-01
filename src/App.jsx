@@ -3,9 +3,9 @@ import { createClient } from "@supabase/supabase-js";
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON = import.meta.env.VITE_SUPABASE_ANON_KEY;
-const OTP_WORKER_URL = import.meta.env.VITE_OTP_WORKER_URL;
-const SEND_OTP_URL = OTP_WORKER_URL+"/send-otp";
-const VERIFY_OTP_URL = OTP_WORKER_URL+"/verify-otp";
+const OTP_WORKER_URL = (import.meta.env.VITE_OTP_WORKER_URL || "").replace(/\/+$/, "");
+const SEND_OTP_URL = OTP_WORKER_URL ? `${OTP_WORKER_URL}/send-otp` : "";
+const VERIFY_OTP_URL = OTP_WORKER_URL ? `${OTP_WORKER_URL}/verify-otp` : "";
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON);
 const SHEET_URL = import.meta.env.VITE_SHEET_URL;
 const USDT_ADDRESS = import.meta.env.VITE_USDT_ADDRESS;
