@@ -3,9 +3,6 @@ import { createClient } from "@supabase/supabase-js";
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON = import.meta.env.VITE_SUPABASE_ANON_KEY;
-const OTP_WORKER_URL = (import.meta.env.VITE_OTP_WORKER_URL || "").replace(/\/+$/, "");
-const SEND_OTP_URL = OTP_WORKER_URL ? `${OTP_WORKER_URL}/send-otp` : "";
-const VERIFY_OTP_URL = OTP_WORKER_URL ? `${OTP_WORKER_URL}/verify-otp` : "";
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON);
 const SHEET_URL = import.meta.env.VITE_SHEET_URL;
 const USDT_ADDRESS = import.meta.env.VITE_USDT_ADDRESS;
@@ -56,12 +53,11 @@ const routeMap=[
 const getDests=(f)=>cities.filter(c=>c.id!==f).map(c=>c.id);
 const findRoute=(a,b)=>routeMap.find(r=>r.from===a&&r.to===b)||routeMap.find(r=>r.from===b&&r.to===a)||{comingSoon:true};
 const gc=(id)=>cities.find(c=>c.id===id);
-const genRef=()=>{const d=new Date();return`SAF-${d.getFullYear().toString().slice(-2)}${String(d.getMonth()+1).padStart(2,"0")}-${Math.floor(Math.random()*9000)+1000}`};
-const genAppRef=()=>{const d=new Date();return`DRV-${String(d.getDate()).padStart(2,"0")}${String(d.getMonth()+1).padStart(2,"0")}-${Math.floor(Math.random()*9000)+1000}`};
+const genRef=()=>{const d=new Date();const rand=crypto.randomUUID().replace(/-/g,"").slice(0,5).toUpperCase();return`SAF-${d.getFullYear().toString().slice(-2)}${String(d.getMonth()+1).padStart(2,"0")}-${rand}`};
+const genAppRef=()=>{const d=new Date();const rand=crypto.randomUUID().replace(/-/g,"").slice(0,5).toUpperCase();return`DRV-${String(d.getDate()).padStart(2,"0")}${String(d.getMonth()+1).padStart(2,"0")}-${rand}`};
 const pricingRoutes=routeMap.map(r=>({from:gc(r.from),to:gc(r.to),seat:r.seat,seatMin:r.seatMin,seatMax:r.seatMax,car:r.car,van:r.van}));
 const timeToMinutes=(t)=>{if(!t)return 0;const[h,m]=t.split(":").map(Number);return h*60+m};
 const formatTime=(t)=>{if(!t)return"—";const h=parseInt(t.slice(0,2));const m=t.slice(3,5);const ampm=h>=12?"PM":"AM";const h12=h===0?12:h>12?h-12:h;return`${h12}:${m} ${ampm}`};
-const fakeEmail=(phone)=>`${phone.replace(/\D/g,"")}@safferni.app`;
 
 const StarRating=({value,onChange,readOnly=false})=>(
   <div style={{display:"flex",gap:4}}>
@@ -279,6 +275,7 @@ export default function App(){
   const [profile,setProfile]=useState(null);
   const [driverApproved,setDriverApproved]=useState(false);
   const didLogOut=useRef(false);
+  const pendingSignupData=useRef(null);
   const [loading,setLoading]=useState(true);
 
   // Booking form
@@ -309,11 +306,12 @@ export default function App(){
   const [tripDetailLoading,setTripDetailLoading]=useState(false);
 
   // AUTH STATE — new unified flow
-  // authStep: "choice" | "login" | "signup_country" | "signup_info_sy" | "signup_pending_email" | "signup_info_other" | "signup_otp_sms" | "forgot_phone" | "forgot_newpass"
+  // authStep: "choice" | "login" | "signup_country" | "signup_info_sy" | "signup_otp_email" | "signup_info_other" | "signup_otp_sms" | "forgot_phone" | "forgot_newpass"
   const [authStep,setAuthStep]=useState("choice");
   const [authForm,setAuthForm]=useState({fullName:"",email:"",phone:"+963",password:"",dob:""});
   const [authOtp,setAuthOtp]=useState("");
   const [authError,setAuthError]=useState("");
+  const [authPhoneExists,setAuthPhoneExists]=useState(false);
   const [authLoading,setAuthLoading]=useState(false);
   const [authSuccess,setAuthSuccess]=useState("");
   // temp storage during signup otp flow
@@ -450,9 +448,24 @@ const [driverEditing,setDriverEditing]=useState(false);
   },[page,user,profile]);
 
   const loadProfile=async(u)=>{
-    const{data}=await supabase.from("profiles").select("*").eq("id",u.id).maybeSingle();
-    setProfile(data);
-    setDriverApproved(data?.role==="driver");
+    const{data,error}=await supabase.from("profiles").select("*").eq("id",u.id).maybeSingle();
+    if(error){console.error("loadProfile failed",error);setLoading(false);return;}
+    if(data){setProfile(data);setDriverApproved(data?.role==="driver");setLoading(false);return;}
+    // No profile yet — race-free creation from pending signup data
+    const stash=pendingSignupData.current;
+    const matchesEmail=stash?.email&&stash.email===u.email;
+    const matchesPhone=stash?.phone&&stash.phone===u.phone;
+    if(stash&&(matchesEmail||matchesPhone)){
+      const profileEmail=stash.email||u.email||null;
+      const role=profileEmail&&ADMIN_EMAILS.includes(profileEmail)?"admin":"passenger";
+      const newProfile={id:u.id,email:profileEmail,full_name:stash.full_name,phone:stash.phone||u.phone||"",role,date_of_birth:stash.date_of_birth||null};
+      const{error:upErr}=await supabase.from("profiles").upsert(newProfile);
+      if(upErr){console.error("profile upsert failed",upErr);setLoading(false);return;}
+      pendingSignupData.current=null;
+      setProfile(newProfile);setDriverApproved(false);
+    } else {
+      setProfile(null);setDriverApproved(false);
+    }
     setLoading(false);
   };
 
@@ -473,26 +486,38 @@ const [driverEditing,setDriverEditing]=useState(false);
 
   const resetAuth=()=>{
     setAuthStep("choice");setAuthForm({fullName:"",email:"",phone:"+963",password:"",dob:""});
-    setAuthOtp("");setAuthError("");setAuthSuccess("");setPendingPhone("");setAuthLoading(false);
+    setAuthOtp("");setAuthError("");setAuthPhoneExists(false);setAuthSuccess("");setPendingPhone("");setAuthLoading(false);
   };
 
   const fullPhone=()=>authForm.phone;
 
-  // Step 1: Login with email + password
+  // Step 1: Login with email or phone + password
   const handleLogin=async()=>{
-    if(!authForm.email||!authForm.password){setAuthError(t.auth.error);return;}
+    const idInput=authForm.email.trim();
+    if(!idInput||!authForm.password){setAuthError(lang==="ar"?"يرجى إدخال البريد/الهاتف وكلمة المرور":"Enter your email/phone and password");return;}
     didLogOut.current=false;
     setAuthLoading(true);setAuthError("");
-    const{error}=await supabase.auth.signInWithPassword({email:authForm.email.trim().toLowerCase(),password:authForm.password});
-    if(error) setAuthError(t.auth.error);
-    else{resetAuth();setPage("home");}
+    // Detect: starts with + or only digits/spaces/dashes (no @) → phone, else email
+    const isPhone=/^\+?[\d\s-]+$/.test(idInput)&&!idInput.includes("@");
+    const credentials=isPhone
+      ?{phone:idInput.replace(/[\s-]/g,""),password:authForm.password}
+      :{email:idInput.toLowerCase(),password:authForm.password};
+    const{error}=await supabase.auth.signInWithPassword(credentials);
+    if(error){
+      if(error.message?.toLowerCase().includes("invalid")) setAuthError(lang==="ar"?"بيانات الدخول غير صحيحة":"Invalid credentials");
+      else setAuthError(error.message||t.auth.error);
+    } else {resetAuth();setPage("home");}
     setAuthLoading(false);
   };
 
   // Signup Syria: send email OTP code
   const handleSignupSyriaStart=async()=>{
-    if(!authForm.fullName||!authForm.dob||!authForm.email||!authForm.phone||!authForm.password){setAuthError(t.auth.error);return;}
+    const phoneNum=detectCC(authForm.phone).num;
+    if(!authForm.fullName.trim()||!authForm.dob||!authForm.email.trim()||phoneNum.length<6||!authForm.password){setAuthError(lang==="ar"?"يرجى ملء جميع الحقول":"Please fill all fields");return;}
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(authForm.email.trim())){setAuthError(lang==="ar"?"البريد الإلكتروني غير صالح":"Invalid email address");return;}
     if(authForm.password.length<8){setAuthError(lang==="ar"?"كلمة المرور يجب أن تكون ٨ أحرف على الأقل":"Password must be at least 8 characters");return;}
+    const ageYears=(Date.now()-new Date(authForm.dob).getTime())/(365.25*24*3600*1000);
+    if(isNaN(ageYears)||ageYears<13||ageYears>120){setAuthError(lang==="ar"?"تاريخ الميلاد غير صالح":"Invalid date of birth");return;}
     didLogOut.current=false;
     setAuthLoading(true);setAuthError("");
     const email=authForm.email.trim().toLowerCase();
@@ -500,42 +525,40 @@ const [driverEditing,setDriverEditing]=useState(false);
     if(existingEmail){setAuthError(lang==="ar"?"هذا البريد الإلكتروني مسجل مسبقاً. سجّل الدخول بدلاً من ذلك.":"This email is already registered. Please log in instead.");setAuthLoading(false);return;}
     const{error}=await supabase.auth.signInWithOtp({email,options:{shouldCreateUser:true}});
     if(error){setAuthError(error.message||t.auth.error);setAuthLoading(false);return;}
+    // Stash for race-free profile creation in loadProfile
+    pendingSignupData.current={email,full_name:authForm.fullName.trim(),phone:authForm.phone,date_of_birth:authForm.dob};
     setAuthStep("signup_otp_email");
     setAuthLoading(false);
   };
 
-  // Signup Syria: verify email OTP and create account
+  // Signup Syria: verify email OTP — profile creation happens in loadProfile via stash
   const handleSignupSyriaVerify=async()=>{
     if(!authOtp){setAuthError(t.auth.error);return;}
     setAuthLoading(true);setAuthError("");
     const email=authForm.email.trim().toLowerCase();
-    const{data,error}=await supabase.auth.verifyOtp({email,token:authOtp,type:"email"});
+    const{error}=await supabase.auth.verifyOtp({email,token:authOtp,type:"email"});
     if(error){setAuthError(t.auth.otpWrong);setAuthLoading(false);return;}
-    const uid=data.user?.id;
-    if(!uid){setAuthError(t.auth.error);setAuthLoading(false);return;}
     const{error:pwErr}=await supabase.auth.updateUser({password:authForm.password});
-    if(pwErr){setAuthError(lang==="ar"?"فشل في تعيين كلمة المرور، حاول مرة أخرى":"Failed to set password, please try again");setAuthLoading(false);return;}
-    const role=ADMIN_EMAILS.includes(email)?"admin":"passenger";
-    const newProfile={id:uid,email,full_name:authForm.fullName,phone:authForm.phone,role,date_of_birth:authForm.dob};
-    await supabase.from("profiles").upsert(newProfile);
-    setProfile(newProfile);
+    if(pwErr){setAuthError((lang==="ar"?"فشل في تعيين كلمة المرور: ":"Failed to set password: ")+(pwErr.message||""));setAuthLoading(false);return;}
     resetAuth();setPage("home");
     setAuthLoading(false);
   };
 
   // Resend Syria email OTP
   const handleResendEmailOtp=async()=>{
-    setAuthLoading(true);setAuthError("");
+    setAuthLoading(true);setAuthError("");setAuthSuccess("");
     const email=authForm.email.trim().toLowerCase();
     const{error}=await supabase.auth.signInWithOtp({email,options:{shouldCreateUser:true}});
     if(error){setAuthError(error.message||t.auth.error);}
-    else{setAuthError(lang==="ar"?"تم إعادة إرسال الكود إلى بريدك":"Code resent to your email");}
+    else{setAuthSuccess(lang==="ar"?"تم إعادة إرسال الكود إلى بريدك":"Code resent to your email");}
     setAuthLoading(false);
   };
 
-  // Signup Other: send WhatsApp OTP via Twilio Verify
+  // Signup Other: send SMS OTP via Supabase phone auth (Twilio configured in Supabase dashboard)
   const handleSignupOtherStart=async()=>{
-    if(!authForm.fullName||!authForm.phone||detectCC(authForm.phone).num.length<4||!authForm.email||!authForm.password){setAuthError(t.auth.error);return;}
+    if(!authForm.fullName.trim()||detectCC(authForm.phone).num.length<6||!authForm.email.trim()||!authForm.password){setAuthError(lang==="ar"?"يرجى ملء جميع الحقول":"Please fill all fields");return;}
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(authForm.email.trim())){setAuthError(lang==="ar"?"البريد الإلكتروني غير صالح":"Invalid email address");return;}
+    if(authForm.password.length<8){setAuthError(lang==="ar"?"كلمة المرور يجب أن تكون ٨ أحرف على الأقل":"Password must be at least 8 characters");return;}
     didLogOut.current=false;
     setAuthLoading(true);setAuthError("");
     const email=authForm.email.trim().toLowerCase();
@@ -544,43 +567,37 @@ const [driverEditing,setDriverEditing]=useState(false);
       supabase.from("profiles").select("id").eq("phone",phone).maybeSingle(),
       supabase.from("profiles").select("id").eq("email",email).maybeSingle(),
     ]);
-    if(existingPhone){setAuthError("PHONE_EXISTS");setAuthLoading(false);return;}
+    if(existingPhone){setAuthPhoneExists(true);setAuthLoading(false);return;}
     if(existingEmail){setAuthError(lang==="ar"?"هذا البريد الإلكتروني مسجل مسبقاً. سجّل الدخول بدلاً من ذلك.":"This email is already registered. Please log in instead.");setAuthLoading(false);return;}
-    const _sendRes=await fetch(SEND_OTP_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({phone})});
-    const _sendData=await _sendRes.json();
-    if(!_sendData?.success){setAuthError(_sendData?.error||t.auth.error);setAuthLoading(false);return;}
+    const{error}=await supabase.auth.signInWithOtp({phone,options:{shouldCreateUser:true}});
+    if(error){setAuthError(error.message||t.auth.error);setAuthLoading(false);return;}
+    // Stash for race-free profile creation in loadProfile
+    pendingSignupData.current={phone,email,full_name:authForm.fullName.trim()};
     setPendingPhone(phone);
     setAuthStep("signup_otp_sms");
     setAuthLoading(false);
   };
 
-  // Signup Other: verify SMS OTP and create account
+  // Signup Other: verify SMS OTP — profile created in loadProfile via stash
   const handleSignupOtherVerify=async()=>{
     if(!authOtp){setAuthError(t.auth.error);return;}
     setAuthLoading(true);setAuthError("");
     const phone=pendingPhone||fullPhone();
-    const email=authForm.email.trim().toLowerCase();
-    const _verifyRes=await fetch(VERIFY_OTP_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({phone,code:authOtp,fullName:authForm.fullName,email,password:authForm.password})});
-    const data=await _verifyRes.json();
-    if(!data?.success){
-      if(data?.error==="invalid_code"){setAuthError(t.auth.otpWrong);}
-      else if(data?.error==="email_exists"){setAuthError(lang==="ar"?"البريد الإلكتروني مسجل مسبقاً":"This email is already registered");}
-      else{setAuthError(t.auth.error);}
-      setAuthLoading(false);return;
-    }
-    if(data.session) await supabase.auth.setSession({access_token:data.session.access_token,refresh_token:data.session.refresh_token});
+    const{error}=await supabase.auth.verifyOtp({phone,token:authOtp,type:"sms"});
+    if(error){setAuthError(t.auth.otpWrong);setAuthLoading(false);return;}
+    const{error:pwErr}=await supabase.auth.updateUser({password:authForm.password});
+    if(pwErr){setAuthError((lang==="ar"?"فشل في تعيين كلمة المرور: ":"Failed to set password: ")+(pwErr.message||""));setAuthLoading(false);return;}
     resetAuth();setPage("home");
     setAuthLoading(false);
   };
 
-  // Resend SMS OTP
+  // Resend SMS OTP via Supabase phone auth
   const handleResendPhoneOtp=async()=>{
-    setAuthLoading(true);setAuthError("");
+    setAuthLoading(true);setAuthError("");setAuthSuccess("");
     const phone=pendingPhone||fullPhone();
-    const _r=await fetch(SEND_OTP_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({phone})});
-    const _d=await _r.json();
-    if(!_d?.success){setAuthError(_d?.error||t.auth.error);}
-    else{setAuthError(lang==="ar"?"تم إعادة إرسال الكود عبر SMS":"Code resent via SMS");}
+    const{error}=await supabase.auth.signInWithOtp({phone,options:{shouldCreateUser:true}});
+    if(error){setAuthError(error.message||t.auth.error);}
+    else{setAuthSuccess(lang==="ar"?"تم إعادة إرسال الكود عبر SMS":"Code resent via SMS");}
     setAuthLoading(false);
   };
 
@@ -633,9 +650,13 @@ const [driverEditing,setDriverEditing]=useState(false);
     setProfileLoading(false);
   };
 
+  const [profileSaving,setProfileSaving]=useState(false);
   const saveProfile=async()=>{
-    if(!user) return;
-    await supabase.from("profiles").update({full_name:profileEdit.fullName,phone:profileEdit.phone,emergency_contact_email:profileEdit.emergencyEmail}).eq("id",user.id);
+    if(!user||profileSaving) return;
+    setProfileSaving(true);
+    const{error}=await supabase.from("profiles").update({full_name:profileEdit.fullName,phone:profileEdit.phone,emergency_contact_email:profileEdit.emergencyEmail}).eq("id",user.id);
+    setProfileSaving(false);
+    if(error){console.error("saveProfile failed",error);return;}
     setProfile(p=>({...p,full_name:profileEdit.fullName,phone:profileEdit.phone,emergency_contact_email:profileEdit.emergencyEmail}));
     setProfileSaved(true);setTimeout(()=>setProfileSaved(false),3000);
   };
@@ -972,21 +993,23 @@ const [driverEditing,setDriverEditing]=useState(false);
       p_seats:tripBooking.seats,
       p_payment_method:tripBooking.payment,
       p_ref_code:ref,
-      p_total_price:applyDiscount(selectedTrip.price_per_seat*tripBooking.seats),
+      p_promo_code:promoCode||null,
     });
     if(error||!booking?.success){
       const msg=booking?.error||error?.message||"";
       if(msg.includes("seats")||msg.includes("available")){setSeatBookingError(lang==="ar"?"عُذراً، لم تعد هناك مقاعد كافية":"Sorry, not enough seats left — someone else just booked");}
+      else if(msg.includes("promo")){setSeatBookingError(lang==="ar"?"كود الخصم غير صالح أو منتهي":"Promo code invalid or exhausted");}
       else{setSeatBookingError(lang==="ar"?"فشل الحجز، يرجى المحاولة مرة أخرى":"Booking failed, please try again");}
       return;
     }
     if(booking) setLastBookingId(booking.booking_id||booking.id);
-    if(promoCode) await supabase.rpc("use_promo_code",{p_code:promoCode});
+    // Price is now computed server-side; use booking.total_price for display
+    const finalPrice=booking?.total_price??applyDiscount(selectedTrip.price_per_seat*tripBooking.seats);
     const from=gc(selectedTrip.from_city);const to=gc(selectedTrip.to_city);
     const isWomen=selectedTrip.gender_type==="women_only";
     const msg=lang==="ar"
-      ?`🚗 *حجز مقعد - سفّرني*${isWomen?" 💜 نساء فقط":""}\n\n📋 رقم الحجز: ${ref}\n📍 المسار: ${from?.[lang]||selectedTrip.from_city} إلى ${to?.[lang]||selectedTrip.to_city}\n📅 التاريخ: ${selectedTrip.trip_date}\n⏰ الوقت: ${formatTime(selectedTrip.trip_time)}\n💰 السعر: $${applyDiscount(selectedTrip.price_per_seat*tripBooking.seats).toFixed(2)}\n\n👤 الاسم: ${tripBooking.name}\n📞 الهاتف: ${tripBooking.phone}`
-      :`🚗 *Seat Booking - Safferni*${isWomen?" 💜 Women Only":""}\n\n📋 Ref: ${ref}\n📍 Route: ${from?.en||selectedTrip.from_city} to ${to?.en||selectedTrip.to_city}\n📅 Date: ${selectedTrip.trip_date}\n⏰ Time: ${formatTime(selectedTrip.trip_time)}\n💰 Price: $${applyDiscount(selectedTrip.price_per_seat*tripBooking.seats).toFixed(2)}\n\n👤 Name: ${tripBooking.name}\n📞 Phone: ${tripBooking.phone}`;
+      ?`🚗 *حجز مقعد - سفّرني*${isWomen?" 💜 نساء فقط":""}\n\n📋 رقم الحجز: ${ref}\n📍 المسار: ${from?.[lang]||selectedTrip.from_city} إلى ${to?.[lang]||selectedTrip.to_city}\n📅 التاريخ: ${selectedTrip.trip_date}\n⏰ الوقت: ${formatTime(selectedTrip.trip_time)}\n💰 السعر: $${Number(finalPrice).toFixed(2)}\n\n👤 الاسم: ${tripBooking.name}\n📞 الهاتف: ${tripBooking.phone}`
+      :`🚗 *Seat Booking - Safferni*${isWomen?" 💜 Women Only":""}\n\n📋 Ref: ${ref}\n📍 Route: ${from?.en||selectedTrip.from_city} to ${to?.en||selectedTrip.to_city}\n📅 Date: ${selectedTrip.trip_date}\n⏰ Time: ${formatTime(selectedTrip.trip_time)}\n💰 Price: $${Number(finalPrice).toFixed(2)}\n\n👤 Name: ${tripBooking.name}\n📞 Phone: ${tripBooking.phone}`;
     window.open(`https://wa.me/${WA_PHONE}?text=${encodeURIComponent(msg)}`,"_blank");
     setTripBooked(true);
     if(selectedTrip?.driver_id) createNotif(selectedTrip.driver_id,"new_booking",lang==="ar"?"حجز جديد على رحلتك 👤":"New booking on your trip 👤",lang==="ar"?`${name} حجز ${tripBooking.seats} مقعد — ${gc(selectedTrip.from_city)?.[lang]||selectedTrip.from_city} إلى ${gc(selectedTrip.to_city)?.[lang]||selectedTrip.to_city} (${selectedTrip.trip_date})`:`${name} booked ${tripBooking.seats} seat(s) on ${gc(selectedTrip.from_city)?.en||selectedTrip.from_city} → ${gc(selectedTrip.to_city)?.en||selectedTrip.to_city} (${selectedTrip.trip_date})`);
@@ -1117,7 +1140,7 @@ const [driverEditing,setDriverEditing]=useState(false);
             </div>
 
             {authSuccess&&<div style={{marginBottom:16,padding:"12px 16px",background:"#F0FDF4",border:"1px solid #BBF7D0",borderRadius:10,color:"#166534",fontSize:13,fontWeight:700,textAlign:"center"}}>{authSuccess}</div>}
-            {authError&&authError!=="PHONE_EXISTS"&&<div style={{marginBottom:16,padding:"10px 16px",background:"#FEF2F2",border:"1px solid #FECACA",borderRadius:10,color:"#B91C1C",fontSize:13,fontWeight:700}}>{authError}</div>}
+            {authError&&<div style={{marginBottom:16,padding:"10px 16px",background:"#FEF2F2",border:"1px solid #FECACA",borderRadius:10,color:"#B91C1C",fontSize:13,fontWeight:700}}>{authError}</div>}
 
             {/* CHOICE: login or sign up */}
             {authStep==="choice"&&(
@@ -1129,7 +1152,7 @@ const [driverEditing,setDriverEditing]=useState(false);
 
             {/* LOGIN */}
             {authStep==="login"&&(<>
-              <div style={{marginBottom:16}}><label style={lbl}>{t.auth.email}</label><input type="email" value={authForm.email} onChange={e=>setAuthForm(f=>({...f,email:e.target.value}))} style={inp}/></div>
+              <div style={{marginBottom:16}}><label style={lbl}>{lang==="ar"?"البريد الإلكتروني أو رقم الهاتف":"Email or Phone Number"}</label><input type="text" value={authForm.email} onChange={e=>setAuthForm(f=>({...f,email:e.target.value}))} style={inp} placeholder={lang==="ar"?"name@email.com أو ‎+963...":"name@email.com or +963..."}/></div>
               <div style={{marginBottom:8}}><label style={lbl}>{t.auth.password}</label><input type="password" value={authForm.password} onChange={e=>setAuthForm(f=>({...f,password:e.target.value}))} style={inp} onKeyDown={e=>e.key==="Enter"&&handleLogin()}/></div>
               <p onClick={()=>{setAuthStep("forgot_phone");setAuthError("");}} style={{textAlign:"end",fontSize:12,color:"#1B3A2A",fontWeight:700,cursor:"pointer",marginBottom:20}}>{t.auth.forgotPassword}</p>
               <button onClick={handleLogin} disabled={authLoading} style={{width:"100%",background:"#1B3A2A",color:"white",border:"none",padding:"14px",borderRadius:12,fontSize:15,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>{authLoading?"...":t.auth.loginBtn}</button>
@@ -1143,7 +1166,7 @@ const [driverEditing,setDriverEditing]=useState(false);
                 <p style={{textAlign:"center",fontSize:14,color:"#555",marginBottom:24,fontWeight:600}}>{t.auth.locationQ}</p>
                 <div style={{display:"flex",flexDirection:"column",gap:12}}>
                   <button onClick={()=>{setAuthStep("signup_info_sy");setAuthError("");setAuthForm(f=>({...f,phone:"+963"}));}} style={{width:"100%",background:"#1B3A2A",color:"white",border:"none",padding:"14px",borderRadius:12,fontSize:15,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>🇸🇾 {t.auth.inSyria}</button>
-                  <button onClick={()=>{setAuthStep("signup_info_other");setAuthError("");setAuthForm(f=>({...f,phone:"+"}));}} style={{width:"100%",background:"white",color:"#1B3A2A",border:"2px solid #1B3A2A",padding:"14px",borderRadius:12,fontSize:15,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>🌍 {t.auth.notInSyria}</button>
+                  <button onClick={()=>{setAuthStep("signup_info_other");setAuthError("");setAuthForm(f=>({...f,phone:"+962",dob:""}));}} style={{width:"100%",background:"white",color:"#1B3A2A",border:"2px solid #1B3A2A",padding:"14px",borderRadius:12,fontSize:15,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>🌍 {t.auth.notInSyria}</button>
                 </div>
                 <p onClick={()=>{setAuthStep("choice");setAuthError("");}} style={{textAlign:"center",marginTop:20,fontSize:12,color:"#AAA",cursor:"pointer"}}>← {lang==="ar"?"رجوع":"Back"}</p>
               </div>
@@ -1171,7 +1194,7 @@ const [driverEditing,setDriverEditing]=useState(false);
                 <p style={{fontSize:13,color:"#166534",fontWeight:700}}>✉️ {t.auth.emailOtpSent}</p>
                 <p style={{fontSize:12,color:"#555",marginTop:4}}>{authForm.email}</p>
               </div>
-              <div style={{marginBottom:20}}><label style={lbl}>{lang==="ar"?"كود التحقق":"Verification Code"} *</label><input type="text" inputMode="numeric" maxLength={6} value={authOtp} onChange={e=>setAuthOtp(e.target.value.trim())} style={{...inp,textAlign:"center",fontSize:28,letterSpacing:6}} placeholder="— — — — — —" onKeyDown={e=>e.key==="Enter"&&handleSignupSyriaVerify()}/></div>
+              <div style={{marginBottom:20}}><label style={lbl}>{lang==="ar"?"كود التحقق":"Verification Code"} *</label><input type="text" inputMode="numeric" maxLength={8} value={authOtp} onChange={e=>setAuthOtp(e.target.value.trim())} style={{...inp,textAlign:"center",fontSize:24,letterSpacing:5}} placeholder="— — — — — — — —" onKeyDown={e=>e.key==="Enter"&&handleSignupSyriaVerify()}/></div>
               <button onClick={handleSignupSyriaVerify} disabled={authLoading} style={{width:"100%",background:"#1B3A2A",color:"white",border:"none",padding:"14px",borderRadius:12,fontSize:15,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>{authLoading?"...":t.auth.verifyOtp}</button>
               <p onClick={handleResendEmailOtp} style={{textAlign:"center",marginTop:12,fontSize:12,color:"#1B3A2A",cursor:"pointer",fontWeight:600}}>{lang==="ar"?"لم تستلم الكود؟ إعادة الإرسال":"Didn't receive it? Resend"}</p>
               <p onClick={()=>{setAuthStep("signup_info_sy");setAuthOtp("");setAuthError("");}} style={{textAlign:"center",marginTop:4,fontSize:12,color:"#AAA",cursor:"pointer"}}>← {lang==="ar"?"رجوع":"Back"}</p>
@@ -1187,9 +1210,9 @@ const [driverEditing,setDriverEditing]=useState(false);
               </div>
               <div style={{marginBottom:8}}><label style={lbl}>{t.auth.password} *</label><input type="password" value={authForm.password} onChange={e=>setAuthForm(f=>({...f,password:e.target.value}))} style={inp} onKeyDown={e=>e.key==="Enter"&&handleSignupOtherStart()}/></div>
               <p style={{fontSize:11,color:"#AAA",marginBottom:20}}>{t.auth.passwordHint}</p>
-              {authError==="PHONE_EXISTS"&&<div style={{marginBottom:16,padding:"12px 16px",background:"#FEF2F2",border:"1px solid #FECACA",borderRadius:10,fontSize:13,fontWeight:700,textAlign:"center"}}>
+              {authPhoneExists&&<div style={{marginBottom:16,padding:"12px 16px",background:"#FEF2F2",border:"1px solid #FECACA",borderRadius:10,fontSize:13,fontWeight:700,textAlign:"center"}}>
                 <span style={{color:"#B91C1C"}}>{lang==="ar"?"هذا الرقم مسجل مسبقاً.":"This phone number is already registered."}</span>{" "}
-                <span onClick={()=>{setAuthStep("login");setAuthError("");}} style={{color:"#1B3A2A",fontWeight:800,cursor:"pointer",textDecoration:"underline"}}>{lang==="ar"?"سجّل الدخول بدلاً من ذلك":"Log in instead"}</span>
+                <span onClick={()=>{setAuthStep("login");setAuthPhoneExists(false);setAuthError("");}} style={{color:"#1B3A2A",fontWeight:800,cursor:"pointer",textDecoration:"underline"}}>{lang==="ar"?"سجّل الدخول بدلاً من ذلك":"Log in instead"}</span>
               </div>}
               <button onClick={handleSignupOtherStart} disabled={authLoading} style={{width:"100%",background:"#1B3A2A",color:"white",border:"none",padding:"14px",borderRadius:12,fontSize:15,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>{authLoading?"...":t.auth.sendSmsCode}</button>
               <p style={{textAlign:"center",marginTop:16,fontSize:13,color:"#888"}}>{t.auth.haveAccount}{" "}<span onClick={()=>{setAuthStep("login");setAuthError("");}} style={{color:"#1B3A2A",fontWeight:700,cursor:"pointer"}}>{t.auth.loginBtn}</span></p>
@@ -1283,7 +1306,7 @@ const [driverEditing,setDriverEditing]=useState(false);
                 {profileSaved&&<div style={{marginBottom:12,padding:"10px 16px",background:"#F0FDF4",border:"1px solid #BBF7D0",borderRadius:10,color:"#166534",fontSize:13,fontWeight:700}}>{prof.saved}</div>}
                 <div style={{display:"flex",gap:10,marginBottom:24}}>
                   <button onClick={()=>{setProfileEditing(false);setProfileEdit({fullName:profile?.full_name||"",phone:profile?.phone||"",email:profile?.email||user.email||"",emergencyEmail:profile?.emergency_contact_email||""});}} style={{flex:1,background:"white",color:"#666",border:"1.5px solid #DDD",padding:"12px",borderRadius:10,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{lang==="ar"?"إلغاء":"Cancel"}</button>
-                  <button onClick={()=>{saveProfile();setProfileEditing(false);}} style={{flex:2,background:"#1B3A2A",color:"white",border:"none",padding:"12px",borderRadius:10,fontSize:14,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>{prof.saveChanges}</button>
+                  <button onClick={async()=>{await saveProfile();setProfileEditing(false);}} disabled={profileSaving} style={{flex:2,background:"#1B3A2A",color:"white",border:"none",padding:"12px",borderRadius:10,fontSize:14,fontWeight:800,cursor:profileSaving?"not-allowed":"pointer",fontFamily:"inherit",opacity:profileSaving?0.7:1}}>{profileSaving?"...":(prof.saveChanges)}</button>
                 </div>
               </>)}
               <div style={{borderTop:"1px solid #E8E6E1",paddingTop:20}}>
