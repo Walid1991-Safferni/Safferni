@@ -687,9 +687,18 @@ const [driverEditing,setDriverEditing]=useState(false);
   };
 
   const markTripCompleted=async(tripId)=>{
-    await supabase.from("trips").update({status:"completed"}).eq("id",tripId);
+    const{error}=await supabase.from("trips").update({status:"completed"}).eq("id",tripId);
+    if(error) return;
     setDriverTrips(ts=>ts.map(t=>t.id===tripId?{...t,status:"completed"}:t));
     setSelectedTripDetail(t=>t?.id===tripId?{...t,status:"completed"}:t);
+    // Notify confirmed passengers to leave a review
+    const{data:bks}=await supabase.from("bookings").select("user_id,id,trips(from_city,to_city,trip_date)").eq("trip_id",tripId).eq("status","confirmed");
+    (bks||[]).forEach(bk=>{
+      if(!bk.user_id) return;
+      const fc=gc(bk.trips?.from_city);const tc=gc(bk.trips?.to_city);
+      const route=`${fc?.ar||bk.trips?.from_city} → ${tc?.ar||bk.trips?.to_city} / ${fc?.en||bk.trips?.from_city} → ${tc?.en||bk.trips?.to_city}`;
+      createNotif(bk.user_id,"review_trip",lang==="ar"?"⭐ قيّم رحلتك":"⭐ Rate your trip",`${route} · ${bk.trips?.trip_date}`);
+    });
   };
 
   const cancelBooking=async(bookingId)=>{
@@ -2313,8 +2322,8 @@ const [driverEditing,setDriverEditing]=useState(false);
             <div style={{overflowY:"auto",flex:1}}>
               {notifications.length===0?(<div style={{padding:"48px 20px",textAlign:"center",color:"#CCC"}}><div style={{fontSize:36,marginBottom:8}}>🔔</div><div style={{fontSize:13,fontWeight:600}}>{lang==="ar"?"لا توجد إشعارات بعد":"No notifications yet"}</div></div>)
               :notifications.map((n,i)=>{
-                const icons={new_booking:"👤",booking_confirmed:"✅",booking_rejected:"❌",booking_cancelled:"🚫",application_approved:"🎉",application_denied:"😞",trip_approved:"🚗"};
-                return(<div key={n.id} onClick={()=>markNotifRead(n.id)} style={{padding:"14px 20px",borderBottom:i<notifications.length-1?"1px solid #F8F6F2":"none",background:n.read?"white":"#F0F7F3",cursor:"pointer",transition:"background 0.15s"}} onMouseEnter={e=>e.currentTarget.style.background="#F8F8F6"} onMouseLeave={e=>e.currentTarget.style.background=n.read?"white":"#F0F7F3"}>
+                const icons={new_booking:"👤",booking_confirmed:"✅",booking_rejected:"❌",booking_cancelled:"🚫",application_approved:"🎉",application_denied:"😞",trip_approved:"🚗",review_trip:"⭐"};
+                return(<div key={n.id} onClick={()=>{markNotifRead(n.id);if(n.type==="review_trip"){setShowNotifications(false);setPage("profile");setProfileTab("past");}}} style={{padding:"14px 20px",borderBottom:i<notifications.length-1?"1px solid #F8F6F2":"none",background:n.read?"white":"#F0F7F3",cursor:"pointer",transition:"background 0.15s"}} onMouseEnter={e=>e.currentTarget.style.background="#F8F8F6"} onMouseLeave={e=>e.currentTarget.style.background=n.read?"white":"#F0F7F3"}>
                   <div style={{display:"flex",gap:12,alignItems:"flex-start"}}>
                     <span style={{fontSize:20,lineHeight:1,marginTop:2,flexShrink:0}}>{icons[n.type]||"🔔"}</span>
                     <div style={{flex:1,minWidth:0}}>
