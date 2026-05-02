@@ -772,8 +772,9 @@ const [driverEditing,setDriverEditing]=useState(false);
     const app=applications.find(a=>a.id===id);
     if(status==="approved"){
       if(app?.user_id){
-        await supabase.from("profiles").upsert({id:app.user_id,full_name:app.full_name,phone:app.phone,role:"driver"},{onConflict:"id",ignoreDuplicates:false});
-        createNotif(app.user_id,"application_approved",lang==="ar"?"تهانينا! طلبك موافق عليه 🎉":"Application Approved 🎉",lang==="ar"?"تم قبول طلبك كسائق! يمكنك الآن تسجيل الدخول والبدء بنشر الرحلات":"Your driver application has been approved! You can now log in and start posting trips.");
+        const{error:upsertErr}=await supabase.from("profiles").upsert({id:app.user_id,full_name:app.full_name,phone:app.phone,role:"driver"},{onConflict:"id",ignoreDuplicates:false});
+        if(upsertErr){console.error("Profile upsert failed",upsertErr);}
+        else createNotif(app.user_id,"application_approved",lang==="ar"?"تهانينا! طلبك موافق عليه 🎉":"Application Approved 🎉",lang==="ar"?"تم قبول طلبك كسائق! يمكنك الآن تسجيل الدخول والبدء بنشر الرحلات":"Your driver application has been approved! You can now log in and start posting trips.");
       }
     } else if(status==="denied"&&app?.user_id){
       createNotif(app.user_id,"application_denied",lang==="ar"?"طلبك غير مقبول":"Application Not Approved",lang==="ar"?"نأسف، لم يتم قبول طلبك هذه المرة. يمكنك التواصل معنا للاستفسار":"We're sorry, your driver application was not approved this time. Please contact us for more information.");
@@ -840,7 +841,8 @@ const [driverEditing,setDriverEditing]=useState(false);
   const checkPromoCode=async()=>{
     if(!promoCode) return;
     if(!/^[A-Z0-9]{1,20}$/.test(promoCode.toUpperCase())){setPromoError(lang==="ar"?"كود غير صحيح":"Invalid code");return;}
-    const{data}=await supabase.from("promo_codes").select("*").eq("code",promoCode.toUpperCase()).eq("active",true).maybeSingle();
+    const{data,error:promoErr}=await supabase.from("promo_codes").select("*").eq("code",promoCode.toUpperCase()).eq("active",true).maybeSingle();
+    if(promoErr){setPromoError(lang==="ar"?"حدث خطأ، حاول مجدداً":"Something went wrong, try again");return;}
     if(!data){setPromoError(lang==="ar"?"كود غير صحيح":"Invalid code");setPromoDiscount(null);}
     else if(data.expires_at&&new Date(data.expires_at)<new Date()){setPromoError(lang==="ar"?"انتهت صلاحية هذا الكود":"This promo code has expired");setPromoDiscount(null);}
     else if(data.max_uses!==null&&data.max_uses!==undefined&&(data.uses_count||0)>=data.max_uses){setPromoError(lang==="ar"?"انتهى الحد المسموح به لهذا الكود":"This promo code has reached its usage limit");setPromoDiscount(null);}
@@ -870,7 +872,8 @@ const [driverEditing,setDriverEditing]=useState(false);
     if(isNaN(val)||val<=0||(newPromo.discount_type==="percentage"&&val>100)) return;
     const maxUses=newPromo.max_uses?parseInt(newPromo.max_uses):null;
     const expiresAt=newPromo.expires_at?new Date(newPromo.expires_at).toISOString():null;
-    await supabase.from("promo_codes").insert({code:newPromo.code.toUpperCase(),discount_type:newPromo.discount_type,discount_value:val,active:true,max_uses:maxUses,uses_count:0,expires_at:expiresAt});
+    const{error:insertErr}=await supabase.from("promo_codes").insert({code:newPromo.code.toUpperCase(),discount_type:newPromo.discount_type,discount_value:val,active:true,max_uses:maxUses,uses_count:0,expires_at:expiresAt});
+    if(insertErr){alert(lang==="ar"?"فشل إنشاء الكود: "+insertErr.message:"Failed to create code: "+insertErr.message);return;}
     setNewPromo({code:"",discount_type:"fixed",discount_value:"",max_uses:"",expires_at:""});
     loadPromoCodes();
   };
@@ -905,7 +908,8 @@ const [driverEditing,setDriverEditing]=useState(false);
   };
 
   const exportBookingsCSV=async()=>{
-    const{data:rows}=await supabase.from("bookings").select("ref_code,passenger_name,passenger_phone,seats,total_price,payment_method,status,created_at,trips(trip_date,trip_time,from_city,to_city,profiles(full_name))").order("created_at",{ascending:false});
+    const{data:rows,error:csvErr}=await supabase.from("bookings").select("ref_code,passenger_name,passenger_phone,seats,total_price,payment_method,status,created_at,trips(trip_date,trip_time,from_city,to_city,profiles(full_name))").order("created_at",{ascending:false});
+    if(csvErr){alert(lang==="ar"?"فشل التصدير: "+csvErr.message:"Export failed: "+csvErr.message);return;}
     if(!rows||rows.length===0){alert(lang==="ar"?"لا توجد حجوزات للتصدير":"No bookings to export");return;}
     const headers=["Ref","Passenger","Phone","Seats","Price","Payment","Status","Booked At","Trip Date","Trip Time","From","To","Driver"];
     const esc=v=>{const s=v==null?"":String(v);return /[",\n]/.test(s)?`"${s.replace(/"/g,'""')}"`:s;};
