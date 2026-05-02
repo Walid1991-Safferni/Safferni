@@ -771,8 +771,10 @@ const [driverEditing,setDriverEditing]=useState(false);
     await supabase.from("driver_applications").update({status,reviewed_by:user.id}).eq("id",id);
     const app=applications.find(a=>a.id===id);
     if(status==="approved"){
-      if(app?.user_id) await supabase.from("profiles").update({role:"driver"}).eq("id",app.user_id);
-      if(app?.user_id) createNotif(app.user_id,"application_approved",lang==="ar"?"تهانينا! طلبك موافق عليه 🎉":"Application Approved 🎉",lang==="ar"?"تم قبول طلبك كسائق! يمكنك الآن تسجيل الدخول والبدء بنشر الرحلات":"Your driver application has been approved! You can now log in and start posting trips.");
+      if(app?.user_id){
+        await supabase.from("profiles").upsert({id:app.user_id,full_name:app.full_name,phone:app.phone,role:"driver"},{onConflict:"id",ignoreDuplicates:false});
+        createNotif(app.user_id,"application_approved",lang==="ar"?"تهانينا! طلبك موافق عليه 🎉":"Application Approved 🎉",lang==="ar"?"تم قبول طلبك كسائق! يمكنك الآن تسجيل الدخول والبدء بنشر الرحلات":"Your driver application has been approved! You can now log in and start posting trips.");
+      }
     } else if(status==="denied"&&app?.user_id){
       createNotif(app.user_id,"application_denied",lang==="ar"?"طلبك غير مقبول":"Application Not Approved",lang==="ar"?"نأسف، لم يتم قبول طلبك هذه المرة. يمكنك التواصل معنا للاستفسار":"We're sorry, your driver application was not approved this time. Please contact us for more information.");
     }
