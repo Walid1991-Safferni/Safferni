@@ -337,6 +337,7 @@ export default function App(){
   const [draggedTripId,setDraggedTripId]=useState(null);
   const [dragOverStatus,setDragOverStatus]=useState(null);
   const [dashStats,setDashStats]=useState({activeTrips:0,totalDrivers:0,bookingsToday:0,popularRoute:"—"});
+  const [weeklyBookings,setWeeklyBookings]=useState([]);
   const [selectedDriver,setSelectedDriver]=useState(null);
   const [driverProfile,setDriverProfile]=useState({fullName:"",dob:"",idNumber:"",carKindYear:"",carPlate:"",transportLicense:"",driverLicense:"",hasWifi:false,hasWater:false,hasAc:false});
   const [driverPublicPage,setDriverPublicPage]=useState(null);
@@ -344,7 +345,7 @@ export default function App(){
 
   // Driver panel
   const [driverTrips,setDriverTrips]=useState([]);
-  const [tripForm,setTripForm]=useState({from:"",to:"",date:"",time:"",pricePerSeat:"",totalSeats:"4",carType:"",genderType:"mixed"});
+  const [tripForm,setTripForm]=useState({from:"",to:"",date:"",time:"",pricePerSeat:"",totalSeats:"4",carType:"",genderType:"mixed",repeatWeeks:"1"});
   const [tripError,setTripError]=useState("");
   const [tripSuccess,setTripSuccess]=useState(false);
   const [editRequestForm,setEditRequestForm]=useState({tripId:null,newTime:""});
@@ -542,7 +543,7 @@ const [driverEditing,setDriverEditing]=useState(false);
     if(error){setAuthError(t.auth.otpWrong);setAuthLoading(false);return;}
     const{error:pwErr}=await supabase.auth.updateUser({password:authForm.password});
     if(pwErr){setAuthError((lang==="ar"?"فشل في تعيين كلمة المرور: ":"Failed to set password: ")+(pwErr.message||""));setAuthLoading(false);return;}
-    resetAuth();setPage("home");
+    resetAuth();setPage("profile");
     setAuthLoading(false);
   };
 
@@ -589,7 +590,7 @@ const [driverEditing,setDriverEditing]=useState(false);
     if(error){setAuthError(t.auth.otpWrong);setAuthLoading(false);return;}
     const{error:pwErr}=await supabase.auth.updateUser({password:authForm.password});
     if(pwErr){setAuthError((lang==="ar"?"فشل في تعيين كلمة المرور: ":"Failed to set password: ")+(pwErr.message||""));setAuthLoading(false);return;}
-    resetAuth();setPage("home");
+    resetAuth();setPage("profile");
     setAuthLoading(false);
   };
 
@@ -658,10 +659,10 @@ const [driverEditing,setDriverEditing]=useState(false);
   const saveProfile=async()=>{
     if(!user||profileSaving) return;
     setProfileSaving(true);
-    const{error}=await supabase.from("profiles").update({full_name:profileEdit.fullName,phone:profileEdit.phone,emergency_contact_email:profileEdit.emergencyEmail}).eq("id",user.id);
+    const{error}=await supabase.from("profiles").update({full_name:profileEdit.fullName,phone:profileEdit.phone,email:profileEdit.email||null,emergency_contact_email:profileEdit.emergencyEmail}).eq("id",user.id);
     setProfileSaving(false);
     if(error){console.error("saveProfile failed",error);return;}
-    setProfile(p=>({...p,full_name:profileEdit.fullName,phone:profileEdit.phone,emergency_contact_email:profileEdit.emergencyEmail}));
+    setProfile(p=>({...p,full_name:profileEdit.fullName,phone:profileEdit.phone,email:profileEdit.email||null,emergency_contact_email:profileEdit.emergencyEmail}));
     setProfileSaved(true);setTimeout(()=>setProfileSaved(false),3000);
   };
 
@@ -774,6 +775,11 @@ const [driverEditing,setDriverEditing]=useState(false);
     const popularRoute=Object.entries(routeCounts).sort((a,b)=>b[1]-a[1])[0];
     const popularLabel=popularRoute?`${gc(popularRoute[0].split("-")[0])?.[lang]||popularRoute[0].split("-")[0]} → ${gc(popularRoute[0].split("-")[1])?.[lang]||popularRoute[0].split("-")[1]}`:"—";
     setDashStats({activeTrips:activeCount,totalDrivers:(drivers||[]).length,bookingsToday:bookingsToday||0,popularRoute:popularLabel});
+    // 7-day bookings chart
+    const days=Array.from({length:7},(_,i)=>{const d=new Date();d.setDate(d.getDate()-6+i);return d.toISOString().split("T")[0];});
+    const{data:recentBks}=await supabase.from("bookings").select("created_at").gte("created_at",days[0]+"T00:00:00").neq("status","cancelled");
+    const counts=days.map(day=>({day,count:(recentBks||[]).filter(b=>b.created_at?.startsWith(day)).length}));
+    setWeeklyBookings(counts);
   };
 
   const updateApplication=async(id,status)=>{
@@ -982,8 +988,11 @@ const [driverEditing,setDriverEditing]=useState(false);
     if(!tripForm.from||!tripForm.to||!tripForm.date||!tripForm.pricePerSeat){setTripError(drv.fillAll);return;}
     const valid=await validateTrip();
     if(!valid) return;
-    const{error}=await supabase.from("trips").insert({driver_id:user.id,from_city:tripForm.from,to_city:tripForm.to,trip_date:tripForm.date,trip_time:tripForm.time||null,price_per_seat:parseFloat(tripForm.pricePerSeat),total_seats:parseInt(tripForm.totalSeats),available_seats:parseInt(tripForm.totalSeats),car_type:tripForm.carType,gender_type:tripForm.genderType,approved:false,status:"pending"});
-    if(!error){setTripSuccess(true);setTimeout(()=>setTripSuccess(false),3000);setTripForm({from:"",to:"",date:"",time:"",pricePerSeat:"",totalSeats:"4",carType:"",genderType:"mixed"});loadDriverData();}
+    const weeks=Math.min(Math.max(parseInt(tripForm.repeatWeeks)||1,1),12);
+    const base={driver_id:user.id,from_city:tripForm.from,to_city:tripForm.to,trip_time:tripForm.time||null,price_per_seat:parseFloat(tripForm.pricePerSeat),total_seats:parseInt(tripForm.totalSeats),available_seats:parseInt(tripForm.totalSeats),car_type:tripForm.carType,gender_type:tripForm.genderType,approved:false,status:"pending"};
+    const rows=Array.from({length:weeks},(_,i)=>{const d=new Date(tripForm.date);d.setDate(d.getDate()+i*7);return{...base,trip_date:d.toISOString().split("T")[0]};});
+    const{error}=await supabase.from("trips").insert(rows);
+    if(!error){setTripSuccess(true);setTimeout(()=>setTripSuccess(false),3000);setTripForm({from:"",to:"",date:"",time:"",pricePerSeat:"",totalSeats:"4",carType:"",genderType:"mixed",repeatWeeks:"1"});loadDriverData();}
     else setTripError(drv.fillAll);
   };
 
@@ -1330,7 +1339,7 @@ const [driverEditing,setDriverEditing]=useState(false);
               </div>
               <div style={{marginBottom:14}}>
                 <label style={lbl}>{lang==="ar"?"البريد الإلكتروني":"Email"}</label>
-                <div style={{fontSize:14,fontWeight:600,color:"#AAA",padding:"11px 0"}}>{profileEdit.email||"—"}</div>
+                {profileEditing?<input type="email" value={profileEdit.email} onChange={e=>setProfileEdit(p=>({...p,email:e.target.value}))} style={inp} placeholder="name@email.com"/>:<div style={{fontSize:14,fontWeight:600,color:profileEdit.email?"#333":"#CCC",padding:"11px 0"}}>{profileEdit.email||"—"}</div>}
               </div>
               <div style={{marginBottom:20,paddingBottom:20,borderBottom:"1px solid #F0F0F0"}}>
                 <label style={lbl}>{lang==="ar"?"جهة الاتصال للطوارئ 🛡️":"Emergency Contact 🛡️"}</label>
@@ -1516,6 +1525,21 @@ const [driverEditing,setDriverEditing]=useState(false);
               </div>
             ))}
           </div>
+          {weeklyBookings.length>0&&(()=>{const max=Math.max(...weeklyBookings.map(d=>d.count),1);return(
+            <div style={{background:"white",borderRadius:14,padding:"20px 24px",border:"1px solid #E8E6E1",marginBottom:20}}>
+              <div style={{fontSize:13,fontWeight:800,color:"#1B3A2A",marginBottom:12}}>{lang==="ar"?"الحجوزات — آخر ٧ أيام":"Bookings — last 7 days"}</div>
+              <div style={{display:"flex",gap:6,alignItems:"flex-end",height:60}}>
+                {weeklyBookings.map((d,i)=>{
+                  const label=new Date(d.day).toLocaleDateString(lang==="ar"?"ar-SY":"en-GB",{weekday:"short"});
+                  return(<div key={i} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:3}}>
+                    <span style={{fontSize:10,fontWeight:700,color:"#1B3A2A"}}>{d.count||""}</span>
+                    <div style={{width:"100%",background:i===6?"#1B3A2A":"#D1FAE5",borderRadius:"4px 4px 0 0",height:`${Math.max((d.count/max)*44,2)}px`,transition:"height 0.4s ease"}}/>
+                    <span style={{fontSize:9,color:"#AAA",fontWeight:600,textAlign:"center"}}>{label}</span>
+                  </div>);
+                })}
+              </div>
+            </div>
+          );})()}
           <div style={{display:"flex",gap:8,marginBottom:28,justifyContent:"center",flexWrap:"wrap"}}>
             {[["applications",adm.applications],["editRequests",adm.editRequests],["drivers",adm.drivers],["allTrips",adm.allTrips],["promoCodes",lang==="ar"?"كودات الخصم":"Promo Codes"],["activity",lang==="ar"?"سجل النشاط 📋":"Activity Log 📋"]].map(([k,l])=>(
               <button key={k} onClick={()=>setAdminTab(k)} style={{padding:"10px 20px",borderRadius:10,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",border:"2px solid",borderColor:adminTab===k?"#1B3A2A":"#E8E6E1",background:adminTab===k?"#1B3A2A":"white",color:adminTab===k?"white":"#666"}}>{l}</button>
@@ -1738,6 +1762,13 @@ const [driverEditing,setDriverEditing]=useState(false);
                   <button disabled style={{flex:1,padding:"12px",borderRadius:12,fontSize:13,fontWeight:700,cursor:"not-allowed",fontFamily:"inherit",border:"2px solid #E8E6E1",background:"#F8F8F8",color:"#CCC"}}>💜 {lang==="ar"?"نساء فقط — قريباً":"Women Only — Soon"}</button>
                 </div>
               </div>
+              <div style={{marginBottom:16}}>
+                <label style={lbl}>{lang==="ar"?"التكرار الأسبوعي":"Repeat weekly"}</label>
+                <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                  <select value={tripForm.repeatWeeks} onChange={e=>setTripForm({...tripForm,repeatWeeks:e.target.value})} style={{...inp,flex:1}}>{[1,2,3,4,5,6,8,10,12].map(n=><option key={n} value={n}>{n===1?(lang==="ar"?"مرة واحدة (بدون تكرار)":"Once (no repeat)"):`${n} ${lang==="ar"?"أسابيع":"weeks"}`}</option>)}</select>
+                  {parseInt(tripForm.repeatWeeks)>1&&<span style={{fontSize:11,color:"#1B3A2A",fontWeight:700,whiteSpace:"nowrap"}}>{lang==="ar"?`سيتم إنشاء ${tripForm.repeatWeeks} رحلات`:`Creates ${tripForm.repeatWeeks} trips`}</span>}
+                </div>
+              </div>
               {tripError&&<div style={{marginBottom:12,padding:"10px 16px",background:"#FEF2F2",border:"1px solid #FECACA",borderRadius:10,color:"#B91C1C",fontSize:13,fontWeight:700}}>{tripError}</div>}
               {tripSuccess&&<div style={{marginBottom:12,padding:"10px 16px",background:"#F0FDF4",border:"1px solid #BBF7D0",borderRadius:10,color:"#166534",fontSize:13,fontWeight:700}}>✓ {drv.success}</div>}
               <button onClick={postTrip} style={{width:"100%",background:"#1B3A2A",color:"white",border:"none",padding:"14px",borderRadius:12,fontSize:15,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>{drv.submit}</button>
@@ -1923,6 +1954,7 @@ const [driverEditing,setDriverEditing]=useState(false);
                           <button onClick={()=>confirmBooking(bk.id)} style={{background:"#1B3A2A",color:"white",border:"none",padding:"5px 12px",borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{lang==="ar"?"قبول":"Confirm"}</button>
                           <button onClick={()=>rejectBooking(bk.id)} style={{background:"#EF4444",color:"white",border:"none",padding:"5px 12px",borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{lang==="ar"?"رفض":"Reject"}</button>
                         </div>}
+                        {bk.status==="confirmed"&&selectedTripDetail?.status==="active"&&<button onClick={async()=>{if(!window.confirm(lang==="ar"?"هل تأكد عدم حضور الراكب؟":"Mark passenger as no-show?"))return;const{error}=await supabase.rpc("driver_action_booking",{p_booking_id:bk.id,p_action:"reject"});if(!error){setTripDetailBookings(bs=>bs.map(b=>b.id===bk.id?{...b,status:"no_show"}:b));setSelectedTripDetail(t=>({...t,available_seats:(t.available_seats||0)+bk.seats}));setDriverTrips(ts=>ts.map(t=>t.id===selectedTripDetail.id?{...t,available_seats:(t.available_seats||0)+bk.seats}:t));}}} style={{background:"#FFF7ED",color:"#C2410C",border:"1px solid #FED7AA",padding:"5px 12px",borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{lang==="ar"?"لم يحضر":"No-show"}</button>}
                       </div>
                     </div>
                   </div>
@@ -2104,7 +2136,7 @@ const [driverEditing,setDriverEditing]=useState(false);
                           <span style={{fontWeight:800,fontSize:14,color:isWomen?"#6D28D9":"#1B3A2A"}}>{fc?.[lang]||trip.from_city} {lang==="ar"?"إلى":"to"} {tc?.[lang]||trip.to_city}</span>
                           <GenderBadge type={trip.gender_type} lang={lang}/>
                         </div>
-                        <div style={{fontSize:12,color:"#888"}}>{formatTime(trip.trip_time)} · {trip.car_type||""}</div>
+                        <div style={{fontSize:12,color:"#888",display:"flex",alignItems:"center",gap:8}}>{formatTime(trip.trip_time)} · {trip.car_type||""}{trip.avg_rating>0&&<span style={{color:"#F59E0B",fontWeight:700}}>★ {trip.avg_rating.toFixed(1)}</span>}</div>
                         {trip.available_seats<=0
                           ?<div style={{fontSize:11,fontWeight:700,color:"#991B1B",marginTop:3}}>🔴 {lang==="ar"?"اكتملت المقاعد":"Fully Booked"}</div>
                           :trip.available_seats<=2
