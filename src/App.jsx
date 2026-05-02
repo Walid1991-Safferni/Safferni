@@ -291,6 +291,8 @@ export default function App(){
   const [searchFrom,setSearchFrom]=useState("");
   const [searchTo,setSearchTo]=useState("");
   const [searchGender,setSearchGender]=useState("mixed");
+  const [tripSort,setTripSort]=useState("time");
+  const [savedRoutes,setSavedRoutes]=useState(()=>{try{return JSON.parse(localStorage.getItem("safferni_saved_routes")||"[]");}catch{return[];}});
   const [trips,setTrips]=useState([]);
   const [tripsLoaded,setTripsLoaded]=useState(false);
   const [selectedTrip,setSelectedTrip]=useState(null);
@@ -361,7 +363,7 @@ export default function App(){
   const [promoDiscount,setPromoDiscount]=useState(null);
   const [promoError,setPromoError]=useState("");
   const [promoCodes,setPromoCodes]=useState([]);
-  const [newPromo,setNewPromo]=useState({code:"",discount_type:"fixed",discount_value:"",max_uses:""});
+  const [newPromo,setNewPromo]=useState({code:"",discount_type:"fixed",discount_value:"",max_uses:"",expires_at:""});
 
   // Trip passengers (admin expand)
   const [expandedTrip,setExpandedTrip]=useState(null);
@@ -838,6 +840,7 @@ const [driverEditing,setDriverEditing]=useState(false);
     if(!/^[A-Z0-9]{1,20}$/.test(promoCode.toUpperCase())){setPromoError(lang==="ar"?"كود غير صحيح":"Invalid code");return;}
     const{data}=await supabase.from("promo_codes").select("*").eq("code",promoCode.toUpperCase()).eq("active",true).maybeSingle();
     if(!data){setPromoError(lang==="ar"?"كود غير صحيح":"Invalid code");setPromoDiscount(null);}
+    else if(data.expires_at&&new Date(data.expires_at)<new Date()){setPromoError(lang==="ar"?"انتهت صلاحية هذا الكود":"This promo code has expired");setPromoDiscount(null);}
     else if(data.max_uses!==null&&data.max_uses!==undefined&&(data.uses_count||0)>=data.max_uses){setPromoError(lang==="ar"?"انتهى الحد المسموح به لهذا الكود":"This promo code has reached its usage limit");setPromoDiscount(null);}
     else{setPromoDiscount(data);setPromoError("");}
   };
@@ -864,8 +867,9 @@ const [driverEditing,setDriverEditing]=useState(false);
     const val=parseFloat(newPromo.discount_value);
     if(isNaN(val)||val<=0||(newPromo.discount_type==="percentage"&&val>100)) return;
     const maxUses=newPromo.max_uses?parseInt(newPromo.max_uses):null;
-    await supabase.from("promo_codes").insert({code:newPromo.code.toUpperCase(),discount_type:newPromo.discount_type,discount_value:val,active:true,max_uses:maxUses,uses_count:0});
-    setNewPromo({code:"",discount_type:"fixed",discount_value:"",max_uses:""});
+    const expiresAt=newPromo.expires_at?new Date(newPromo.expires_at).toISOString():null;
+    await supabase.from("promo_codes").insert({code:newPromo.code.toUpperCase(),discount_type:newPromo.discount_type,discount_value:val,active:true,max_uses:maxUses,uses_count:0,expires_at:expiresAt});
+    setNewPromo({code:"",discount_type:"fixed",discount_value:"",max_uses:"",expires_at:""});
     loadPromoCodes();
   };
 
@@ -896,6 +900,18 @@ const [driverEditing,setDriverEditing]=useState(false);
     setTimeout(()=>setDriverProfileMsg(""),3000);
     if(selectedDriver) loadAdminData();
     else loadDriverData();
+  };
+
+  const exportBookingsCSV=async()=>{
+    const{data:rows}=await supabase.from("bookings").select("ref_code,passenger_name,passenger_phone,seats,total_price,payment_method,status,created_at,trips(trip_date,trip_time,from_city,to_city,profiles(full_name))").order("created_at",{ascending:false});
+    if(!rows||rows.length===0){alert(lang==="ar"?"لا توجد حجوزات للتصدير":"No bookings to export");return;}
+    const headers=["Ref","Passenger","Phone","Seats","Price","Payment","Status","Booked At","Trip Date","Trip Time","From","To","Driver"];
+    const esc=v=>{const s=v==null?"":String(v);return /[",\n]/.test(s)?`"${s.replace(/"/g,'""')}"`:s;};
+    const lines=[headers.join(",")].concat(rows.map(r=>[r.ref_code,r.passenger_name,r.passenger_phone,r.seats,r.total_price,r.payment_method,r.status,r.created_at,r.trips?.trip_date,r.trips?.trip_time,r.trips?.from_city,r.trips?.to_city,r.trips?.profiles?.full_name].map(esc).join(",")));
+    const blob=new Blob([lines.join("\n")],{type:"text/csv;charset=utf-8"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");a.href=url;a.download=`safferni-bookings-${new Date().toISOString().split("T")[0]}.csv`;a.click();
+    URL.revokeObjectURL(url);
   };
 
   const filteredAdminTrips=adminAllTrips.filter(trip=>{
@@ -1560,7 +1576,10 @@ const [driverEditing,setDriverEditing]=useState(false);
               <div><label style={lbl}>{adm.filterByDriver}</label><select value={tripFilterDriver} onChange={e=>setTripFilterDriver(e.target.value)} style={inp}><option value="">{adm.allDrivers}</option>{adminDrivers.map(d=><option key={d.id} value={d.id}>{d.full_name}</option>)}</select></div>
               <div><label style={lbl}>{adm.filterByDate}</label><input type="date" value={tripFilterDate} onChange={e=>setTripFilterDate(e.target.value)} style={inp}/></div>
             </div>
-            <div style={{marginBottom:16,textAlign:"center"}}><button onClick={loadAdminData} style={{background:"#1B3A2A",color:"white",border:"none",padding:"11px 28px",borderRadius:10,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>🔍 {lang==="ar"?"تحديث":"Refresh"}</button></div>
+            <div style={{marginBottom:16,textAlign:"center",display:"flex",gap:8,justifyContent:"center"}}>
+              <button onClick={loadAdminData} style={{background:"#1B3A2A",color:"white",border:"none",padding:"11px 28px",borderRadius:10,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>🔍 {lang==="ar"?"تحديث":"Refresh"}</button>
+              <button onClick={exportBookingsCSV} style={{background:"#0369A1",color:"white",border:"none",padding:"11px 28px",borderRadius:10,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>⬇ {lang==="ar"?"تصدير الحجوزات CSV":"Export Bookings CSV"}</button>
+            </div>
             <div style={{display:"flex",gap:20,alignItems:"flex-start",flexWrap:"wrap"}}>
             {["pending","active","cancelled"].map(status=>{
               const filtered=filteredAdminTrips.filter(t=>t.status===status);
@@ -1623,13 +1642,14 @@ const [driverEditing,setDriverEditing]=useState(false);
                 <div><label style={lbl}>{lang==="ar"?"نوع الخصم":"Type"}</label><select value={newPromo.discount_type} onChange={e=>setNewPromo({...newPromo,discount_type:e.target.value})} style={inp}><option value="fixed">{lang==="ar"?"مبلغ ثابت ($)":"Fixed ($)"}</option><option value="percentage">{lang==="ar"?"نسبة (%)":"Percentage (%)"}</option></select></div>
                 <div><label style={lbl}>{lang==="ar"?"القيمة":"Value"}</label><input type="number" value={newPromo.discount_value} onChange={e=>setNewPromo({...newPromo,discount_value:e.target.value})} style={inp} placeholder="10"/></div>
                 <div><label style={lbl}>{lang==="ar"?"الحد الأقصى":"Max Uses"}</label><input type="number" value={newPromo.max_uses} onChange={e=>setNewPromo({...newPromo,max_uses:e.target.value})} style={inp} placeholder={lang==="ar"?"غير محدود":"Unlimited"}/></div>
+                <div><label style={lbl}>{lang==="ar"?"تاريخ الانتهاء":"Expires"}</label><input type="date" value={newPromo.expires_at} onChange={e=>setNewPromo({...newPromo,expires_at:e.target.value})} style={inp}/></div>
                 <button onClick={createPromoCode} style={{background:"#1B3A2A",color:"white",border:"none",padding:"11px 20px",borderRadius:10,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{lang==="ar"?"إنشاء":"Create"}</button>
               </div>
             </div>
             {promoCodes.length===0?<p style={{textAlign:"center",color:"#AAA",padding:"40px"}}>{lang==="ar"?"لا توجد كودات":"No promo codes yet"}</p>:
             promoCodes.map((p,i)=>(
               <div key={p.id} style={{background:"white",borderRadius:12,padding:"16px 20px",border:"1px solid #E8E6E1",marginBottom:10,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10}}>
-                <div><span style={{fontWeight:900,fontSize:16,color:"#1B3A2A",letterSpacing:1}}>{p.code}</span><span style={{marginInlineStart:12,fontSize:13,color:"#888"}}>{p.discount_type==="fixed"?`$${p.discount_value} off`:`${p.discount_value}% off`}</span>{p.max_uses!=null&&<span style={{marginInlineStart:10,fontSize:11,color:"#AAA"}}>{p.uses_count||0}/{p.max_uses} {lang==="ar"?"مستخدم":"uses"}</span>}</div>
+                <div><span style={{fontWeight:900,fontSize:16,color:"#1B3A2A",letterSpacing:1}}>{p.code}</span><span style={{marginInlineStart:12,fontSize:13,color:"#888"}}>{p.discount_type==="fixed"?`$${p.discount_value} off`:`${p.discount_value}% off`}</span>{p.max_uses!=null&&<span style={{marginInlineStart:10,fontSize:11,color:"#AAA"}}>{p.uses_count||0}/{p.max_uses} {lang==="ar"?"مستخدم":"uses"}</span>}{p.expires_at&&<span style={{marginInlineStart:10,fontSize:11,color:new Date(p.expires_at)<new Date()?"#EF4444":"#AAA"}}>{lang==="ar"?"ينتهي":"exp"} {String(p.expires_at).split("T")[0]}</span>}</div>
                 <div style={{display:"flex",gap:8,alignItems:"center"}}>
                   <span style={{fontSize:11,fontWeight:700,padding:"3px 10px",borderRadius:20,background:p.active?"#D1FAE5":"#FEE2E2",color:p.active?"#065F46":"#991B1B"}}>{p.active?(lang==="ar"?"نشط":"Active"):(lang==="ar"?"معطل":"Inactive")}</span>
                   <button onClick={async()=>{await supabase.from("promo_codes").update({active:!p.active}).eq("id",p.id);loadPromoCodes();}} style={{background:p.active?"#EF4444":"#1B3A2A",color:"white",border:"none",padding:"6px 14px",borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{p.active?(lang==="ar"?"تعطيل":"Disable"):(lang==="ar"?"تفعيل":"Enable")}</button>
@@ -1879,7 +1899,7 @@ const [driverEditing,setDriverEditing]=useState(false);
                     <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10,flexWrap:"wrap"}}>
                       <div>
                         <div style={{fontWeight:800,fontSize:14,color:"#1B3A2A",marginBottom:2}}>{bk.passenger_name}</div>
-                        <div style={{fontSize:12,color:"#555"}}>{bk.passenger_phone}</div>
+                        <div style={{fontSize:12,color:"#555"}}>{bk.status==="confirmed"?bk.passenger_phone:(lang==="ar"?"📞 يظهر الرقم بعد التأكيد":"📞 Phone visible after confirming")}</div>
                         <div style={{fontSize:11,color:"#888",marginTop:4}}>💺 {bk.seats} {lang==="ar"?"مقعد":"seat(s)"} · {bk.payment_method} · 📋 {bk.ref_code}</div>
                       </div>
                       <div style={{display:"flex",flexDirection:"column",gap:6,alignItems:"flex-end"}}>
@@ -2035,17 +2055,31 @@ const [driverEditing,setDriverEditing]=useState(false);
                 <button disabled style={{flex:1,padding:"9px",borderRadius:10,fontSize:12,fontWeight:700,cursor:"not-allowed",fontFamily:"inherit",border:"2px solid #E8E6E1",background:"#F8F8F8",color:"#CCC"}}>💜 {lang==="ar"?"نساء فقط — قريباً":"Women Only — Soon"}</button>
               </div>
             </div>
-            <div style={{display:"flex",gap:10,alignItems:"flex-end"}}>
-              <div style={{flex:1}}><label style={lbl}>{b.searchDate}</label><input type="date" value={searchDate} onChange={e=>setSearchDate(e.target.value)} style={inp}/></div>
-              <button onClick={searchTrips} style={{background:"#1B3A2A",color:"white",border:"none",padding:"11px 24px",borderRadius:10,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>{b.searchBtn}</button>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
+              <div><label style={lbl}>{b.searchDate}</label><input type="date" value={searchDate} onChange={e=>setSearchDate(e.target.value)} style={inp}/></div>
+              <div><label style={lbl}>{lang==="ar"?"ترتيب":"Sort by"}</label><select value={tripSort} onChange={e=>setTripSort(e.target.value)} style={inp}><option value="time">{lang==="ar"?"وقت المغادرة":"Departure time"}</option><option value="price_asc">{lang==="ar"?"السعر: من الأقل":"Price: low to high"}</option><option value="price_desc">{lang==="ar"?"السعر: من الأعلى":"Price: high to low"}</option></select></div>
             </div>
+            <div style={{display:"flex",gap:10,alignItems:"center",marginBottom:6}}>
+              <button onClick={searchTrips} style={{flex:1,background:"#1B3A2A",color:"white",border:"none",padding:"11px 24px",borderRadius:10,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>{b.searchBtn}</button>
+              {searchFrom&&searchTo&&(()=>{const isSaved=savedRoutes.some(r=>r.from===searchFrom&&r.to===searchTo);return(
+                <button onClick={()=>{const next=isSaved?savedRoutes.filter(r=>!(r.from===searchFrom&&r.to===searchTo)):[...savedRoutes,{from:searchFrom,to:searchTo}];setSavedRoutes(next);localStorage.setItem("safferni_saved_routes",JSON.stringify(next));}} title={lang==="ar"?"حفظ المسار":"Save route"} style={{background:"white",color:isSaved?"#F59E0B":"#999",border:"2px solid "+(isSaved?"#F59E0B":"#E8E6E1"),padding:"9px 14px",borderRadius:10,fontSize:16,cursor:"pointer",fontFamily:"inherit"}}>{isSaved?"★":"☆"}</button>
+              );})()}
+            </div>
+            {savedRoutes.length>0&&(
+              <div style={{marginTop:6,display:"flex",flexWrap:"wrap",gap:6}}>
+                <span style={{fontSize:11,color:"#666",fontWeight:700,alignSelf:"center"}}>{lang==="ar"?"المحفوظة:":"Saved:"}</span>
+                {savedRoutes.map((r,idx)=>{const fc=gc(r.from);const tc=gc(r.to);return(
+                  <button key={idx} onClick={()=>{setSearchFrom(r.from);setSearchTo(r.to);}} style={{background:"#F0EBE3",color:"#1B3A2A",border:"none",padding:"5px 10px",borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{fc?.[lang]||r.from} → {tc?.[lang]||r.to}</button>
+                );})}
+              </div>
+            )}
             {!searchDate&&tripsLoaded&&<p style={{marginTop:12,fontSize:12,color:"#EF4444",fontWeight:700}}>{lang==="ar"?"الرجاء اختيار تاريخ السفر":"Please select a travel date"}</p>}
 
             {tripsLoaded&&(<div style={{marginTop:20}}>
               {trips.length===0?(<div style={{textAlign:"center",padding:"24px 0"}}><p style={{color:"#AAA",fontSize:14,marginBottom:16}}>{b.noTrips}</p></div>)
               :(<div>
                 <p style={{fontSize:13,fontWeight:700,color:"#1B3A2A",marginBottom:12}}>{b.availableTrips}:</p>
-                {trips.map((trip,i)=>{
+                {[...trips].sort((a,b)=>tripSort==="price_asc"?(a.price_per_seat||0)-(b.price_per_seat||0):tripSort==="price_desc"?(b.price_per_seat||0)-(a.price_per_seat||0):(a.trip_time||"").localeCompare(b.trip_time||"")).map((trip,i)=>{
                   const fc=gc(trip.from_city);const tc=gc(trip.to_city);
                   const isWomen=trip.gender_type==="women_only";
                   return(<div key={trip.id} style={{border:`1px solid ${isWomen?"#DDD6FE":"#E8E6E1"}`,borderRadius:12,padding:"16px",marginBottom:10,background:isWomen?"#FAFAFF":"#FAFAF8",animation:`fadeUp 0.3s ease ${0.05*i}s both`}}>
