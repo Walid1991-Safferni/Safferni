@@ -275,7 +275,10 @@ export default function App(){
   const [profile,setProfile]=useState(null);
   const [driverApproved,setDriverApproved]=useState(false);
   const didLogOut=useRef(false);
-  const pendingSignupData=useRef(null);
+  const pendingSignupData={
+    get current(){try{const v=sessionStorage.getItem("safferni_pending_signup");return v?JSON.parse(v):null;}catch{return null;}},
+    set current(v){try{if(v==null)sessionStorage.removeItem("safferni_pending_signup");else sessionStorage.setItem("safferni_pending_signup",JSON.stringify(v));}catch{}},
+  };
   const [loading,setLoading]=useState(true);
 
   // Booking form
@@ -452,10 +455,11 @@ const [driverEditing,setDriverEditing]=useState(false);
 
   const loadProfile=async(u)=>{
     const{data,error}=await supabase.from("profiles").select("*").eq("id",u.id).maybeSingle();
-    if(error){console.error("loadProfile failed",error);setLoading(false);return;}
+    if(error){console.error("loadProfile select failed",error);setLoading(false);return;}
     if(data){setProfile(data);setDriverApproved(data?.role==="driver");setLoading(false);return;}
-    // No profile yet — race-free creation from pending signup data
+    // No profile yet — create from pending signup stash (survives tab switches via sessionStorage)
     const stash=pendingSignupData.current;
+    console.log("loadProfile: no profile found, stash=",stash,"u.email=",u.email,"u.phone=",u.phone);
     const matchesEmail=stash?.email&&stash.email===u.email;
     const matchesPhone=stash?.phone&&stash.phone===u.phone;
     if(stash&&(matchesEmail||matchesPhone)){
@@ -463,10 +467,11 @@ const [driverEditing,setDriverEditing]=useState(false);
       const role=profileEmail&&ADMIN_EMAILS.includes(profileEmail)?"admin":"passenger";
       const newProfile={id:u.id,email:profileEmail,full_name:stash.full_name,phone:stash.phone||u.phone||"",role,date_of_birth:stash.date_of_birth||null};
       const{error:upErr}=await supabase.from("profiles").upsert(newProfile,{onConflict:"id"});
-      if(upErr){console.error("profile upsert failed",upErr);alert("Profile setup failed: "+upErr.message+" — please contact support.");setLoading(false);return;}
+      if(upErr){console.error("profile upsert failed",upErr);alert("Profile setup failed: "+upErr.message);setLoading(false);return;}
       pendingSignupData.current=null;
       setProfile(newProfile);setDriverApproved(false);
     } else {
+      console.warn("loadProfile: no stash or phone/email mismatch — profile will be empty. stash=",stash);
       setProfile(null);setDriverApproved(false);
     }
     setLoading(false);
