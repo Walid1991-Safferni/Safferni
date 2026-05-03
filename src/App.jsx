@@ -457,10 +457,15 @@ const [driverEditing,setDriverEditing]=useState(false);
     const{data,error}=await supabase.from("profiles").select("*").eq("id",u.id).maybeSingle();
     if(error){console.error("loadProfile select failed",error);setLoading(false);return;}
     if(data){setProfile(data);setDriverApproved(data?.role==="driver");setLoading(false);return;}
-    // Profile not found — clear any stale stash and leave profile null
-    // (Profile is created directly in handleSignupSyriaVerify / handleSignupOtherVerify)
+    // Profile missing — auto-recover from auth user_metadata (zombie account from past failed signup)
+    const meta=u.user_metadata||{};
+    const profileEmail=u.email||meta.email||null;
+    const role=profileEmail&&ADMIN_EMAILS.includes(profileEmail)?"admin":"passenger";
+    const recovered={id:u.id,email:profileEmail,full_name:meta.full_name||"",phone:u.phone||meta.phone||"",role,date_of_birth:meta.date_of_birth||null};
+    const{error:upErr}=await supabase.from("profiles").upsert(recovered,{onConflict:"id"});
+    if(upErr){console.error("auto-recover profile failed",upErr);setProfile(null);setDriverApproved(false);setLoading(false);return;}
     pendingSignupData.current=null;
-    setProfile(null);setDriverApproved(false);
+    setProfile(recovered);setDriverApproved(false);
     setLoading(false);
   };
 
@@ -518,35 +523,39 @@ const [driverEditing,setDriverEditing]=useState(false);
     const email=authForm.email.trim().toLowerCase();
     const{data:existingEmail}=await supabase.from("profiles").select("id").eq("email",email).maybeSingle();
     if(existingEmail){setAuthError(lang==="ar"?"هذا البريد الإلكتروني مسجل مسبقاً. سجّل الدخول بدلاً من ذلك.":"This email is already registered. Please log in instead.");setAuthLoading(false);return;}
-    const{error}=await supabase.auth.signInWithOtp({email,options:{shouldCreateUser:true}});
+    // Pass user metadata so DB trigger can auto-create profile + survives any client race
+    const{error}=await supabase.auth.signInWithOtp({email,options:{shouldCreateUser:true,data:{full_name:authForm.fullName.trim(),phone:authForm.phone,date_of_birth:authForm.dob}}});
     if(error){setAuthError(error.message||t.auth.error);setAuthLoading(false);return;}
-    // Stash for race-free profile creation in loadProfile
     pendingSignupData.current={email,full_name:authForm.fullName.trim(),phone:authForm.phone,date_of_birth:authForm.dob};
     setAuthStep("signup_otp_email");
     setAuthLoading(false);
   };
 
-  // Signup Syria: verify email OTP — create profile immediately while form data is available
+  // Signup Syria: verify email OTP — set session explicitly, then set password + ensure profile
   const handleSignupSyriaVerify=async()=>{
     if(!authOtp){setAuthError(t.auth.error);return;}
     setAuthLoading(true);setAuthError("");
-    const email=authForm.email.trim().toLowerCase();
-    const fullName=authForm.fullName.trim();
-    const phone=authForm.phone;
-    const dob=authForm.dob||null;
+    const stash=pendingSignupData.current||{};
+    const email=(stash.email||authForm.email||"").trim().toLowerCase();
+    const fullName=(stash.full_name||authForm.fullName||"").trim();
+    const phone=stash.phone||authForm.phone||"";
+    const dob=stash.date_of_birth||authForm.dob||null;
     const password=authForm.password;
+    if(!email||!password){setAuthError(lang==="ar"?"بيانات التسجيل مفقودة، حاول مجدداً":"Signup data missing, please try again");setAuthLoading(false);return;}
     const{data:otpData,error}=await supabase.auth.verifyOtp({email,token:authOtp,type:"email"});
     if(error){setAuthError(t.auth.otpWrong);setAuthLoading(false);return;}
-    if(!otpData?.user){setAuthError(lang==="ar"?"انتهت صلاحية الرمز أو أنه غير صحيح. حاول مجدداً.":"Code expired or invalid. Please try again.");setAuthLoading(false);return;}
+    if(!otpData?.user||!otpData?.session){setAuthError(lang==="ar"?"انتهت صلاحية الرمز أو أنه غير صحيح. حاول مجدداً.":"Code expired or invalid. Please try again.");setAuthLoading(false);return;}
+    // Explicitly set session — avoids "Auth session missing" on subsequent calls
+    await supabase.auth.setSession({access_token:otpData.session.access_token,refresh_token:otpData.session.refresh_token});
     const{error:pwErr}=await supabase.auth.updateUser({password});
     if(pwErr){setAuthError((lang==="ar"?"فشل في تعيين كلمة المرور: ":"Failed to set password: ")+(pwErr.message||""));setAuthLoading(false);return;}
-    // Create profile directly — don't rely on onAuthStateChange timing
+    // Upsert profile (DB trigger may have already created a stub — this fills it in)
     const uid=otpData.user.id;
     const role=ADMIN_EMAILS.includes(email)?"admin":"passenger";
     const newProfile={id:uid,email,full_name:fullName,phone,role,date_of_birth:dob};
     const{error:profErr}=await supabase.from("profiles").upsert(newProfile,{onConflict:"id"});
-    if(profErr){console.error("Syria signup profile create failed",profErr);}
-    else{setProfile(newProfile);setDriverApproved(false);}
+    if(profErr){setAuthError((lang==="ar"?"فشل في إنشاء الملف الشخصي: ":"Failed to create profile: ")+profErr.message);setAuthLoading(false);return;}
+    setProfile(newProfile);setDriverApproved(false);
     pendingSignupData.current=null;
     resetAuth();setPage("profile");
     setAuthLoading(false);
@@ -577,37 +586,41 @@ const [driverEditing,setDriverEditing]=useState(false);
     ]);
     if(existingPhone){setAuthPhoneExists(true);setAuthLoading(false);return;}
     if(existingEmail){setAuthError(lang==="ar"?"هذا البريد الإلكتروني مسجل مسبقاً. سجّل الدخول بدلاً من ذلك.":"This email is already registered. Please log in instead.");setAuthLoading(false);return;}
-    const{error}=await supabase.auth.signInWithOtp({phone,options:{shouldCreateUser:true}});
+    // Pass user metadata so DB trigger can auto-create profile + survives any client race
+    const{error}=await supabase.auth.signInWithOtp({phone,options:{shouldCreateUser:true,data:{full_name:authForm.fullName.trim(),email}}});
     if(error){setAuthError(error.message||t.auth.error);setAuthLoading(false);return;}
-    // Stash for race-free profile creation in loadProfile
     pendingSignupData.current={phone,email,full_name:authForm.fullName.trim()};
     setPendingPhone(phone);
     setAuthStep("signup_otp_sms");
     setAuthLoading(false);
   };
 
-  // Signup Other: verify SMS OTP — create profile immediately while form data is available
+  // Signup Other: verify SMS OTP — set session explicitly, then set password + ensure profile
   const handleSignupOtherVerify=async()=>{
     if(!authOtp){setAuthError(t.auth.error);return;}
     setAuthLoading(true);setAuthError("");
-    const phone=pendingPhone||fullPhone();
-    const email=authForm.email.trim().toLowerCase();
-    const fullName=authForm.fullName.trim();
+    const stash=pendingSignupData.current||{};
+    const phone=stash.phone||pendingPhone||fullPhone();
+    const email=(stash.email||authForm.email||"").trim().toLowerCase();
+    const fullName=(stash.full_name||authForm.fullName||"").trim();
     const password=authForm.password;
+    if(!phone||!password){setAuthError(lang==="ar"?"بيانات التسجيل مفقودة، حاول مجدداً":"Signup data missing, please try again");setAuthLoading(false);return;}
     const{data:otpData,error}=await supabase.auth.verifyOtp({phone,token:authOtp,type:"sms"});
     if(error){setAuthError(t.auth.otpWrong);setAuthLoading(false);return;}
-    if(!otpData?.user){setAuthError(lang==="ar"?"انتهت صلاحية الرمز أو أنه غير صحيح. حاول مجدداً.":"Code expired or invalid. Please try again.");setAuthLoading(false);return;}
+    if(!otpData?.user||!otpData?.session){setAuthError(lang==="ar"?"انتهت صلاحية الرمز أو أنه غير صحيح. حاول مجدداً.":"Code expired or invalid. Please try again.");setAuthLoading(false);return;}
+    // Explicitly set session — avoids "Auth session missing" on subsequent calls
+    await supabase.auth.setSession({access_token:otpData.session.access_token,refresh_token:otpData.session.refresh_token});
     const{error:pwErr}=await supabase.auth.updateUser({password});
     if(pwErr){setAuthError((lang==="ar"?"فشل في تعيين كلمة المرور: ":"Failed to set password: ")+(pwErr.message||""));setAuthLoading(false);return;}
     // Link email identity so email+password login works (confirmation email sent by Supabase)
     if(email){await supabase.auth.updateUser({email}).catch(()=>{});}
-    // Create profile directly — don't rely on onAuthStateChange timing
+    // Upsert profile (DB trigger may have already created a stub — this fills it in)
     const uid=otpData.user.id;
     const role=ADMIN_EMAILS.includes(email)?"admin":"passenger";
     const newProfile={id:uid,email,full_name:fullName,phone,role,date_of_birth:null};
     const{error:profErr}=await supabase.from("profiles").upsert(newProfile,{onConflict:"id"});
-    if(profErr){console.error("Other signup profile create failed",profErr);}
-    else{setProfile(newProfile);setDriverApproved(false);}
+    if(profErr){setAuthError((lang==="ar"?"فشل في إنشاء الملف الشخصي: ":"Failed to create profile: ")+profErr.message);setAuthLoading(false);return;}
+    setProfile(newProfile);setDriverApproved(false);
     pendingSignupData.current=null;
     resetAuth();setPage("profile");
     setAuthLoading(false);
