@@ -267,6 +267,33 @@ const T={
 
 const LogoSVG=({light})=>(<svg width="48" height="48" viewBox="0 0 48 48"><path d="M18 4 L14 44 L34 44 L30 4 Z" fill={light?"rgba(255,255,255,0.15)":"#1B3A2A"}/><rect x="22.5" y="10" width="3" height="7" rx="1.5" fill={light?"rgba(255,255,255,0.6)":"#F0F7F3"}/><rect x="22.5" y="21" width="3" height="7" rx="1.5" fill={light?"rgba(255,255,255,0.6)":"#F0F7F3"}/><rect x="22.5" y="32" width="3" height="7" rx="1.5" fill={light?"rgba(255,255,255,0.6)":"#F0F7F3"}/></svg>);
 
+const IdVerificationRow=({driver,lang,onVerify,onReject})=>{
+  const[signedUrl,setSignedUrl]=useState(null);
+  const loadSignedUrl=async()=>{
+    if(signedUrl)return;
+    if(!driver.id_photo_url){alert(lang==="ar"?"لم يتم رفع صورة الهوية":"No ID photo uploaded");return;}
+    const{data,error}=await supabase.storage.from("id-documents").createSignedUrl(driver.id_photo_url,300);
+    if(error){alert((lang==="ar"?"فشل تحميل صورة الهوية: ":"Failed to load ID image: ")+error.message);return;}
+    setSignedUrl(data?.signedUrl||null);
+  };
+  return(
+    <div style={{background:"white",border:"1px solid #E8E6E1",borderRadius:14,padding:"20px",marginBottom:12}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:12}}>
+        <div>
+          <div style={{fontWeight:800,fontSize:15,color:"#1B3A2A"}}>{driver.full_name||"—"}</div>
+          <div style={{fontSize:12,color:"#AAA",marginTop:2}}>{driver.id}</div>
+        </div>
+        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+          <button onClick={loadSignedUrl} style={{background:"#F0F7F3",color:"#1B3A2A",border:"1.5px solid #1B3A2A",padding:"7px 14px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>🪪 {lang==="ar"?"عرض الهوية":"View ID"}</button>
+          <button onClick={()=>onVerify(driver.id)} style={{background:"#1B3A2A",color:"white",border:"none",padding:"7px 14px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>✓ {lang==="ar"?"تحقق":"Verify"}</button>
+          <button onClick={()=>onReject(driver.id)} style={{background:"#FEF2F2",color:"#B91C1C",border:"1.5px solid #FECACA",padding:"7px 14px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>✗ {lang==="ar"?"رفض":"Reject"}</button>
+        </div>
+      </div>
+      {signedUrl&&<div style={{marginTop:12}}><img src={signedUrl} alt="ID document" style={{maxWidth:"100%",maxHeight:400,borderRadius:8,border:"1px solid #E8E6E1",objectFit:"contain"}}/></div>}
+    </div>
+  );
+};
+
 export default function App(){
   const [lang,setLang]=useState("ar");
   const [page,setPage]=useState("home");
@@ -1826,26 +1853,9 @@ const [driverEditing,setDriverEditing]=useState(false);
               <button onClick={loadAdminIdQueue} style={{background:"#F0F7F3",color:"#1B3A2A",border:"1.5px solid #1B3A2A",padding:"7px 16px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{lang==="ar"?"تحديث":"Refresh"}</button>
             </div>
             {adminIdQueue.length===0?<p style={{color:"#AAA",textAlign:"center",padding:32}}>{lang==="ar"?"لا توجد طلبات تحقق معلقة":"No pending verification requests"}</p>:
-            adminIdQueue.map(driver=>{
-              const[signedUrl,setSignedUrl]=React.useState(null);
-              const loadSignedUrl=async()=>{if(signedUrl)return;const{data}=await supabase.storage.from("id-documents").createSignedUrl(driver.id_photo_url,300);setSignedUrl(data?.signedUrl||null);};
-              return(
-                <div key={driver.id} style={{background:"white",border:"1px solid #E8E6E1",borderRadius:14,padding:"20px",marginBottom:12}}>
-                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:12}}>
-                    <div>
-                      <div style={{fontWeight:800,fontSize:15,color:"#1B3A2A"}}>{driver.full_name||"—"}</div>
-                      <div style={{fontSize:12,color:"#AAA",marginTop:2}}>{driver.id}</div>
-                    </div>
-                    <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-                      <button onClick={loadSignedUrl} style={{background:"#F0F7F3",color:"#1B3A2A",border:"1.5px solid #1B3A2A",padding:"7px 14px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>🪪 {lang==="ar"?"عرض الهوية":"View ID"}</button>
-                      <button onClick={()=>verifyDriverId(driver.id)} style={{background:"#1B3A2A",color:"white",border:"none",padding:"7px 14px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>✓ {lang==="ar"?"تحقق":"Verify"}</button>
-                      <button onClick={()=>rejectDriverId(driver.id)} style={{background:"#FEF2F2",color:"#B91C1C",border:"1.5px solid #FECACA",padding:"7px 14px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>✗ {lang==="ar"?"رفض":"Reject"}</button>
-                    </div>
-                  </div>
-                  {signedUrl&&<div style={{marginTop:12}}><img src={signedUrl} alt="ID document" style={{maxWidth:"100%",maxHeight:400,borderRadius:8,border:"1px solid #E8E6E1",objectFit:"contain"}}/></div>}
-                </div>
-              );
-            })}
+            adminIdQueue.map(driver=>(
+              <IdVerificationRow key={driver.id} driver={driver} lang={lang} onVerify={verifyDriverId} onReject={rejectDriverId}/>
+            ))}
           </div>)}
 
           {adminTab==="activity"&&(<div>
