@@ -347,6 +347,9 @@ export default function App(){
   const [driverProfile,setDriverProfile]=useState({fullName:"",dob:"",idNumber:"",carKindYear:"",carPlate:"",transportLicense:"",driverLicense:"",hasWifi:false,hasWater:false,hasAc:false});
   const [driverPublicPage,setDriverPublicPage]=useState(null);
   const [driverProfileMsg,setDriverProfileMsg]=useState("");
+  const [avatarUploading,setAvatarUploading]=useState(false);
+  const [idUploading,setIdUploading]=useState(false);
+  const [adminIdQueue,setAdminIdQueue]=useState([]);
 
   // Driver panel
   const [driverTrips,setDriverTrips]=useState([]);
@@ -445,6 +448,7 @@ const [driverEditing,setDriverEditing]=useState(false);
     return()=>supabase.removeChannel(ch);
   },[user?.id]);
   useEffect(()=>{if(adminTab==="activity"&&isAdmin)loadAdminActivity();},[adminTab]);
+  useEffect(()=>{if(adminTab==="idVerification"&&isAdmin)loadAdminIdQueue();},[adminTab]);
   useEffect(()=>{if(page==="admin"&&isAdmin){loadAdminData();if(adminTab==="promoCodes") loadPromoCodes();}},[page,adminTab]);
   useEffect(()=>{if(page==="driver"&&user){setSelectedDriver(null);loadProfile(user);loadDriverData();}},[page,user]);
   useEffect(()=>{
@@ -941,7 +945,7 @@ const [driverEditing,setDriverEditing]=useState(false);
   };
 
   const openDriverPublicPage=async(driverId)=>{
-    const{data:prof,error:profErr}=await supabase.from("profiles").select("full_name,car_type,has_wifi,has_water,has_ac").eq("id",driverId).maybeSingle();
+    const{data:prof,error:profErr}=await supabase.from("profiles").select("full_name,car_type,has_wifi,has_water,has_ac,avatar_url,id_verified").eq("id",driverId).maybeSingle();
     if(profErr){console.error("openDriverPublicPage profile failed",profErr);return;}
     const{data:reviews}=await supabase.from("trip_reviews").select("*").eq("driver_id",driverId).order("created_at",{ascending:false});
     setDriverPublicPage({profile:prof||{},reviews:reviews||[]});
@@ -963,6 +967,51 @@ const [driverEditing,setDriverEditing]=useState(false);
     setTimeout(()=>setDriverProfileMsg(""),3000);
     if(selectedDriver) loadAdminData();
     else loadDriverData();
+  };
+
+  const uploadAvatar=async(file)=>{
+    if(!file||!user) return;
+    setAvatarUploading(true);
+    const ext=file.name.split(".").pop().toLowerCase();
+    const path=`${user.id}/avatar.${ext}`;
+    const{error:upErr}=await supabase.storage.from("avatars").upload(path,file,{upsert:true,contentType:file.type});
+    if(upErr){setDriverProfileMsg(lang==="ar"?"فشل رفع الصورة: "+upErr.message:"Upload failed: "+upErr.message);setAvatarUploading(false);return;}
+    const{data:{publicUrl}}=supabase.storage.from("avatars").getPublicUrl(path);
+    const url=publicUrl+"?t="+Date.now(); // cache bust
+    await supabase.from("profiles").update({avatar_url:url}).eq("id",user.id);
+    setProfile(p=>({...p,avatar_url:url}));
+    setDriverProfileMsg(lang==="ar"?"تم رفع الصورة ✓":"Photo uploaded ✓");
+    setTimeout(()=>setDriverProfileMsg(""),3000);
+    setAvatarUploading(false);
+  };
+
+  const uploadIdPhoto=async(file)=>{
+    if(!file||!user) return;
+    setIdUploading(true);
+    const ext=file.name.split(".").pop().toLowerCase();
+    const path=`${user.id}/id.${ext}`;
+    const{error:upErr}=await supabase.storage.from("id-documents").upload(path,file,{upsert:true,contentType:file.type});
+    if(upErr){setDriverProfileMsg(lang==="ar"?"فشل رفع الهوية: "+upErr.message:"ID upload failed: "+upErr.message);setIdUploading(false);return;}
+    await supabase.from("profiles").update({id_photo_url:path,id_verification_pending:true,id_verified:false}).eq("id",user.id);
+    setProfile(p=>({...p,id_photo_url:path,id_verification_pending:true,id_verified:false}));
+    setDriverProfileMsg(lang==="ar"?"تم رفع الهوية، بانتظار المراجعة ✓":"ID submitted for review ✓");
+    setTimeout(()=>setDriverProfileMsg(""),4000);
+    setIdUploading(false);
+  };
+
+  const loadAdminIdQueue=async()=>{
+    const{data}=await supabase.from("profiles").select("id,full_name,id_photo_url,id_verified,id_verification_pending").eq("id_verification_pending",true);
+    setAdminIdQueue(data||[]);
+  };
+
+  const verifyDriverId=async(driverId)=>{
+    await supabase.from("profiles").update({id_verified:true,id_verification_pending:false}).eq("id",driverId);
+    setAdminIdQueue(q=>q.filter(d=>d.id!==driverId));
+  };
+
+  const rejectDriverId=async(driverId)=>{
+    await supabase.from("profiles").update({id_verified:false,id_verification_pending:false,id_photo_url:null}).eq("id",driverId);
+    setAdminIdQueue(q=>q.filter(d=>d.id!==driverId));
   };
 
   const exportBookingsCSV=async()=>{
@@ -989,7 +1038,7 @@ const [driverEditing,setDriverEditing]=useState(false);
     await loadProfile(user);
     const{data:myApp}=await supabase.from("driver_applications").select("*").eq("user_id",user.id).order("created_at",{ascending:false}).limit(1).maybeSingle();
     const{data:myProfileData}=await supabase.from("profiles").select("*").eq("id",user.id).maybeSingle();
-    setDriverProfile({fullName:myProfileData?.full_name||"",dob:myProfileData?.date_of_birth||"",idNumber:myProfileData?.id_number||"",carKindYear:myProfileData?.car_type||myApp?.car_type||"",carPlate:myProfileData?.car_plate||"",transportLicense:myProfileData?.transport_license||"",driverLicense:myProfileData?.driver_license||"",hasWifi:myProfileData?.has_wifi||false,hasWater:myProfileData?.has_water||false,hasAc:myProfileData?.has_ac||false});
+    setDriverProfile({fullName:myProfileData?.full_name||"",dob:myProfileData?.date_of_birth||"",idNumber:myProfileData?.id_number||"",carKindYear:myProfileData?.car_type||myApp?.car_type||"",carPlate:myProfileData?.car_plate||"",transportLicense:myProfileData?.transport_license||"",driverLicense:myProfileData?.driver_license||"",hasWifi:myProfileData?.has_wifi||false,hasWater:myProfileData?.has_water||false,hasAc:myProfileData?.has_ac||false,avatarUrl:myProfileData?.avatar_url||"",idVerified:myProfileData?.id_verified||false,idPending:myProfileData?.id_verification_pending||false});
     const{data:myTrips}=await supabase.from("trips").select("*").eq("driver_id",user.id).order("trip_date",{ascending:false});
     setDriverTrips(myTrips||[]);
     if(myTrips){
@@ -1055,7 +1104,7 @@ const [driverEditing,setDriverEditing]=useState(false);
   const searchTrips=async()=>{
     if(!searchDate){setTripsLoaded(true);setTrips([]);return;}
     setTripsLoaded(false);
-    let query=supabase.from("trips").select("*").eq("trip_date",searchDate).eq("status","active").eq("approved",true).order("trip_time");
+    let query=supabase.from("trips").select("*, profiles!trips_driver_id_fkey(id_verified,avatar_url)").eq("trip_date",searchDate).eq("status","active").eq("approved",true).order("trip_time");
     if(searchFrom) query=query.eq("from_city",searchFrom);
     if(searchTo) query=query.eq("to_city",searchTo);
     query=query.eq("gender_type",searchGender);
@@ -1598,7 +1647,7 @@ const [driverEditing,setDriverEditing]=useState(false);
             </div>
           );})()}
           <div style={{display:"flex",gap:8,marginBottom:28,justifyContent:"center",flexWrap:"wrap"}}>
-            {[["applications",adm.applications],["editRequests",adm.editRequests],["drivers",adm.drivers],["allTrips",adm.allTrips],["promoCodes",lang==="ar"?"كودات الخصم":"Promo Codes"],["activity",lang==="ar"?"سجل النشاط 📋":"Activity Log 📋"]].map(([k,l])=>(
+            {[["applications",adm.applications],["editRequests",adm.editRequests],["drivers",adm.drivers],["allTrips",adm.allTrips],["promoCodes",lang==="ar"?"كودات الخصم":"Promo Codes"],["idVerification",lang==="ar"?"التحقق من الهوية 🪪":"ID Verification 🪪"],["activity",lang==="ar"?"سجل النشاط 📋":"Activity Log 📋"]].map(([k,l])=>(
               <button key={k} onClick={()=>setAdminTab(k)} style={{padding:"10px 20px",borderRadius:10,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",border:"2px solid",borderColor:adminTab===k?"#1B3A2A":"#E8E6E1",background:adminTab===k?"#1B3A2A":"white",color:adminTab===k?"white":"#666"}}>{l}</button>
             ))}
           </div>
@@ -1754,6 +1803,34 @@ const [driverEditing,setDriverEditing]=useState(false);
             ))}
           </div>)}
 
+          {adminTab==="idVerification"&&(<div>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+              <h3 style={{fontSize:17,fontWeight:800,color:"#1B3A2A"}}>{lang==="ar"?"طلبات التحقق من الهوية":"ID Verification Requests"}</h3>
+              <button onClick={loadAdminIdQueue} style={{background:"#F0F7F3",color:"#1B3A2A",border:"1.5px solid #1B3A2A",padding:"7px 16px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{lang==="ar"?"تحديث":"Refresh"}</button>
+            </div>
+            {adminIdQueue.length===0?<p style={{color:"#AAA",textAlign:"center",padding:32}}>{lang==="ar"?"لا توجد طلبات تحقق معلقة":"No pending verification requests"}</p>:
+            adminIdQueue.map(driver=>{
+              const[signedUrl,setSignedUrl]=React.useState(null);
+              const loadSignedUrl=async()=>{if(signedUrl)return;const{data}=await supabase.storage.from("id-documents").createSignedUrl(driver.id_photo_url,300);setSignedUrl(data?.signedUrl||null);};
+              return(
+                <div key={driver.id} style={{background:"white",border:"1px solid #E8E6E1",borderRadius:14,padding:"20px",marginBottom:12}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:12}}>
+                    <div>
+                      <div style={{fontWeight:800,fontSize:15,color:"#1B3A2A"}}>{driver.full_name||"—"}</div>
+                      <div style={{fontSize:12,color:"#AAA",marginTop:2}}>{driver.id}</div>
+                    </div>
+                    <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                      <button onClick={loadSignedUrl} style={{background:"#F0F7F3",color:"#1B3A2A",border:"1.5px solid #1B3A2A",padding:"7px 14px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>🪪 {lang==="ar"?"عرض الهوية":"View ID"}</button>
+                      <button onClick={()=>verifyDriverId(driver.id)} style={{background:"#1B3A2A",color:"white",border:"none",padding:"7px 14px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>✓ {lang==="ar"?"تحقق":"Verify"}</button>
+                      <button onClick={()=>rejectDriverId(driver.id)} style={{background:"#FEF2F2",color:"#B91C1C",border:"1.5px solid #FECACA",padding:"7px 14px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>✗ {lang==="ar"?"رفض":"Reject"}</button>
+                    </div>
+                  </div>
+                  {signedUrl&&<div style={{marginTop:12}}><img src={signedUrl} alt="ID document" style={{maxWidth:"100%",maxHeight:400,borderRadius:8,border:"1px solid #E8E6E1",objectFit:"contain"}}/></div>}
+                </div>
+              );
+            })}
+          </div>)}
+
           {adminTab==="activity"&&(<div>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:8}}>
               <div>
@@ -1834,6 +1911,28 @@ const [driverEditing,setDriverEditing]=useState(false);
             {/* Driver profile quick edit */}
             <div style={{background:"white",borderRadius:16,padding:"28px",border:"1px solid #E8E6E1",marginBottom:24}}>
               <h3 style={{fontSize:18,fontWeight:800,color:"#1B3A2A",marginBottom:20}}>{lang==="ar"?"ملفي الشخصي":"My Profile"}</h3>
+
+              {/* Avatar upload */}
+              <div style={{display:"flex",alignItems:"center",gap:16,marginBottom:24,paddingBottom:20,borderBottom:"1px solid #F0EDE8"}}>
+                <div style={{position:"relative",flexShrink:0}}>
+                  {driverProfile.avatarUrl||profile?.avatar_url
+                    ?<img src={driverProfile.avatarUrl||profile?.avatar_url} alt="avatar" style={{width:72,height:72,borderRadius:"50%",objectFit:"cover",border:"3px solid #1B3A2A"}}/>
+                    :<div style={{width:72,height:72,borderRadius:"50%",background:"#E8F4EE",display:"flex",alignItems:"center",justifyContent:"center",fontSize:28,border:"3px solid #E8E6E1"}}>👤</div>
+                  }
+                </div>
+                <div style={{flex:1}}>
+                  <div style={{fontWeight:700,fontSize:14,color:"#333",marginBottom:4}}>
+                    {driverProfile.fullName||profile?.full_name||"—"}
+                    {(driverProfile.idVerified||profile?.id_verified)&&<span style={{marginInlineStart:8,background:"#D1FAE5",color:"#065F46",borderRadius:20,padding:"2px 8px",fontSize:11,fontWeight:800}}>✓ {lang==="ar"?"موثّق":"Verified"}</span>}
+                    {(driverProfile.idPending||profile?.id_verification_pending)&&!driverProfile.idVerified&&<span style={{marginInlineStart:8,background:"#FFF3CD",color:"#92400E",borderRadius:20,padding:"2px 8px",fontSize:11,fontWeight:800}}>⏳ {lang==="ar"?"قيد المراجعة":"Pending Review"}</span>}
+                  </div>
+                  <label style={{display:"inline-block",background:"#F0F7F3",color:"#1B3A2A",border:"1.5px solid #1B3A2A",padding:"6px 14px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer"}}>
+                    {avatarUploading?(lang==="ar"?"جاري الرفع...":"Uploading..."):(lang==="ar"?"تغيير الصورة":"Change Photo")}
+                    <input type="file" accept="image/*" style={{display:"none"}} disabled={avatarUploading} onChange={e=>e.target.files?.[0]&&uploadAvatar(e.target.files[0])}/>
+                  </label>
+                </div>
+              </div>
+
               <div style={{display:"flex",justifyContent:"flex-end",marginBottom:16}}>
                 {!driverEditing&&<button onClick={()=>setDriverEditing(true)} style={{background:"#F0F7F3",color:"#1B3A2A",border:"1.5px solid #1B3A2A",padding:"7px 18px",borderRadius:8,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{lang==="ar"?"تعديل":"Edit"}</button>}
               </div>
@@ -1863,6 +1962,23 @@ const [driverEditing,setDriverEditing]=useState(false);
                 <button onClick={()=>setDriverEditing(false)} style={{flex:1,background:"white",color:"#666",border:"1.5px solid #DDD",padding:"12px",borderRadius:10,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{lang==="ar"?"إلغاء":"Cancel"}</button>
                 <button onClick={()=>{saveDriverProfile();setDriverEditing(false);}} style={{flex:2,background:"#1B3A2A",color:"white",border:"none",padding:"12px",borderRadius:10,fontSize:14,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>{lang==="ar"?"حفظ التغييرات":"Save Changes"}</button>
               </div>}
+
+              {/* ID Verification upload */}
+              <div style={{marginTop:20,paddingTop:20,borderTop:"1px solid #F0EDE8"}}>
+                <div style={{fontWeight:700,fontSize:14,color:"#1B3A2A",marginBottom:8}}>🪪 {lang==="ar"?"التحقق من الهوية":"Identity Verification"}</div>
+                {driverProfile.idVerified||profile?.id_verified
+                  ?<div style={{display:"flex",alignItems:"center",gap:8,padding:"10px 14px",background:"#D1FAE5",borderRadius:10}}><span style={{fontSize:18}}>✓</span><span style={{fontWeight:700,fontSize:13,color:"#065F46"}}>{lang==="ar"?"تم التحقق من هويتك":"Your identity is verified"}</span></div>
+                  :driverProfile.idPending||profile?.id_verification_pending
+                    ?<div style={{display:"flex",alignItems:"center",gap:8,padding:"10px 14px",background:"#FFF3CD",borderRadius:10}}><span style={{fontSize:18}}>⏳</span><span style={{fontWeight:700,fontSize:13,color:"#92400E"}}>{lang==="ar"?"هويتك قيد المراجعة من الإدارة":"Your ID is under review by admin"}</span></div>
+                    :<div>
+                      <p style={{fontSize:12,color:"#888",marginBottom:10}}>{lang==="ar"?"ارفع صورة هويتك أو جوازك للحصول على شارة التحقق ✓ على رحلاتك":"Upload your ID or passport photo to get the verified ✓ badge on your trips"}</p>
+                      <label style={{display:"inline-flex",alignItems:"center",gap:8,background:"#1B3A2A",color:"white",border:"none",padding:"9px 18px",borderRadius:10,fontSize:13,fontWeight:700,cursor:"pointer"}}>
+                        {idUploading?(lang==="ar"?"جاري الرفع...":"Uploading..."):<>📎 {lang==="ar"?"رفع الهوية":"Upload ID"}</>}
+                        <input type="file" accept="image/*,application/pdf" style={{display:"none"}} disabled={idUploading} onChange={e=>e.target.files?.[0]&&uploadIdPhoto(e.target.files[0])}/>
+                      </label>
+                    </div>
+                }
+              </div>
             </div>
 
             <h3 style={{fontSize:18,fontWeight:800,color:"#1B3A2A",marginBottom:16}}>{drv.myTrips}</h3>
@@ -2030,9 +2146,18 @@ const [driverEditing,setDriverEditing]=useState(false);
               <h3 style={{fontSize:18,fontWeight:900,color:"#1B3A2A"}}>👤 {lang==="ar"?"ملف السائق":"Driver Profile"}</h3>
               <button onClick={()=>setDriverPublicPage(null)} style={{background:"transparent",border:"none",fontSize:20,cursor:"pointer",color:"#888"}}>✕</button>
             </div>
-            <div style={{background:"#F0F7F3",borderRadius:14,padding:"18px 20px",marginBottom:20}}>
-              <div style={{fontSize:20,fontWeight:900,color:"#1B3A2A",marginBottom:4}}>{driverPublicPage.profile?.full_name||"—"}</div>
-              {driverPublicPage.profile?.car_type&&<div style={{fontSize:14,color:"#555",fontWeight:600}}>🚗 {driverPublicPage.profile.car_type}</div>}
+            <div style={{background:"#F0F7F3",borderRadius:14,padding:"18px 20px",marginBottom:20,display:"flex",alignItems:"center",gap:16}}>
+              {driverPublicPage.profile?.avatar_url
+                ?<img src={driverPublicPage.profile.avatar_url} alt="driver" style={{width:60,height:60,borderRadius:"50%",objectFit:"cover",border:"3px solid #1B3A2A",flexShrink:0}}/>
+                :<div style={{width:60,height:60,borderRadius:"50%",background:"#C7DDD0",display:"flex",alignItems:"center",justifyContent:"center",fontSize:24,flexShrink:0}}>👤</div>
+              }
+              <div>
+                <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+                  <span style={{fontSize:18,fontWeight:900,color:"#1B3A2A"}}>{driverPublicPage.profile?.full_name||"—"}</span>
+                  {driverPublicPage.profile?.id_verified&&<span style={{background:"#D1FAE5",color:"#065F46",borderRadius:20,padding:"2px 10px",fontSize:12,fontWeight:800}}>✓ {lang==="ar"?"موثّق":"Verified"}</span>}
+                </div>
+                {driverPublicPage.profile?.car_type&&<div style={{fontSize:13,color:"#555",fontWeight:600,marginTop:2}}>🚗 {driverPublicPage.profile.car_type}</div>}
+              </div>
             </div>
             <div style={{marginBottom:20}}>
               <div style={{fontSize:12,fontWeight:700,color:"#888",textTransform:"uppercase",marginBottom:10}}>{lang==="ar"?"المرافق المتاحة":"Available Facilities"}</div>
@@ -2204,7 +2329,7 @@ const [driverEditing,setDriverEditing]=useState(false);
                           {trip.avg_rating>0&&<StarRating value={Math.round(trip.avg_rating)} readOnly/>}
                           {trip.avg_rating>0&&<span style={{fontSize:11,color:"#888"}}>({trip.rating_count})</span>}
                           <button onClick={async(e)=>{e.stopPropagation();setReviewSidebarDriver(trip.driver_id);await loadDriverReviews(trip.driver_id);}} style={{background:"transparent",border:"1px solid #DDD",borderRadius:20,padding:"2px 10px",fontSize:11,fontWeight:700,color:"#555",cursor:"pointer",fontFamily:"inherit"}}>{lang==="ar"?"التقييمات":"See reviews"}</button>
-                          <button onClick={async(e)=>{e.stopPropagation();await openDriverPublicPage(trip.driver_id);}} style={{background:"transparent",border:"1px solid #C7D2CC",borderRadius:20,padding:"2px 10px",fontSize:11,fontWeight:700,color:"#1B3A2A",cursor:"pointer",fontFamily:"inherit"}}>👤 {lang==="ar"?"السائق":"Driver"}</button>
+                          <button onClick={async(e)=>{e.stopPropagation();await openDriverPublicPage(trip.driver_id);}} style={{background:"transparent",border:"1px solid #C7D2CC",borderRadius:20,padding:"2px 10px",fontSize:11,fontWeight:700,color:"#1B3A2A",cursor:"pointer",fontFamily:"inherit"}}>👤 {lang==="ar"?"السائق":"Driver"}{trip.profiles?.id_verified&&<span style={{marginInlineStart:4,color:"#065F46",fontWeight:900}}>✓</span>}</button>
                           <button onClick={e=>{e.stopPropagation();const link=`${window.location.origin}${window.location.pathname}?trip=${trip.id}`;navigator.clipboard?.writeText(link).catch(()=>{const el=document.createElement("textarea");el.value=link;document.body.appendChild(el);el.select();document.execCommand("copy");document.body.removeChild(el);});setShareCopiedId(trip.id);setTimeout(()=>setShareCopiedId(null),2000);}} style={{background:shareCopiedId===trip.id?"#D1FAE5":"transparent",border:`1px solid ${shareCopiedId===trip.id?"#34D399":"#25D366"}`,borderRadius:20,padding:"2px 10px",fontSize:11,fontWeight:700,color:shareCopiedId===trip.id?"#065F46":"#25D366",cursor:"pointer",fontFamily:"inherit",transition:"all 0.2s"}}>{shareCopiedId===trip.id?"✓ "+(lang==="ar"?"تم النسخ":"Copied!"):"📤 "+(lang==="ar"?"شارك":"Share")}</button>
                         </div>
                       </div>
