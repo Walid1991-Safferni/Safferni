@@ -462,8 +462,8 @@ const [driverEditing,setDriverEditing]=useState(false);
       const profileEmail=stash.email||u.email||null;
       const role=profileEmail&&ADMIN_EMAILS.includes(profileEmail)?"admin":"passenger";
       const newProfile={id:u.id,email:profileEmail,full_name:stash.full_name,phone:stash.phone||u.phone||"",role,date_of_birth:stash.date_of_birth||null};
-      const{error:upErr}=await supabase.from("profiles").upsert(newProfile);
-      if(upErr){console.error("profile upsert failed",upErr);setLoading(false);return;}
+      const{error:upErr}=await supabase.from("profiles").upsert(newProfile,{onConflict:"id"});
+      if(upErr){console.error("profile upsert failed",upErr);alert("Profile setup failed: "+upErr.message+" — please contact support.");setLoading(false);return;}
       pendingSignupData.current=null;
       setProfile(newProfile);setDriverApproved(false);
     } else {
@@ -539,8 +539,9 @@ const [driverEditing,setDriverEditing]=useState(false);
     if(!authOtp){setAuthError(t.auth.error);return;}
     setAuthLoading(true);setAuthError("");
     const email=authForm.email.trim().toLowerCase();
-    const{error}=await supabase.auth.verifyOtp({email,token:authOtp,type:"email"});
+    const{data:otpData,error}=await supabase.auth.verifyOtp({email,token:authOtp,type:"email"});
     if(error){setAuthError(t.auth.otpWrong);setAuthLoading(false);return;}
+    if(!otpData?.user){setAuthError(lang==="ar"?"انتهت صلاحية الرمز أو أنه غير صحيح. حاول مجدداً.":"Code expired or invalid. Please try again.");setAuthLoading(false);return;}
     const{error:pwErr}=await supabase.auth.updateUser({password:authForm.password});
     if(pwErr){setAuthError((lang==="ar"?"فشل في تعيين كلمة المرور: ":"Failed to set password: ")+(pwErr.message||""));setAuthLoading(false);return;}
     resetAuth();setPage("profile");
@@ -586,10 +587,13 @@ const [driverEditing,setDriverEditing]=useState(false);
     if(!authOtp){setAuthError(t.auth.error);return;}
     setAuthLoading(true);setAuthError("");
     const phone=pendingPhone||fullPhone();
-    const{error}=await supabase.auth.verifyOtp({phone,token:authOtp,type:"sms"});
+    const{data:otpData,error}=await supabase.auth.verifyOtp({phone,token:authOtp,type:"sms"});
     if(error){setAuthError(t.auth.otpWrong);setAuthLoading(false);return;}
+    if(!otpData?.user){setAuthError(lang==="ar"?"انتهت صلاحية الرمز أو أنه غير صحيح. حاول مجدداً.":"Code expired or invalid. Please try again.");setAuthLoading(false);return;}
     const{error:pwErr}=await supabase.auth.updateUser({password:authForm.password});
     if(pwErr){setAuthError((lang==="ar"?"فشل في تعيين كلمة المرور: ":"Failed to set password: ")+(pwErr.message||""));setAuthLoading(false);return;}
+    // Also link email to auth identity so email+password login works
+    if(authForm.email){await supabase.auth.updateUser({email:authForm.email.trim().toLowerCase()}).catch(()=>{});}
     resetAuth();setPage("profile");
     setAuthLoading(false);
   };
