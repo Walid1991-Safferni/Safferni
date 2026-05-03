@@ -118,8 +118,8 @@ const PhoneField=({value="",onChange,lang,inp})=>{
   const flag=COUNTRY_CODES.find(c=>c.v===cc)?.f||"🌍";
   return(
     <div style={{display:"flex",gap:8}}>
-      <div style={{position:"relative",flexShrink:0}}>
-        <button type="button" onClick={()=>setOpen(o=>!o)} onBlur={()=>setTimeout(()=>setOpen(false),150)}
+      <div style={{position:"relative",flexShrink:0}} onBlur={e=>{if(!e.currentTarget.contains(e.relatedTarget))setOpen(false);}}>
+        <button type="button" onClick={()=>setOpen(o=>!o)}
           style={{...inp,width:90,display:"flex",alignItems:"center",justifyContent:"space-between",gap:4,cursor:"pointer",background:"white",padding:"11px 10px"}}>
           <span style={{fontSize:16}}>{flag}</span><span style={{fontSize:12,fontWeight:700,color:"#333"}}>{cc}</span><span style={{fontSize:9,color:"#AAA"}}>▾</span>
         </button>
