@@ -311,7 +311,7 @@ export default function App(){
   const [tripDetailLoading,setTripDetailLoading]=useState(false);
 
   // AUTH STATE — new unified flow
-  // authStep: "choice" | "login" | "signup_country" | "signup_info_sy" | "signup_otp_email" | "signup_info_other" | "signup_otp_sms" | "forgot_phone" | "forgot_newpass"
+  // authStep: "choice"|"login"|"signup_country"|"signup_method_other"|"signup_info_sy"|"signup_otp_email"|"signup_info_other"|"signup_otp_sms"|"forgot_phone"|"forgot_newpass"
   const [authStep,setAuthStep]=useState("choice");
   const [authForm,setAuthForm]=useState({fullName:"",email:"",phone:"+963",password:"",dob:""});
   const [authOtp,setAuthOtp]=useState("");
@@ -321,6 +321,8 @@ export default function App(){
   const [authSuccess,setAuthSuccess]=useState("");
   // temp storage during signup otp flow
   const [pendingPhone,setPendingPhone]=useState("");
+  // tracks which method non-Syria user chose: "phone" | "email"
+  const [otherSignupMethod,setOtherSignupMethod]=useState("");
 
   // Apply
   const [applyForm,setApplyForm]=useState({fullName:"",phone:"",dob:"",carKindYear:"",carLicense:"",driverLicenseNum:"",notes:"",hasWifi:false,hasWater:false,hasAc:false});
@@ -457,10 +459,15 @@ const [driverEditing,setDriverEditing]=useState(false);
     const{data,error}=await supabase.from("profiles").select("*").eq("id",u.id).maybeSingle();
     if(error){console.error("loadProfile select failed",error);setLoading(false);return;}
     if(data){setProfile(data);setDriverApproved(data?.role==="driver");setLoading(false);return;}
-    // Profile not found — clear any stale stash and leave profile null
-    // (Profile is created directly in handleSignupSyriaVerify / handleSignupOtherVerify)
+    // Profile missing — auto-recover from auth user_metadata (zombie account from past failed signup)
+    const meta=u.user_metadata||{};
+    const profileEmail=u.email||meta.email||null;
+    const role=profileEmail&&ADMIN_EMAILS.includes(profileEmail)?"admin":"passenger";
+    const recovered={id:u.id,email:profileEmail,full_name:meta.full_name||"",phone:u.phone||meta.phone||"",role,date_of_birth:meta.date_of_birth||null};
+    const{error:upErr}=await supabase.from("profiles").upsert(recovered,{onConflict:"id"});
+    if(upErr){console.error("auto-recover profile failed",upErr);setProfile(null);setDriverApproved(false);setLoading(false);return;}
     pendingSignupData.current=null;
-    setProfile(null);setDriverApproved(false);
+    setProfile(recovered);setDriverApproved(false);
     setLoading(false);
   };
 
@@ -481,7 +488,7 @@ const [driverEditing,setDriverEditing]=useState(false);
 
   const resetAuth=()=>{
     setAuthStep("choice");setAuthForm({fullName:"",email:"",phone:"+963",password:"",dob:""});
-    setAuthOtp("");setAuthError("");setAuthPhoneExists(false);setAuthSuccess("");setPendingPhone("");setAuthLoading(false);
+    setAuthOtp("");setAuthError("");setAuthPhoneExists(false);setAuthSuccess("");setPendingPhone("");setAuthLoading(false);setOtherSignupMethod("");
   };
 
   const fullPhone=()=>authForm.phone;
@@ -512,41 +519,45 @@ const [driverEditing,setDriverEditing]=useState(false);
     if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(authForm.email.trim())){setAuthError(lang==="ar"?"البريد الإلكتروني غير صالح":"Invalid email address");return;}
     if(authForm.password.length<8){setAuthError(lang==="ar"?"كلمة المرور يجب أن تكون ٨ أحرف على الأقل":"Password must be at least 8 characters");return;}
     const ageYears=(Date.now()-new Date(authForm.dob).getTime())/(365.25*24*3600*1000);
-    if(isNaN(ageYears)||ageYears<13||ageYears>120){setAuthError(lang==="ar"?"تاريخ الميلاد غير صالح":"Invalid date of birth");return;}
+    if(isNaN(ageYears)||ageYears<18){setAuthError(lang==="ar"?"يجب أن يكون عمرك 18 عامًا على الأقل":"You must be at least 18 years old");return;}
+    if(ageYears>120){setAuthError(lang==="ar"?"تاريخ الميلاد غير صالح":"Invalid date of birth");return;}
     didLogOut.current=false;
     setAuthLoading(true);setAuthError("");
     const email=authForm.email.trim().toLowerCase();
     const{data:existingEmail}=await supabase.from("profiles").select("id").eq("email",email).maybeSingle();
     if(existingEmail){setAuthError(lang==="ar"?"هذا البريد الإلكتروني مسجل مسبقاً. سجّل الدخول بدلاً من ذلك.":"This email is already registered. Please log in instead.");setAuthLoading(false);return;}
-    const{error}=await supabase.auth.signInWithOtp({email,options:{shouldCreateUser:true}});
+    const{error}=await supabase.auth.signInWithOtp({email,options:{shouldCreateUser:true,data:{full_name:authForm.fullName.trim(),phone:authForm.phone,date_of_birth:authForm.dob}}});
     if(error){setAuthError(error.message||t.auth.error);setAuthLoading(false);return;}
-    // Stash for race-free profile creation in loadProfile
     pendingSignupData.current={email,full_name:authForm.fullName.trim(),phone:authForm.phone,date_of_birth:authForm.dob};
     setAuthStep("signup_otp_email");
     setAuthLoading(false);
   };
 
-  // Signup Syria: verify email OTP — create profile immediately while form data is available
+  // Signup Syria: verify email OTP — set session explicitly, then set password + ensure profile
   const handleSignupSyriaVerify=async()=>{
     if(!authOtp){setAuthError(t.auth.error);return;}
     setAuthLoading(true);setAuthError("");
-    const email=authForm.email.trim().toLowerCase();
-    const fullName=authForm.fullName.trim();
-    const phone=authForm.phone;
-    const dob=authForm.dob||null;
+    const stash=pendingSignupData.current||{};
+    const email=(stash.email||authForm.email||"").trim().toLowerCase();
+    const fullName=(stash.full_name||authForm.fullName||"").trim();
+    const phone=stash.phone||authForm.phone||"";
+    const dob=stash.date_of_birth||authForm.dob||null;
     const password=authForm.password;
+    if(!email||!password){setAuthError(lang==="ar"?"بيانات التسجيل مفقودة، حاول مجدداً":"Signup data missing, please try again");setAuthLoading(false);return;}
     const{data:otpData,error}=await supabase.auth.verifyOtp({email,token:authOtp,type:"email"});
     if(error){setAuthError(t.auth.otpWrong);setAuthLoading(false);return;}
-    if(!otpData?.user){setAuthError(lang==="ar"?"انتهت صلاحية الرمز أو أنه غير صحيح. حاول مجدداً.":"Code expired or invalid. Please try again.");setAuthLoading(false);return;}
+    if(!otpData?.user||!otpData?.session){setAuthError(lang==="ar"?"انتهت صلاحية الرمز أو أنه غير صحيح. حاول مجدداً.":"Code expired or invalid. Please try again.");setAuthLoading(false);return;}
+    // Explicitly set session — avoids "Auth session missing" on subsequent calls
+    await supabase.auth.setSession({access_token:otpData.session.access_token,refresh_token:otpData.session.refresh_token});
     const{error:pwErr}=await supabase.auth.updateUser({password});
     if(pwErr){setAuthError((lang==="ar"?"فشل في تعيين كلمة المرور: ":"Failed to set password: ")+(pwErr.message||""));setAuthLoading(false);return;}
-    // Create profile directly — don't rely on onAuthStateChange timing
+    // Upsert profile (DB trigger may have already created a stub — this fills it in)
     const uid=otpData.user.id;
     const role=ADMIN_EMAILS.includes(email)?"admin":"passenger";
     const newProfile={id:uid,email,full_name:fullName,phone,role,date_of_birth:dob};
     const{error:profErr}=await supabase.from("profiles").upsert(newProfile,{onConflict:"id"});
-    if(profErr){console.error("Syria signup profile create failed",profErr);}
-    else{setProfile(newProfile);setDriverApproved(false);}
+    if(profErr){setAuthError((lang==="ar"?"فشل في إنشاء الملف الشخصي: ":"Failed to create profile: ")+profErr.message);setAuthLoading(false);return;}
+    setProfile(newProfile);setDriverApproved(false);
     pendingSignupData.current=null;
     resetAuth();setPage("profile");
     setAuthLoading(false);
@@ -564,9 +575,11 @@ const [driverEditing,setDriverEditing]=useState(false);
 
   // Signup Other: send SMS OTP via Supabase phone auth (Twilio configured in Supabase dashboard)
   const handleSignupOtherStart=async()=>{
-    if(!authForm.fullName.trim()||detectCC(authForm.phone).num.length<6||!authForm.email.trim()||!authForm.password){setAuthError(lang==="ar"?"يرجى ملء جميع الحقول":"Please fill all fields");return;}
-    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(authForm.email.trim())){setAuthError(lang==="ar"?"البريد الإلكتروني غير صالح":"Invalid email address");return;}
+    if(!authForm.fullName.trim()||detectCC(authForm.phone).num.length<6||!authForm.password||!authForm.dob){setAuthError(lang==="ar"?"يرجى ملء جميع الحقول":"Please fill all fields");return;}
     if(authForm.password.length<8){setAuthError(lang==="ar"?"كلمة المرور يجب أن تكون ٨ أحرف على الأقل":"Password must be at least 8 characters");return;}
+    const ageYearsOther=(Date.now()-new Date(authForm.dob).getTime())/(365.25*24*3600*1000);
+    if(isNaN(ageYearsOther)||ageYearsOther<18){setAuthError(lang==="ar"?"يجب أن يكون عمرك 18 عامًا على الأقل":"You must be at least 18 years old");return;}
+    if(ageYearsOther>120){setAuthError(lang==="ar"?"تاريخ الميلاد غير صالح":"Invalid date of birth");return;}
     didLogOut.current=false;
     setAuthLoading(true);setAuthError("");
     const email=authForm.email.trim().toLowerCase();
@@ -577,37 +590,41 @@ const [driverEditing,setDriverEditing]=useState(false);
     ]);
     if(existingPhone){setAuthPhoneExists(true);setAuthLoading(false);return;}
     if(existingEmail){setAuthError(lang==="ar"?"هذا البريد الإلكتروني مسجل مسبقاً. سجّل الدخول بدلاً من ذلك.":"This email is already registered. Please log in instead.");setAuthLoading(false);return;}
-    const{error}=await supabase.auth.signInWithOtp({phone,options:{shouldCreateUser:true}});
+    // Pass user metadata so DB trigger can auto-create profile + survives any client race
+    const{error}=await supabase.auth.signInWithOtp({phone,options:{shouldCreateUser:true,data:{full_name:authForm.fullName.trim(),email}}});
     if(error){setAuthError(error.message||t.auth.error);setAuthLoading(false);return;}
-    // Stash for race-free profile creation in loadProfile
-    pendingSignupData.current={phone,email,full_name:authForm.fullName.trim()};
+    pendingSignupData.current={phone,email,full_name:authForm.fullName.trim(),date_of_birth:authForm.dob||null};
     setPendingPhone(phone);
     setAuthStep("signup_otp_sms");
     setAuthLoading(false);
   };
 
-  // Signup Other: verify SMS OTP — create profile immediately while form data is available
+  // Signup Other: verify SMS OTP — set session explicitly, then set password + ensure profile
   const handleSignupOtherVerify=async()=>{
     if(!authOtp){setAuthError(t.auth.error);return;}
     setAuthLoading(true);setAuthError("");
-    const phone=pendingPhone||fullPhone();
-    const email=authForm.email.trim().toLowerCase();
-    const fullName=authForm.fullName.trim();
+    const stash=pendingSignupData.current||{};
+    const phone=stash.phone||pendingPhone||fullPhone();
+    const email=(stash.email||authForm.email||"").trim().toLowerCase();
+    const fullName=(stash.full_name||authForm.fullName||"").trim();
     const password=authForm.password;
+    if(!phone||!password){setAuthError(lang==="ar"?"بيانات التسجيل مفقودة، حاول مجدداً":"Signup data missing, please try again");setAuthLoading(false);return;}
     const{data:otpData,error}=await supabase.auth.verifyOtp({phone,token:authOtp,type:"sms"});
     if(error){setAuthError(t.auth.otpWrong);setAuthLoading(false);return;}
-    if(!otpData?.user){setAuthError(lang==="ar"?"انتهت صلاحية الرمز أو أنه غير صحيح. حاول مجدداً.":"Code expired or invalid. Please try again.");setAuthLoading(false);return;}
+    if(!otpData?.user||!otpData?.session){setAuthError(lang==="ar"?"انتهت صلاحية الرمز أو أنه غير صحيح. حاول مجدداً.":"Code expired or invalid. Please try again.");setAuthLoading(false);return;}
+    // Explicitly set session — avoids "Auth session missing" on subsequent calls
+    await supabase.auth.setSession({access_token:otpData.session.access_token,refresh_token:otpData.session.refresh_token});
     const{error:pwErr}=await supabase.auth.updateUser({password});
     if(pwErr){setAuthError((lang==="ar"?"فشل في تعيين كلمة المرور: ":"Failed to set password: ")+(pwErr.message||""));setAuthLoading(false);return;}
     // Link email identity so email+password login works (confirmation email sent by Supabase)
     if(email){await supabase.auth.updateUser({email}).catch(()=>{});}
-    // Create profile directly — don't rely on onAuthStateChange timing
+    // Upsert profile (DB trigger may have already created a stub — this fills it in)
     const uid=otpData.user.id;
     const role=ADMIN_EMAILS.includes(email)?"admin":"passenger";
-    const newProfile={id:uid,email,full_name:fullName,phone,role,date_of_birth:null};
+    const newProfile={id:uid,email,full_name:fullName,phone,role,date_of_birth:stash.date_of_birth||authForm.dob||null};
     const{error:profErr}=await supabase.from("profiles").upsert(newProfile,{onConflict:"id"});
-    if(profErr){console.error("Other signup profile create failed",profErr);}
-    else{setProfile(newProfile);setDriverApproved(false);}
+    if(profErr){setAuthError((lang==="ar"?"فشل في إنشاء الملف الشخصي: ":"Failed to create profile: ")+profErr.message);setAuthLoading(false);return;}
+    setProfile(newProfile);setDriverApproved(false);
     pendingSignupData.current=null;
     resetAuth();setPage("profile");
     setAuthLoading(false);
@@ -1238,16 +1255,29 @@ const [driverEditing,setDriverEditing]=useState(false);
                 <p style={{textAlign:"center",fontSize:14,color:"#555",marginBottom:24,fontWeight:600}}>{t.auth.locationQ}</p>
                 <div style={{display:"flex",flexDirection:"column",gap:12}}>
                   <button onClick={()=>{setAuthStep("signup_info_sy");setAuthError("");setAuthForm(f=>({...f,phone:"+963"}));}} style={{width:"100%",background:"#1B3A2A",color:"white",border:"none",padding:"14px",borderRadius:12,fontSize:15,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>🇸🇾 {t.auth.inSyria}</button>
-                  <button onClick={()=>{setAuthStep("signup_info_other");setAuthError("");setAuthForm(f=>({...f,phone:"+962",dob:""}));}} style={{width:"100%",background:"white",color:"#1B3A2A",border:"2px solid #1B3A2A",padding:"14px",borderRadius:12,fontSize:15,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>🌍 {t.auth.notInSyria}</button>
+                  <button onClick={()=>{setAuthStep("signup_method_other");setAuthError("");setAuthForm(f=>({...f,phone:"+1",dob:""}));}} style={{width:"100%",background:"white",color:"#1B3A2A",border:"2px solid #1B3A2A",padding:"14px",borderRadius:12,fontSize:15,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>🌍 {t.auth.notInSyria}</button>
                 </div>
                 <p onClick={()=>{setAuthStep("choice");setAuthError("");}} style={{textAlign:"center",marginTop:20,fontSize:12,color:"#AAA",cursor:"pointer"}}>← {lang==="ar"?"رجوع":"Back"}</p>
               </div>
             )}
 
-            {/* SIGNUP SYRIA: name + DOB + email + phone + password */}
+            {/* SIGNUP NON-SYRIA: choose phone or email method */}
+            {authStep==="signup_method_other"&&(
+              <div>
+                <p style={{textAlign:"center",fontSize:14,color:"#555",marginBottom:8,fontWeight:600}}>{lang==="ar"?"كيف تريد إنشاء حسابك؟":"How would you like to sign up?"}</p>
+                <p style={{textAlign:"center",fontSize:12,color:"#AAA",marginBottom:24}}>{lang==="ar"?"اختر طريقة التحقق المناسبة لك":"Choose your preferred verification method"}</p>
+                <div style={{display:"flex",flexDirection:"column",gap:12}}>
+                  <button onClick={()=>{setOtherSignupMethod("phone");setAuthStep("signup_info_other");setAuthError("");}} style={{width:"100%",background:"#1B3A2A",color:"white",border:"none",padding:"14px",borderRadius:12,fontSize:15,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>📱 {lang==="ar"?"رقم الهاتف (رمز SMS)":"Phone Number (SMS Code)"}</button>
+                  <button onClick={()=>{setOtherSignupMethod("email");setAuthStep("signup_info_sy");setAuthError("");setAuthForm(f=>({...f,phone:"+1"}));}} style={{width:"100%",background:"white",color:"#1B3A2A",border:"2px solid #1B3A2A",padding:"14px",borderRadius:12,fontSize:15,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>✉️ {lang==="ar"?"البريد الإلكتروني (كود بالإيميل)":"Email (Email Code)"}</button>
+                </div>
+                <p onClick={()=>{setAuthStep("signup_country");setAuthError("");}} style={{textAlign:"center",marginTop:20,fontSize:12,color:"#AAA",cursor:"pointer"}}>← {lang==="ar"?"رجوع":"Back"}</p>
+              </div>
+            )}
+
+            {/* SIGNUP email OTP path (Syria + non-Syria email): name + DOB + email + phone + password */}
             {authStep==="signup_info_sy"&&(<>
               <div style={{marginBottom:14}}><label style={lbl}>{t.auth.fullName} *</label><input value={authForm.fullName} onChange={e=>setAuthForm(f=>({...f,fullName:e.target.value}))} style={inp}/></div>
-              <div style={{marginBottom:14}}><label style={lbl}>{t.auth.dob} *</label><input type="date" value={authForm.dob} onChange={e=>setAuthForm(f=>({...f,dob:e.target.value}))} style={inp}/></div>
+              <div style={{marginBottom:14}}><label style={lbl}>{t.auth.dob} * <span style={{fontSize:11,color:"#AAA",fontWeight:400}}>{lang==="ar"?"(18 سنة فأكثر)":"(18+ years)"}</span></label><input type="date" value={authForm.dob} onChange={e=>setAuthForm(f=>({...f,dob:e.target.value}))} style={inp}/></div>
               <div style={{marginBottom:14}}><label style={lbl}>{t.auth.email} *</label><input type="email" value={authForm.email} onChange={e=>setAuthForm(f=>({...f,email:e.target.value}))} style={inp}/></div>
               <div style={{marginBottom:14}}>
                 <label style={lbl}>{t.auth.phone} *</label>
@@ -1257,14 +1287,14 @@ const [driverEditing,setDriverEditing]=useState(false);
               <p style={{fontSize:11,color:"#AAA",marginBottom:20}}>{t.auth.passwordHint}</p>
               <button onClick={handleSignupSyriaStart} disabled={authLoading} style={{width:"100%",background:"#1B3A2A",color:"white",border:"none",padding:"14px",borderRadius:12,fontSize:15,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>{authLoading?"...":(lang==="ar"?"إرسال كود التحقق بالبريد":"Send Email Code")}</button>
               <p style={{textAlign:"center",marginTop:16,fontSize:13,color:"#888"}}>{t.auth.haveAccount}{" "}<span onClick={()=>{setAuthStep("login");setAuthError("");}} style={{color:"#1B3A2A",fontWeight:700,cursor:"pointer"}}>{t.auth.loginBtn}</span></p>
-              <p onClick={()=>{setAuthStep("signup_country");setAuthError("");}} style={{textAlign:"center",marginTop:8,fontSize:12,color:"#AAA",cursor:"pointer"}}>← {lang==="ar"?"رجوع":"Back"}</p>
+              <p onClick={()=>{setAuthStep(otherSignupMethod==="email"?"signup_method_other":"signup_country");setAuthError("");}} style={{textAlign:"center",marginTop:8,fontSize:12,color:"#AAA",cursor:"pointer"}}>← {lang==="ar"?"رجوع":"Back"}</p>
             </>)}
 
-            {/* SIGNUP SYRIA OTP: verify email code */}
+            {/* SIGNUP email OTP verify */}
             {authStep==="signup_otp_email"&&(<>
               <div style={{background:"#F0FDF4",border:"1px solid #BBF7D0",borderRadius:12,padding:"12px 16px",marginBottom:20,textAlign:"center"}}>
                 <p style={{fontSize:13,color:"#166534",fontWeight:700}}>✉️ {t.auth.emailOtpSent}</p>
-                <p style={{fontSize:12,color:"#555",marginTop:4}}>{authForm.email}</p>
+                <p style={{fontSize:12,color:"#555",marginTop:4}}>{pendingSignupData.current?.email||authForm.email}</p>
               </div>
               <div style={{marginBottom:20}}><label style={lbl}>{lang==="ar"?"كود التحقق":"Verification Code"} *</label><input type="text" inputMode="numeric" maxLength={8} value={authOtp} onChange={e=>setAuthOtp(e.target.value.trim())} style={{...inp,textAlign:"center",fontSize:24,letterSpacing:5}} placeholder="— — — — — — — —" onKeyDown={e=>e.key==="Enter"&&handleSignupSyriaVerify()}/></div>
               <button onClick={handleSignupSyriaVerify} disabled={authLoading} style={{width:"100%",background:"#1B3A2A",color:"white",border:"none",padding:"14px",borderRadius:12,fontSize:15,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>{authLoading?"...":t.auth.verifyOtp}</button>
@@ -1272,10 +1302,10 @@ const [driverEditing,setDriverEditing]=useState(false);
               <p onClick={()=>{setAuthStep("signup_info_sy");setAuthOtp("");setAuthError("");}} style={{textAlign:"center",marginTop:4,fontSize:12,color:"#AAA",cursor:"pointer"}}>← {lang==="ar"?"رجوع":"Back"}</p>
             </>)}
 
-            {/* SIGNUP NON-SYRIA: name + email + phone + password */}
+            {/* SIGNUP NON-SYRIA phone path: name + DOB + phone + password */}
             {authStep==="signup_info_other"&&(<>
               <div style={{marginBottom:14}}><label style={lbl}>{t.auth.fullName} *</label><input value={authForm.fullName} onChange={e=>setAuthForm(f=>({...f,fullName:e.target.value}))} style={inp}/></div>
-              <div style={{marginBottom:14}}><label style={lbl}>{t.auth.email} *</label><input type="email" value={authForm.email} onChange={e=>setAuthForm(f=>({...f,email:e.target.value}))} style={inp}/></div>
+              <div style={{marginBottom:14}}><label style={lbl}>{t.auth.dob} * <span style={{fontSize:11,color:"#AAA",fontWeight:400}}>{lang==="ar"?"(18 سنة فأكثر)":"(18+ years)"}</span></label><input type="date" value={authForm.dob} onChange={e=>setAuthForm(f=>({...f,dob:e.target.value}))} style={inp}/></div>
               <div style={{marginBottom:14}}>
                 <label style={lbl}>{t.auth.phone} *</label>
                 <PhoneField value={authForm.phone} onChange={v=>setAuthForm(f=>({...f,phone:v}))} lang={lang} inp={inp}/>
@@ -1286,9 +1316,9 @@ const [driverEditing,setDriverEditing]=useState(false);
                 <span style={{color:"#B91C1C"}}>{lang==="ar"?"هذا الرقم مسجل مسبقاً.":"This phone number is already registered."}</span>{" "}
                 <span onClick={()=>{setAuthStep("login");setAuthPhoneExists(false);setAuthError("");}} style={{color:"#1B3A2A",fontWeight:800,cursor:"pointer",textDecoration:"underline"}}>{lang==="ar"?"سجّل الدخول بدلاً من ذلك":"Log in instead"}</span>
               </div>}
-              <button onClick={handleSignupOtherStart} disabled={authLoading} style={{width:"100%",background:"#1B3A2A",color:"white",border:"none",padding:"14px",borderRadius:12,fontSize:15,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>{authLoading?"...":t.auth.sendSmsCode}</button>
+              <button onClick={handleSignupOtherStart} disabled={authLoading} style={{width:"100%",background:"#1B3A2A",color:"white",border:"none",padding:"14px",borderRadius:12,fontSize:15,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>{authLoading?"...":(lang==="ar"?"إرسال كود SMS":"Send SMS Code")}</button>
               <p style={{textAlign:"center",marginTop:16,fontSize:13,color:"#888"}}>{t.auth.haveAccount}{" "}<span onClick={()=>{setAuthStep("login");setAuthError("");}} style={{color:"#1B3A2A",fontWeight:700,cursor:"pointer"}}>{t.auth.loginBtn}</span></p>
-              <p onClick={()=>{setAuthStep("signup_country");setAuthError("");}} style={{textAlign:"center",marginTop:8,fontSize:12,color:"#AAA",cursor:"pointer"}}>← {lang==="ar"?"رجوع":"Back"}</p>
+              <p onClick={()=>{setAuthStep("signup_method_other");setAuthError("");}} style={{textAlign:"center",marginTop:8,fontSize:12,color:"#AAA",cursor:"pointer"}}>← {lang==="ar"?"رجوع":"Back"}</p>
             </>)}
 
             {/* SIGNUP NON-SYRIA OTP: verify SMS code */}
