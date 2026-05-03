@@ -808,7 +808,7 @@ const [driverEditing,setDriverEditing]=useState(false);
     setAdminDrivers(drivers||[]);
     const{data:edits}=await supabase.from("trip_edit_requests").select("*, trips(from_city,to_city,trip_date,trip_time)").eq("status","pending").order("created_at",{ascending:false});
     setEditRequests(edits||[]);
-    const{data:allTrips}=await supabase.from("trips").select("*, profiles(full_name,email)").order("trip_date",{ascending:false});
+    const{data:allTrips}=await supabase.from("trips").select("*").order("trip_date",{ascending:false});
     setAdminAllTrips(allTrips||[]);
     const today=new Date().toISOString().split("T")[0];
     const{count:bookingsToday}=await supabase.from("bookings").select("*",{count:"exact",head:true}).gte("created_at",today);
@@ -1019,12 +1019,15 @@ const [driverEditing,setDriverEditing]=useState(false);
   };
 
   const exportBookingsCSV=async()=>{
-    const{data:rows,error:csvErr}=await supabase.from("bookings").select("ref_code,passenger_name,passenger_phone,seats,total_price,payment_method,status,created_at,trips(trip_date,trip_time,from_city,to_city,profiles(full_name))").order("created_at",{ascending:false});
+    const{data:rows,error:csvErr}=await supabase.from("bookings").select("ref_code,passenger_name,passenger_phone,seats,total_price,payment_method,status,created_at,trips(trip_date,trip_time,from_city,to_city,driver_id)").order("created_at",{ascending:false});
     if(csvErr){alert(lang==="ar"?"فشل التصدير: "+csvErr.message:"Export failed: "+csvErr.message);return;}
     if(!rows||rows.length===0){alert(lang==="ar"?"لا توجد حجوزات للتصدير":"No bookings to export");return;}
+    const driverIds=[...new Set((rows||[]).map(r=>r.trips?.driver_id).filter(Boolean))];
+    let driverNameMap={};
+    if(driverIds.length){const{data:drvs}=await supabase.from("profiles").select("id,full_name").in("id",driverIds);driverNameMap=Object.fromEntries((drvs||[]).map(d=>[d.id,d.full_name]));}
     const headers=["Ref","Passenger","Phone","Seats","Price","Payment","Status","Booked At","Trip Date","Trip Time","From","To","Driver"];
     const esc=v=>{const s=v==null?"":String(v);return /[",\n]/.test(s)?`"${s.replace(/"/g,'""')}"`:s;};
-    const lines=[headers.join(",")].concat(rows.map(r=>[r.ref_code,r.passenger_name,r.passenger_phone,r.seats,r.total_price,r.payment_method,r.status,r.created_at,r.trips?.trip_date,r.trips?.trip_time,r.trips?.from_city,r.trips?.to_city,r.trips?.profiles?.full_name].map(esc).join(",")));
+    const lines=[headers.join(",")].concat(rows.map(r=>[r.ref_code,r.passenger_name,r.passenger_phone,r.seats,r.total_price,r.payment_method,r.status,r.created_at,r.trips?.trip_date,r.trips?.trip_time,r.trips?.from_city,r.trips?.to_city,driverNameMap[r.trips?.driver_id]||""].map(esc).join(",")));
     const blob=new Blob([lines.join("\n")],{type:"text/csv;charset=utf-8"});
     const url=URL.createObjectURL(blob);
     const a=document.createElement("a");a.href=url;a.download=`safferni-bookings-${new Date().toISOString().split("T")[0]}.csv`;a.click();
@@ -1108,12 +1111,20 @@ const [driverEditing,setDriverEditing]=useState(false);
   const searchTrips=async()=>{
     if(!searchDate){setTripsLoaded(true);setTrips([]);return;}
     setTripsLoaded(false);
-    let query=supabase.from("trips").select("*, profiles!trips_driver_id_fkey(id_verified,avatar_url)").eq("trip_date",searchDate).eq("status","active").eq("approved",true).order("trip_time");
+    let query=supabase.from("trips").select("*").eq("trip_date",searchDate).eq("status","active").eq("approved",true).order("trip_time");
     if(searchFrom) query=query.eq("from_city",searchFrom);
     if(searchTo) query=query.eq("to_city",searchTo);
-    query=query.eq("gender_type",searchGender);
-    const{data}=await query;
-    setTrips(data||[]);
+    if(searchGender) query=query.eq("gender_type",searchGender);
+    const{data,error}=await query;
+    if(error){console.error("searchTrips failed",error);setTrips([]);setTripsLoaded(true);return;}
+    const driverIds=[...new Set((data||[]).map(t=>t.driver_id).filter(Boolean))];
+    let driverMap={};
+    if(driverIds.length){
+      const{data:drivers}=await supabase.from("profiles").select("id,id_verified,avatar_url").in("id",driverIds);
+      driverMap=Object.fromEntries((drivers||[]).map(d=>[d.id,d]));
+    }
+    const enriched=(data||[]).map(t=>({...t,profiles:driverMap[t.driver_id]||null}));
+    setTrips(enriched);
     setTripsLoaded(true);
   };
 
@@ -1754,7 +1765,7 @@ const [driverEditing,setDriverEditing]=useState(false);
                           <GenderBadge type={trip.gender_type} lang={lang}/>
                         </div>
                         <div style={{fontSize:12,color:"#888"}}>{trip.trip_date} {formatTime(trip.trip_time)} · ${trip.price_per_seat}/seat · {trip.available_seats}/{trip.total_seats} seats</div>
-                        {trip.profiles?.full_name&&<div style={{fontSize:12,color:"#555",marginTop:2}}>{adm.driver}: {trip.profiles.full_name}</div>}
+                        {(()=>{const drv=adminDrivers.find(d=>d.id===trip.driver_id);return drv?.full_name?<div style={{fontSize:12,color:"#555",marginTop:2}}>{adm.driver}: {drv.full_name}</div>:null;})()}
                       </div>
                       <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
                         {status==="pending"&&<button onClick={()=>adminApproveTrip(trip.id)} style={{background:"#1B3A2A",color:"white",border:"none",padding:"6px 12px",borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{adm.approveTrip}</button>}
