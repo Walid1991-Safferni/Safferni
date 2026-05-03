@@ -830,9 +830,13 @@ const [driverEditing,setDriverEditing]=useState(false);
     const app=applications.find(a=>a.id===id);
     if(status==="approved"){
       if(app?.user_id){
-        const{error:upsertErr}=await supabase.from("profiles").upsert({id:app.user_id,full_name:app.full_name,phone:app.phone,role:"driver"},{onConflict:"id",ignoreDuplicates:false});
-        if(upsertErr){console.error("Profile upsert failed",upsertErr);}
-        else createNotif(app.user_id,"application_approved",lang==="ar"?"تهانينا! طلبك موافق عليه 🎉":"Application Approved 🎉",lang==="ar"?"تم قبول طلبك كسائق! يمكنك الآن تسجيل الدخول والبدء بنشر الرحلات":"Your driver application has been approved! You can now log in and start posting trips.");
+        const{error:rpcErr}=await supabase.rpc("approve_driver_role",{target_user_id:app.user_id});
+        if(rpcErr){
+          console.error("approve_driver_role failed",rpcErr);
+          alert(lang==="ar"?"فشل تحديث دور السائق: "+rpcErr.message:"Failed to set driver role: "+rpcErr.message);
+        } else {
+          createNotif(app.user_id,"application_approved",lang==="ar"?"تهانينا! طلبك موافق عليه 🎉":"Application Approved 🎉",lang==="ar"?"تم قبول طلبك كسائق! يمكنك الآن تسجيل الدخول والبدء بنشر الرحلات":"Your driver application has been approved! You can now log in and start posting trips.");
+        }
       }
     } else if(status==="denied"&&app?.user_id){
       createNotif(app.user_id,"application_denied",lang==="ar"?"طلبك غير مقبول":"Application Not Approved",lang==="ar"?"نأسف، لم يتم قبول طلبك هذه المرة. يمكنك التواصل معنا للاستفسار":"We're sorry, your driver application was not approved this time. Please contact us for more information.");
