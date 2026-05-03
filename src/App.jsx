@@ -644,7 +644,8 @@ const [driverEditing,setDriverEditing]=useState(false);
 
   const loadTripBookings=async(tripId)=>{
     setTripDetailLoading(true);
-    const{data}=await supabase.from("bookings").select("*").eq("trip_id",tripId).neq("status","cancelled").order("created_at",{ascending:false});
+    const{data,error}=await supabase.from("bookings").select("*").eq("trip_id",tripId).neq("status","cancelled").order("created_at",{ascending:false});
+    if(error) console.error("loadTripBookings failed",error);
     setTripDetailBookings(data||[]);
     setTripDetailLoading(false);
   };
@@ -678,7 +679,7 @@ const [driverEditing,setDriverEditing]=useState(false);
   const confirmBooking=async(bookingId)=>{
     const bk=tripDetailBookings.find(b=>b.id===bookingId);
     const{error}=await supabase.rpc("driver_action_booking",{p_booking_id:bookingId,p_action:"confirm"});
-    if(error) return;
+    if(error){alert(lang==="ar"?"فشل تأكيد الحجز، حاول مجدداً":"Failed to confirm booking, please try again");return;}
     setTripDetailBookings(bs=>bs.map(b=>b.id===bookingId?{...b,status:"confirmed"}:b));
     if(bk?.user_id&&selectedTripDetail) createNotif(bk.user_id,"booking_confirmed",lang==="ar"?"تم تأكيد حجزك ✅":"Booking Confirmed ✅",lang==="ar"?`تم تأكيد حجزك على رحلة ${gc(selectedTripDetail.from_city)?.[lang]||selectedTripDetail.from_city} إلى ${gc(selectedTripDetail.to_city)?.[lang]||selectedTripDetail.to_city} بتاريخ ${selectedTripDetail.trip_date}`:`Your booking on ${gc(selectedTripDetail.from_city)?.en||selectedTripDetail.from_city} → ${gc(selectedTripDetail.to_city)?.en||selectedTripDetail.to_city} on ${selectedTripDetail.trip_date} was confirmed by the driver`);
   };
@@ -687,7 +688,7 @@ const [driverEditing,setDriverEditing]=useState(false);
     const bk=tripDetailBookings.find(b=>b.id===bookingId);
     const tripId=selectedTripDetail?.id;
     const{error}=await supabase.rpc("driver_action_booking",{p_booking_id:bookingId,p_action:"reject"});
-    if(error) return;
+    if(error){alert(lang==="ar"?"فشل رفض الحجز، حاول مجدداً":"Failed to reject booking, please try again");return;}
     setTripDetailBookings(bs=>bs.map(b=>b.id===bookingId?{...b,status:"cancelled"}:b));
     if(bk&&tripId){
       setSelectedTripDetail(t=>({...t,available_seats:(t.available_seats||0)+bk.seats}));
@@ -722,8 +723,10 @@ const [driverEditing,setDriverEditing]=useState(false);
     }
     if(!window.confirm(prof.cancelConfirm)) return;
     const{data:result,error}=await supabase.rpc("cancel_passenger_booking",{p_booking_id:bookingId});
-    if(error||!result?.success){
+    if(error){alert(lang==="ar"?"حدث خطأ، حاول مجدداً":"An error occurred, please try again");return;}
+    if(!result?.success){
       if(result?.error==="too_late") alert(lang==="ar"?"لا يمكن إلغاء الحجز قبل أقل من 24 ساعة من موعد الرحلة":"Bookings cannot be cancelled less than 24 hours before departure");
+      else alert(lang==="ar"?"فشل إلغاء الحجز":"Booking cancellation failed");
       return;
     }
     if(bk?.trips?.driver_id) createNotif(bk.trips.driver_id,"booking_cancelled",lang==="ar"?"إلغاء حجز":"Booking Cancelled",lang==="ar"?`${bk.passenger_name||"راكب"} ألغى حجزه على رحلة ${gc(bk.trips.from_city)?.[lang]||bk.trips.from_city} إلى ${gc(bk.trips.to_city)?.[lang]||bk.trips.to_city} (${bk.trips.trip_date})`:`${bk.passenger_name||"A passenger"} cancelled their booking on ${gc(bk.trips.from_city)?.en||bk.trips.from_city} → ${gc(bk.trips.to_city)?.en||bk.trips.to_city} (${bk.trips.trip_date})`);
@@ -828,10 +831,13 @@ const [driverEditing,setDriverEditing]=useState(false);
   };
 
   const adminDeleteTrip=async(id)=>{
-    await supabase.from("bookings").delete().eq("trip_id",id);
-    await supabase.from("trip_ratings").delete().eq("trip_id",id);
-    await supabase.from("trip_edit_requests").delete().eq("trip_id",id);
-    await supabase.from("trips").delete().eq("id",id);
+    await Promise.all([
+      supabase.from("bookings").delete().eq("trip_id",id),
+      supabase.from("trip_ratings").delete().eq("trip_id",id),
+      supabase.from("trip_edit_requests").delete().eq("trip_id",id),
+    ]);
+    const{error}=await supabase.from("trips").delete().eq("id",id);
+    if(error){alert(lang==="ar"?"فشل حذف الرحلة":"Failed to delete trip");return;}
     loadAdminData();
   };
 
@@ -908,9 +914,10 @@ const [driverEditing,setDriverEditing]=useState(false);
   };
 
   const openDriverPublicPage=async(driverId)=>{
-    const{data:prof}=await supabase.from("profiles").select("full_name,car_type,has_wifi,has_water,has_ac").eq("id",driverId).maybeSingle();
+    const{data:prof,error:profErr}=await supabase.from("profiles").select("full_name,car_type,has_wifi,has_water,has_ac").eq("id",driverId).maybeSingle();
+    if(profErr){console.error("openDriverPublicPage profile failed",profErr);return;}
     const{data:reviews}=await supabase.from("trip_reviews").select("*").eq("driver_id",driverId).order("created_at",{ascending:false});
-    setDriverPublicPage({profile:prof,reviews:reviews||[]});
+    setDriverPublicPage({profile:prof||{},reviews:reviews||[]});
   };
 
   const saveDriverProfile=async()=>{
@@ -924,7 +931,7 @@ const [driverEditing,setDriverEditing]=useState(false);
       }
     }
     const{error}=await supabase.from("profiles").update({full_name:driverProfile.fullName,date_of_birth:driverProfile.dob||null,id_number:driverProfile.idNumber,car_type:driverProfile.carKindYear,car_plate:driverProfile.carPlate,transport_license:driverProfile.transportLicense,driver_license:driverProfile.driverLicense,has_wifi:driverProfile.hasWifi,has_water:driverProfile.hasWater,has_ac:driverProfile.hasAc}).eq("id",targetId);
-    if(error){setDriverProfileMsg(lang==="ar"?"حدث خطأ أثناء الحفظ":"Save failed: "+error.message);return;}
+    if(error){setDriverProfileMsg(lang==="ar"?"حدث خطأ أثناء الحفظ":"Save failed"+(error.message?" — "+error.message:""));return;}
     setDriverProfileMsg(lang==="ar"?"تم الحفظ بنجاح ✓":"Saved successfully ✓");
     setTimeout(()=>setDriverProfileMsg(""),3000);
     if(selectedDriver) loadAdminData();
@@ -994,6 +1001,7 @@ const [driverEditing,setDriverEditing]=useState(false);
   };
 
   const postTrip=async()=>{
+    if(!user?.id){return;}
     if(!tripForm.from||!tripForm.to||!tripForm.date||!tripForm.pricePerSeat){setTripError(drv.fillAll);return;}
     const valid=await validateTrip();
     if(!valid) return;
@@ -1116,7 +1124,7 @@ const [driverEditing,setDriverEditing]=useState(false);
   };
 
   const navLinks=[["home",t.nav.home],["contact",t.nav.contact],...(driverApproved?[["driver",t.nav.driver]]:[]),...(isAdmin?[["admin",t.nav.admin]]:[])];
-  const statusBadge=(s)=>({padding:"4px 12px",borderRadius:20,fontSize:11,fontWeight:700,background:s==="active"?"#D1FAE5":s==="confirmed"?"#BBF7D0":s==="pending"?"#FFF3CD":s==="completed"?"#E0F2FE":"#FEE2E2",color:s==="active"?"#065F46":s==="confirmed"?"#065F46":s==="pending"?"#92400E":s==="completed"?"#0369A1":"#991B1B"});
+  const statusBadge=(s)=>({padding:"4px 12px",borderRadius:20,fontSize:11,fontWeight:700,background:s==="active"?"#D1FAE5":s==="confirmed"?"#BBF7D0":s==="pending"?"#FFF3CD":s==="completed"?"#E0F2FE":s==="no_show"?"#FEF3C7":"#FEE2E2",color:s==="active"?"#065F46":s==="confirmed"?"#065F46":s==="pending"?"#92400E":s==="completed"?"#0369A1":s==="no_show"?"#92400E":"#991B1B"});
 
   const timeOptions=Array.from({length:96},(_,i)=>{
     const h=Math.floor(i/4);const m=(i%4)*15;
