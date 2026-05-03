@@ -523,7 +523,6 @@ const [driverEditing,setDriverEditing]=useState(false);
     const email=authForm.email.trim().toLowerCase();
     const{data:existingEmail}=await supabase.from("profiles").select("id").eq("email",email).maybeSingle();
     if(existingEmail){setAuthError(lang==="ar"?"هذا البريد الإلكتروني مسجل مسبقاً. سجّل الدخول بدلاً من ذلك.":"This email is already registered. Please log in instead.");setAuthLoading(false);return;}
-    // Pass user metadata so DB trigger can auto-create profile + survives any client race
     const{error}=await supabase.auth.signInWithOtp({email,options:{shouldCreateUser:true,data:{full_name:authForm.fullName.trim(),phone:authForm.phone,date_of_birth:authForm.dob}}});
     if(error){setAuthError(error.message||t.auth.error);setAuthLoading(false);return;}
     pendingSignupData.current={email,full_name:authForm.fullName.trim(),phone:authForm.phone,date_of_birth:authForm.dob};
