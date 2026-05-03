@@ -1794,7 +1794,7 @@ const [driverEditing,setDriverEditing]=useState(false);
                 </div>);
               })}
             </div>
-          </div>)
+          </div>)}
 
           {adminTab==="drivers"&&(<div>
             {adminDrivers.length===0?<p style={{textAlign:"center",color:"#AAA",padding:"40px"}}>{adm.noApps}</p>:
