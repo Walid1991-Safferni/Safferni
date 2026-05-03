@@ -754,10 +754,12 @@ const [driverEditing,setDriverEditing]=useState(false);
     }
     if(!window.confirm(prof.cancelConfirm)) return;
     const{data:result,error}=await supabase.rpc("cancel_passenger_booking",{p_booking_id:bookingId});
-    if(error){alert(lang==="ar"?"حدث خطأ، حاول مجدداً":"An error occurred, please try again");return;}
+    if(error){console.error("cancel_passenger_booking failed",error);alert((lang==="ar"?"حدث خطأ: ":"Error: ")+(error.message||"unknown"));return;}
     if(!result?.success){
+      console.error("cancel_passenger_booking returned",result);
       if(result?.error==="too_late") alert(lang==="ar"?"لا يمكن إلغاء الحجز قبل أقل من 24 ساعة من موعد الرحلة":"Bookings cannot be cancelled less than 24 hours before departure");
-      else alert(lang==="ar"?"فشل إلغاء الحجز":"Booking cancellation failed");
+      else if(result?.error==="not_found") alert(lang==="ar"?"الحجز غير موجود أو ليس مسجلاً تحت حسابك":"Booking not found or not linked to your account");
+      else alert((lang==="ar"?"فشل إلغاء الحجز: ":"Booking cancellation failed: ")+(result?.error||"unknown"));
       return;
     }
     if(bk?.trips?.driver_id) createNotif(bk.trips.driver_id,"booking_cancelled",lang==="ar"?"إلغاء حجز":"Booking Cancelled",lang==="ar"?`${bk.passenger_name||"راكب"} ألغى حجزه على رحلة ${gc(bk.trips.from_city)?.[lang]||bk.trips.from_city} إلى ${gc(bk.trips.to_city)?.[lang]||bk.trips.to_city} (${bk.trips.trip_date})`:`${bk.passenger_name||"A passenger"} cancelled their booking on ${gc(bk.trips.from_city)?.en||bk.trips.from_city} → ${gc(bk.trips.to_city)?.en||bk.trips.to_city} (${bk.trips.trip_date})`);
