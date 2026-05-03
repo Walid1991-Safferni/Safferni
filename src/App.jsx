@@ -1108,12 +1108,20 @@ const [driverEditing,setDriverEditing]=useState(false);
   const searchTrips=async()=>{
     if(!searchDate){setTripsLoaded(true);setTrips([]);return;}
     setTripsLoaded(false);
-    let query=supabase.from("trips").select("*, profiles!trips_driver_id_fkey(id_verified,avatar_url)").eq("trip_date",searchDate).eq("status","active").eq("approved",true).order("trip_time");
+    let query=supabase.from("trips").select("*").eq("trip_date",searchDate).eq("status","active").eq("approved",true).order("trip_time");
     if(searchFrom) query=query.eq("from_city",searchFrom);
     if(searchTo) query=query.eq("to_city",searchTo);
-    query=query.eq("gender_type",searchGender);
-    const{data}=await query;
-    setTrips(data||[]);
+    if(searchGender) query=query.eq("gender_type",searchGender);
+    const{data,error}=await query;
+    if(error){console.error("searchTrips failed",error);setTrips([]);setTripsLoaded(true);return;}
+    const driverIds=[...new Set((data||[]).map(t=>t.driver_id).filter(Boolean))];
+    let driverMap={};
+    if(driverIds.length){
+      const{data:drivers}=await supabase.from("profiles").select("id,id_verified,avatar_url").in("id",driverIds);
+      driverMap=Object.fromEntries((drivers||[]).map(d=>[d.id,d]));
+    }
+    const enriched=(data||[]).map(t=>({...t,profiles:driverMap[t.driver_id]||null}));
+    setTrips(enriched);
     setTripsLoaded(true);
   };
 
