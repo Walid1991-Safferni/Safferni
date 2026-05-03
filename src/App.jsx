@@ -2567,7 +2567,7 @@ const [driverEditing,setDriverEditing]=useState(false);
         <h2 style={{fontSize:32,fontWeight:900,marginBottom:10,textAlign:"center",color:"#1B3A2A"}}>{t.contact.title}</h2>
         <p style={{textAlign:"center",color:"#888",marginBottom:32,fontSize:15}}>{t.contact.desc}</p>
         <div style={{background:"white",borderRadius:16,padding:"28px",border:"1px solid #E8E6E1",boxShadow:"0 2px 12px rgba(0,0,0,0.03)"}}>
-          {[{l:t.contact.email,v:"info@safferni.com",ic:"✉️",link:"mailto:info@safferni.com"},{l:t.contact.whatsapp,v:lang==="ar"?"قريباً...":"Coming soon...",ic:"💬",link:null},{l:t.contact.hours,v:t.contact.hoursVal,ic:"🕐",link:null}].map((item,i)=>(
+          {[{l:t.contact.email,v:"info@safferni.com",ic:"✉️",link:"mailto:info@safferni.com"},{l:t.contact.whatsapp,v:WA_PHONE?`+${WA_PHONE}`:(lang==="ar"?"قريباً...":"Coming soon..."),ic:"💬",link:WA_PHONE?`https://wa.me/${WA_PHONE}`:null},{l:t.contact.hours,v:t.contact.hoursVal,ic:"🕐",link:null}].map((item,i)=>(
             <div key={i} onClick={()=>item.link&&window.open(item.link)} style={{display:"flex",alignItems:"center",gap:14,padding:"14px 0",borderBottom:i<2?"1px solid #F0EEEA":"none",cursor:item.link?"pointer":"default"}}>
               <div style={{width:42,height:42,borderRadius:10,background:"#F0F7F3",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0}}>{item.ic}</div>
               <div><div style={{fontSize:11,color:"#AAA",fontWeight:700,textTransform:"uppercase",marginBottom:1}}>{item.l}</div><div style={{fontSize:14,fontWeight:600,color:item.link?"#1B3A2A":"#333"}}>{item.v}</div></div>
