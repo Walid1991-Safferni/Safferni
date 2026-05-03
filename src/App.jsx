@@ -267,6 +267,13 @@ const T={
 
 const LogoSVG=({light})=>(<svg width="48" height="48" viewBox="0 0 48 48"><path d="M18 4 L14 44 L34 44 L30 4 Z" fill={light?"rgba(255,255,255,0.15)":"#1B3A2A"}/><rect x="22.5" y="10" width="3" height="7" rx="1.5" fill={light?"rgba(255,255,255,0.6)":"#F0F7F3"}/><rect x="22.5" y="21" width="3" height="7" rx="1.5" fill={light?"rgba(255,255,255,0.6)":"#F0F7F3"}/><rect x="22.5" y="32" width="3" height="7" rx="1.5" fill={light?"rgba(255,255,255,0.6)":"#F0F7F3"}/></svg>);
 
+const VerifiedBadge=({size=18,title="Verified"})=>(
+  <svg width={size} height={size} viewBox="0 0 24 24" aria-label={title} role="img" style={{verticalAlign:"middle",flexShrink:0}}>
+    <path fill="#1D9BF0" d="M12 1.5l2.4 1.8 3 .15 1.05 2.85 2.55 1.5-.6 2.85L21.75 12l-1.35 2.55.6 2.85-2.55 1.5-1.05 2.85-3 .15L12 22.5l-2.4-1.8-3-.15-1.05-2.85-2.55-1.5.6-2.85L2.25 12l1.35-2.55-.6-2.85 2.55-1.5L6.6 3.45l3-.15z"/>
+    <path fill="#fff" d="M10.6 15.6l-3.3-3.3 1.4-1.4 1.9 1.9 4.4-4.4 1.4 1.4z"/>
+  </svg>
+);
+
 const IdVerificationRow=({driver,lang,onVerify,onReject})=>{
   const[signedUrl,setSignedUrl]=useState(null);
   const loadSignedUrl=async()=>{
@@ -1950,7 +1957,7 @@ const [driverEditing,setDriverEditing]=useState(false);
                 <div style={{flex:1}}>
                   <div style={{fontWeight:700,fontSize:14,color:"#333",marginBottom:4}}>
                     {driverProfile.fullName||profile?.full_name||"—"}
-                    {(driverProfile.idVerified||profile?.id_verified)&&<span style={{marginInlineStart:8,background:"#D1FAE5",color:"#065F46",borderRadius:20,padding:"2px 8px",fontSize:11,fontWeight:800}}>✓ {lang==="ar"?"موثّق":"Verified"}</span>}
+                    {(driverProfile.idVerified||profile?.id_verified)&&<span style={{marginInlineStart:8,display:"inline-flex",alignItems:"center",gap:4}} title={lang==="ar"?"موثّق":"Verified"}><VerifiedBadge size={18} title={lang==="ar"?"موثّق":"Verified"}/></span>}
                     {(driverProfile.idPending||profile?.id_verification_pending)&&!driverProfile.idVerified&&<span style={{marginInlineStart:8,background:"#FFF3CD",color:"#92400E",borderRadius:20,padding:"2px 8px",fontSize:11,fontWeight:800}}>⏳ {lang==="ar"?"قيد المراجعة":"Pending Review"}</span>}
                   </div>
                   <label style={{display:"inline-block",background:"#F0F7F3",color:"#1B3A2A",border:"1.5px solid #1B3A2A",padding:"6px 14px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer"}}>
@@ -2181,7 +2188,7 @@ const [driverEditing,setDriverEditing]=useState(false);
               <div>
                 <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
                   <span style={{fontSize:18,fontWeight:900,color:"#1B3A2A"}}>{driverPublicPage.profile?.full_name||"—"}</span>
-                  {driverPublicPage.profile?.id_verified&&<span style={{background:"#D1FAE5",color:"#065F46",borderRadius:20,padding:"2px 10px",fontSize:12,fontWeight:800}}>✓ {lang==="ar"?"موثّق":"Verified"}</span>}
+                  {driverPublicPage.profile?.id_verified&&<VerifiedBadge size={20} title={lang==="ar"?"موثّق":"Verified"}/>}
                 </div>
                 {driverPublicPage.profile?.car_type&&<div style={{fontSize:13,color:"#555",fontWeight:600,marginTop:2}}>🚗 {driverPublicPage.profile.car_type}</div>}
               </div>
@@ -2356,7 +2363,7 @@ const [driverEditing,setDriverEditing]=useState(false);
                           {trip.avg_rating>0&&<StarRating value={Math.round(trip.avg_rating)} readOnly/>}
                           {trip.avg_rating>0&&<span style={{fontSize:11,color:"#888"}}>({trip.rating_count})</span>}
                           <button onClick={async(e)=>{e.stopPropagation();setReviewSidebarDriver(trip.driver_id);await loadDriverReviews(trip.driver_id);}} style={{background:"transparent",border:"1px solid #DDD",borderRadius:20,padding:"2px 10px",fontSize:11,fontWeight:700,color:"#555",cursor:"pointer",fontFamily:"inherit"}}>{lang==="ar"?"التقييمات":"See reviews"}</button>
-                          <button onClick={async(e)=>{e.stopPropagation();await openDriverPublicPage(trip.driver_id);}} style={{background:"transparent",border:"1px solid #C7D2CC",borderRadius:20,padding:"2px 10px",fontSize:11,fontWeight:700,color:"#1B3A2A",cursor:"pointer",fontFamily:"inherit"}}>👤 {lang==="ar"?"السائق":"Driver"}{trip.profiles?.id_verified&&<span style={{marginInlineStart:4,color:"#065F46",fontWeight:900}}>✓</span>}</button>
+                          <button onClick={async(e)=>{e.stopPropagation();await openDriverPublicPage(trip.driver_id);}} style={{background:"transparent",border:"1px solid #C7D2CC",borderRadius:20,padding:"2px 10px",fontSize:11,fontWeight:700,color:"#1B3A2A",cursor:"pointer",fontFamily:"inherit"}}>👤 {lang==="ar"?"السائق":"Driver"}{trip.profiles?.id_verified&&<span style={{marginInlineStart:4,display:"inline-flex",verticalAlign:"middle"}}><VerifiedBadge size={14} title={lang==="ar"?"موثّق":"Verified"}/></span>}</button>
                           <button onClick={e=>{e.stopPropagation();const link=`${window.location.origin}${window.location.pathname}?trip=${trip.id}`;navigator.clipboard?.writeText(link).catch(()=>{const el=document.createElement("textarea");el.value=link;document.body.appendChild(el);el.select();document.execCommand("copy");document.body.removeChild(el);});setShareCopiedId(trip.id);setTimeout(()=>setShareCopiedId(null),2000);}} style={{background:shareCopiedId===trip.id?"#D1FAE5":"transparent",border:`1px solid ${shareCopiedId===trip.id?"#34D399":"#25D366"}`,borderRadius:20,padding:"2px 10px",fontSize:11,fontWeight:700,color:shareCopiedId===trip.id?"#065F46":"#25D366",cursor:"pointer",fontFamily:"inherit",transition:"all 0.2s"}}>{shareCopiedId===trip.id?"✓ "+(lang==="ar"?"تم النسخ":"Copied!"):"📤 "+(lang==="ar"?"شارك":"Share")}</button>
                         </div>
                       </div>
