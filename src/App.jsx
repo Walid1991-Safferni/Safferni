@@ -370,7 +370,7 @@ export default function App(){
   const [adminDrivers,setAdminDrivers]=useState([]);
   const [adminAllTrips,setAdminAllTrips]=useState([]);
   const [editRequests,setEditRequests]=useState([]);
-  const [adminTab,setAdminTab]=useState("applications");
+  const [adminTab,setAdminTab]=useState("requests");
   const [tripFilterDriver,setTripFilterDriver]=useState("");
   const [tripFilterDate,setTripFilterDate]=useState("");
   const [draggedTripId,setDraggedTripId]=useState(null);
@@ -384,6 +384,8 @@ export default function App(){
   const [avatarUploading,setAvatarUploading]=useState(false);
   const [idUploading,setIdUploading]=useState(false);
   const [adminIdQueue,setAdminIdQueue]=useState([]);
+  const [passengerAvatarMsg,setPassengerAvatarMsg]=useState("");
+  const [passengerAvatarUploading,setPassengerAvatarUploading]=useState(false);
 
   // Driver panel
   const [driverTrips,setDriverTrips]=useState([]);
@@ -826,15 +828,17 @@ const [driverEditing,setDriverEditing]=useState(false);
   // ─── BOOKING HELPERS ──────────────────────────────────────────────────────
 
   const handleApply=async()=>{
-    if(!applyForm.fullName||!applyForm.phone||!applyForm.carKindYear){setApplyError(t.apply.fillAll);return;}
-    if(applyForm.dob){
-      const cutoff=new Date();cutoff.setFullYear(cutoff.getFullYear()-18);
-      if(new Date(applyForm.dob)>cutoff){setApplyError(lang==="ar"?"يجب أن يكون عمرك 18 عامًا على الأقل":"Must be at least 18 years old");return;}
+    if(!applyForm.fullName||!applyForm.phone||!applyForm.dob||!applyForm.carKindYear||!applyForm.carLicense||!applyForm.driverLicenseNum){
+      setApplyError(lang==="ar"?"يرجى ملء جميع الحقول المطلوبة (*)":"Please fill all required fields (*)");return;
     }
+    const cutoff=new Date();cutoff.setFullYear(cutoff.getFullYear()-18);
+    if(new Date(applyForm.dob)>cutoff){setApplyError(lang==="ar"?"يجب أن يكون عمرك 18 عامًا على الأقل":"Must be at least 18 years old");return;}
     const ref=genAppRef();
     const{error}=await supabase.from("driver_applications").insert({user_id:user?.id||null,full_name:applyForm.fullName,phone:applyForm.phone,car_type:applyForm.carKindYear,license_plate:applyForm.carLicense,driver_license_number:applyForm.driverLicenseNum,notes:applyForm.notes,app_ref:ref,date_of_birth:applyForm.dob||null,has_wifi:applyForm.hasWifi,has_water:applyForm.hasWater,has_ac:applyForm.hasAc});
-    if(!error){setAppRef(ref);setApplySubmitted(true);setApplyForm({fullName:"",phone:"",dob:"",carKindYear:"",carLicense:"",driverLicenseNum:"",notes:"",hasWifi:false,hasWater:false,hasAc:false});}
-    else setApplyError(error.message||t.apply.fillAll);
+    if(!error){
+      if(user?.id) await supabase.from("profiles").update({full_name:applyForm.fullName,phone:applyForm.phone,date_of_birth:applyForm.dob||null}).eq("id",user.id);
+      setAppRef(ref);setApplySubmitted(true);setApplyForm({fullName:"",phone:"",dob:"",carKindYear:"",carLicense:"",driverLicenseNum:"",notes:"",hasWifi:false,hasWater:false,hasAc:false});
+    } else setApplyError(error.message||t.apply.fillAll);
   };
 
   const loadAdminData=async()=>{
@@ -1023,6 +1027,22 @@ const [driverEditing,setDriverEditing]=useState(false);
     setDriverProfileMsg(lang==="ar"?"تم رفع الصورة ✓":"Photo uploaded ✓");
     setTimeout(()=>setDriverProfileMsg(""),3000);
     setAvatarUploading(false);
+  };
+
+  const uploadPassengerAvatar=async(file)=>{
+    if(!file||!user) return;
+    setPassengerAvatarUploading(true);
+    const ext=file.name.split(".").pop().toLowerCase();
+    const path=`${user.id}/avatar.${ext}`;
+    const{error:upErr}=await supabase.storage.from("avatars").upload(path,file,{upsert:true,contentType:file.type});
+    if(upErr){setPassengerAvatarMsg(lang==="ar"?"فشل رفع الصورة: "+upErr.message:"Upload failed: "+upErr.message);setPassengerAvatarUploading(false);return;}
+    const{data:{publicUrl}}=supabase.storage.from("avatars").getPublicUrl(path);
+    const url=publicUrl+"?t="+Date.now();
+    await supabase.from("profiles").update({avatar_url:url}).eq("id",user.id);
+    setProfile(p=>({...p,avatar_url:url}));
+    setPassengerAvatarMsg(lang==="ar"?"تم رفع الصورة ✓":"Photo uploaded ✓");
+    setTimeout(()=>setPassengerAvatarMsg(""),3000);
+    setPassengerAvatarUploading(false);
   };
 
   const uploadIdPhoto=async(file)=>{
@@ -1458,8 +1478,10 @@ const [driverEditing,setDriverEditing]=useState(false);
         <section style={{maxWidth:680,margin:"0 auto",padding:"40px 24px 80px",...fade}}>
           {/* Header */}
           <div style={{background:"linear-gradient(135deg,#1B3A2A,#234D36)",borderRadius:20,padding:"28px 32px",marginBottom:24,color:"white",display:"flex",alignItems:"center",gap:20}}>
-            <div style={{width:60,height:60,borderRadius:"50%",background:"rgba(255,255,255,0.15)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:26,fontWeight:900,flexShrink:0}}>
-              {(profile?.full_name||"?").charAt(0).toUpperCase()}
+            <div style={{width:60,height:60,borderRadius:"50%",background:"rgba(255,255,255,0.15)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:26,fontWeight:900,flexShrink:0,overflow:"hidden",border:"2px solid rgba(255,255,255,0.3)"}}>
+              {profile?.avatar_url
+                ?<img src={profile.avatar_url} alt="avatar" style={{width:"100%",height:"100%",objectFit:"cover"}}/>
+                :(profile?.full_name||"?").charAt(0).toUpperCase()}
             </div>
             <div>
               <div style={{fontSize:20,fontWeight:900}}>{profile?.full_name||user.email}</div>
@@ -1482,6 +1504,22 @@ const [driverEditing,setDriverEditing]=useState(false);
           {/* TAB: Profile edit */}
          {profileTab==="profile"&&(
             <div style={{background:"white",borderRadius:16,padding:"28px",border:"1px solid #E8E6E1"}}>
+              {/* Profile photo */}
+              <div style={{display:"flex",alignItems:"center",gap:16,marginBottom:24,paddingBottom:20,borderBottom:"1px solid #F0F0F0"}}>
+                <div style={{position:"relative",flexShrink:0}}>
+                  {profile?.avatar_url
+                    ?<img src={profile.avatar_url} alt="avatar" style={{width:72,height:72,borderRadius:"50%",objectFit:"cover",border:"3px solid #1B3A2A"}}/>
+                    :<div style={{width:72,height:72,borderRadius:"50%",background:"#F0F7F3",border:"3px solid #1B3A2A",display:"flex",alignItems:"center",justifyContent:"center",fontSize:28,fontWeight:900,color:"#1B3A2A"}}>{(profile?.full_name||"?").charAt(0).toUpperCase()}</div>}
+                </div>
+                <div>
+                  <div style={{fontSize:13,fontWeight:700,color:"#1B3A2A",marginBottom:6}}>{lang==="ar"?"صورة الملف الشخصي":"Profile Photo"}</div>
+                  <label style={{display:"inline-flex",alignItems:"center",gap:6,background:"#F0F7F3",color:"#1B3A2A",border:"1.5px solid #1B3A2A",padding:"7px 14px",borderRadius:8,fontSize:12,fontWeight:700,cursor:passengerAvatarUploading?"not-allowed":"pointer"}}>
+                    {passengerAvatarUploading?(lang==="ar"?"جاري الرفع...":"Uploading..."):"📷 "+(lang==="ar"?"تغيير الصورة":"Change Photo")}
+                    <input type="file" accept="image/*" style={{display:"none"}} disabled={passengerAvatarUploading} onChange={e=>e.target.files?.[0]&&uploadPassengerAvatar(e.target.files[0])}/>
+                  </label>
+                  {passengerAvatarMsg&&<div style={{marginTop:6,fontSize:12,color:"#166534",fontWeight:700}}>{passengerAvatarMsg}</div>}
+                </div>
+              </div>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
                 <h3 style={{fontSize:17,fontWeight:800,color:"#1B3A2A"}}>{prof.editProfile}</h3>
                 {!profileEditing&&<button onClick={()=>setProfileEditing(true)} style={{background:"#F0F7F3",color:"#1B3A2A",border:"1.5px solid #1B3A2A",padding:"7px 18px",borderRadius:8,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{lang==="ar"?"تعديل":"Edit"}</button>}
@@ -1598,11 +1636,11 @@ const [driverEditing,setDriverEditing]=useState(false);
                   <p style={{fontSize:13,color:"#AAA",marginBottom:20}}>{t.apply.desc}</p>
                   <div style={{marginBottom:14}}><label style={lbl}>{t.apply.fullName} *</label><input value={applyForm.fullName||profile?.full_name||""} onChange={e=>setApplyForm(f=>({...f,fullName:e.target.value}))} style={inp}/></div>
                   <div style={{marginBottom:14}}><label style={lbl}>{t.apply.phone} *</label><PhoneField value={applyForm.phone||profile?.phone||""} onChange={v=>setApplyForm(f=>({...f,phone:v}))} lang={lang} inp={inp}/></div>
-                  <div style={{marginBottom:14}}><label style={lbl}>{lang==="ar"?"تاريخ الميلاد (يجب أن يكون عمرك +18)":"Date of Birth (must be 18+)"}</label><input type="date" value={applyForm.dob} max={new Date(new Date().setFullYear(new Date().getFullYear()-18)).toISOString().split("T")[0]} onChange={e=>setApplyForm(f=>({...f,dob:e.target.value}))} style={inp}/></div>
+                  <div style={{marginBottom:14}}><label style={lbl}>{lang==="ar"?"تاريخ الميلاد *":"Date of Birth *"} <span style={{fontSize:10,color:"#888",fontWeight:400}}>{lang==="ar"?"(يجب أن يكون عمرك +18)":"(must be 18+)"}</span></label><input type="date" value={applyForm.dob} max={new Date(new Date().setFullYear(new Date().getFullYear()-18)).toISOString().split("T")[0]} onChange={e=>setApplyForm(f=>({...f,dob:e.target.value}))} style={inp}/></div>
                   <div style={{marginBottom:14}}><label style={lbl}>{lang==="ar"?"نوع السيارة والسنة *":"Car Kind & Year *"}</label><input value={applyForm.carKindYear} onChange={e=>setApplyForm(f=>({...f,carKindYear:e.target.value}))} style={inp} placeholder={lang==="ar"?"مثال: تويوتا كامري 2020":"e.g. Toyota Camry 2020"}/></div>
                   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:14}}>
-                    <div><label style={lbl}>{lang==="ar"?"رقم لوحة السيارة":"Car License Plate"}</label><input value={applyForm.carLicense} onChange={e=>setApplyForm(f=>({...f,carLicense:e.target.value}))} style={inp}/></div>
-                    <div><label style={lbl}>{lang==="ar"?"رقم رخصة القيادة":"Driver License Number"}</label><input value={applyForm.driverLicenseNum} onChange={e=>setApplyForm(f=>({...f,driverLicenseNum:e.target.value}))} style={inp}/></div>
+                    <div><label style={lbl}>{lang==="ar"?"رقم لوحة السيارة *":"Car License Plate *"}</label><input value={applyForm.carLicense} onChange={e=>setApplyForm(f=>({...f,carLicense:e.target.value}))} style={inp}/></div>
+                    <div><label style={lbl}>{lang==="ar"?"رقم رخصة القيادة *":"Driver License Number *"}</label><input value={applyForm.driverLicenseNum} onChange={e=>setApplyForm(f=>({...f,driverLicenseNum:e.target.value}))} style={inp}/></div>
                   </div>
                   <div style={{marginBottom:14}}>
                     <label style={lbl}>{lang==="ar"?"المرافق المتاحة":"Available Facilities"}</label>
@@ -1698,12 +1736,12 @@ const [driverEditing,setDriverEditing]=useState(false);
             </div>
           );})()}
           <div style={{display:"flex",gap:8,marginBottom:28,justifyContent:"center",flexWrap:"wrap"}}>
-            {[["applications",adm.applications],["editRequests",adm.editRequests],["drivers",adm.drivers],["allTrips",adm.allTrips],["promoCodes",lang==="ar"?"كودات الخصم":"Promo Codes"],["idVerification",lang==="ar"?"التحقق من الهوية 🪪":"ID Verification 🪪"],["activity",lang==="ar"?"سجل النشاط 📋":"Activity Log 📋"]].map(([k,l])=>(
+            {[["requests",lang==="ar"?"الطلبات 📥":"Requests 📥"],["drivers",adm.drivers],["allTrips",adm.allTrips],["promoCodes",lang==="ar"?"كودات الخصم":"Promo Codes"],["idVerification",lang==="ar"?"التحقق من الهوية 🪪":"ID Verification 🪪"],["activity",lang==="ar"?"سجل النشاط 📋":"Activity Log 📋"]].map(([k,l])=>(
               <button key={k} onClick={()=>setAdminTab(k)} style={{padding:"10px 20px",borderRadius:10,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",border:"2px solid",borderColor:adminTab===k?"#1B3A2A":"#E8E6E1",background:adminTab===k?"#1B3A2A":"white",color:adminTab===k?"white":"#666"}}>{l}</button>
             ))}
           </div>
 
-          {adminTab==="applications"&&(<div>
+          {adminTab==="requests"&&(<div>
             <div style={{display:"flex",gap:20,alignItems:"flex-start",flexWrap:"wrap"}}>
             {["pending","approved","denied"].map(status=>{
               const filtered=applications.filter(a=>a.status===status);
@@ -1733,26 +1771,30 @@ const [driverEditing,setDriverEditing]=useState(false);
               </div>);
             })}
             </div>
+            {/* ─── Time Edit Requests subsection ─── */}
+            <div style={{marginTop:32}}>
+              <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16}}>
+                <h3 style={{fontSize:15,fontWeight:800,color:"#1B3A2A"}}>{lang==="ar"?"طلبات تعديل وقت الرحلة ✏️":"Trip Time Change Requests ✏️"} ({editRequests.length})</h3>
+                <div style={{flex:1,height:1,background:"#E8E6E1"}}/>
+              </div>
+              {editRequests.length===0?<p style={{textAlign:"center",color:"#AAA",padding:"20px"}}>{adm.noApps}</p>:
+              editRequests.map((req,i)=>{
+                const trip=req.trips;const fc=gc(trip?.from_city);const tc=gc(trip?.to_city);
+                return(<div key={req.id} style={{background:"white",borderRadius:14,padding:"20px 24px",border:"1px solid #E8E6E1",marginBottom:12,animation:`fadeUp 0.4s ease ${0.05*i}s both`}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:12}}>
+                    <div>
+                      <div style={{fontWeight:800,fontSize:15,color:"#1B3A2A",marginBottom:4}}>{fc?.[lang]||trip?.from_city} {lang==="ar"?"إلى":"to"} {tc?.[lang]||trip?.to_city}</div>
+                      <div style={{fontSize:12,color:"#888"}}>{trip?.trip_date} · {adm.currentTime}: {formatTime(trip?.trip_time)} → {adm.requestedTime}: <span style={{fontWeight:700,color:"#1B3A2A"}}>{formatTime(req.requested_time)}</span></div>
+                    </div>
+                    <div style={{display:"flex",gap:8}}>
+                      <button onClick={()=>handleEditRequest(req.id,"approved",req.trip_id,req.requested_time)} style={{background:"#1B3A2A",color:"white",border:"none",padding:"8px 16px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{adm.approve}</button>
+                      <button onClick={()=>handleEditRequest(req.id,"denied",req.trip_id,null)} style={{background:"#EF4444",color:"white",border:"none",padding:"8px 16px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{adm.deny}</button>
+                    </div>
+                  </div>
+                </div>);
+              })}
+            </div>
           </div>)}
-
-          {adminTab==="editRequests"&&(<div>
-            {editRequests.length===0?<p style={{textAlign:"center",color:"#AAA",padding:"40px"}}>{adm.noApps}</p>:
-            editRequests.map((req,i)=>{
-              const trip=req.trips;const fc=gc(trip?.from_city);const tc=gc(trip?.to_city);
-              return(<div key={req.id} style={{background:"white",borderRadius:14,padding:"20px 24px",border:"1px solid #E8E6E1",marginBottom:12,animation:`fadeUp 0.4s ease ${0.05*i}s both`}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:12}}>
-                  <div>
-                    <div style={{fontWeight:800,fontSize:15,color:"#1B3A2A",marginBottom:4}}>{fc?.[lang]||trip?.from_city} {lang==="ar"?"إلى":"to"} {tc?.[lang]||trip?.to_city}</div>
-                    <div style={{fontSize:12,color:"#888"}}>{trip?.trip_date} · {adm.currentTime}: {formatTime(trip?.trip_time)} → {adm.requestedTime}: <span style={{fontWeight:700,color:"#1B3A2A"}}>{formatTime(req.requested_time)}</span></div>
-                  </div>
-                  <div style={{display:"flex",gap:8}}>
-                    <button onClick={()=>handleEditRequest(req.id,"approved",req.trip_id,req.requested_time)} style={{background:"#1B3A2A",color:"white",border:"none",padding:"8px 16px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{adm.approve}</button>
-                    <button onClick={()=>handleEditRequest(req.id,"denied",req.trip_id,null)} style={{background:"#EF4444",color:"white",border:"none",padding:"8px 16px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{adm.deny}</button>
-                  </div>
-                </div>
-              </div>);
-            })}</div>
-          )}
 
           {adminTab==="drivers"&&(<div>
             {adminDrivers.length===0?<p style={{textAlign:"center",color:"#AAA",padding:"40px"}}>{adm.noApps}</p>:
@@ -2525,7 +2567,7 @@ const [driverEditing,setDriverEditing]=useState(false);
         <h2 style={{fontSize:32,fontWeight:900,marginBottom:10,textAlign:"center",color:"#1B3A2A"}}>{t.contact.title}</h2>
         <p style={{textAlign:"center",color:"#888",marginBottom:32,fontSize:15}}>{t.contact.desc}</p>
         <div style={{background:"white",borderRadius:16,padding:"28px",border:"1px solid #E8E6E1",boxShadow:"0 2px 12px rgba(0,0,0,0.03)"}}>
-          {[{l:t.contact.email,v:"info@safferni.com",ic:"✉️",link:"mailto:info@safferni.com"},{l:t.contact.whatsapp,v:lang==="ar"?"قريباً...":"Coming soon...",ic:"💬",link:null},{l:t.contact.hours,v:t.contact.hoursVal,ic:"🕐",link:null}].map((item,i)=>(
+          {[{l:t.contact.email,v:"info@safferni.com",ic:"✉️",link:"mailto:info@safferni.com"},{l:t.contact.whatsapp,v:WA_PHONE?`+${WA_PHONE}`:(lang==="ar"?"قريباً...":"Coming soon..."),ic:"💬",link:WA_PHONE?`https://wa.me/${WA_PHONE}`:null},{l:t.contact.hours,v:t.contact.hoursVal,ic:"🕐",link:null}].map((item,i)=>(
             <div key={i} onClick={()=>item.link&&window.open(item.link)} style={{display:"flex",alignItems:"center",gap:14,padding:"14px 0",borderBottom:i<2?"1px solid #F0EEEA":"none",cursor:item.link?"pointer":"default"}}>
               <div style={{width:42,height:42,borderRadius:10,background:"#F0F7F3",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0}}>{item.ic}</div>
               <div><div style={{fontSize:11,color:"#AAA",fontWeight:700,textTransform:"uppercase",marginBottom:1}}>{item.l}</div><div style={{fontSize:14,fontWeight:600,color:item.link?"#1B3A2A":"#333"}}>{item.v}</div></div>
