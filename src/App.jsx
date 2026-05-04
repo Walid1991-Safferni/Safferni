@@ -332,6 +332,7 @@ export default function App(){
   const [savedRoutes,setSavedRoutes]=useState(()=>{try{return JSON.parse(localStorage.getItem("safferni_saved_routes")||"[]");}catch{return[];}});
   const [trips,setTrips]=useState([]);
   const [tripsLoaded,setTripsLoaded]=useState(false);
+  const [nearbyTrips,setNearbyTrips]=useState([]);
   const [selectedTrip,setSelectedTrip]=useState(null);
   const [tripBooking,setTripBooking]=useState({name:"",phone:"",seats:1,payment:"cash"});
   const [tripBooked,setTripBooked]=useState(false);
@@ -1164,15 +1165,16 @@ const [driverEditing,setDriverEditing]=useState(false);
     setEditRequestMsg(drv.requestSent);setShowEditModal(false);setTimeout(()=>setEditRequestMsg(""),3000);
   };
 
-  const searchTrips=async()=>{
-    if(!searchDate){setTripsLoaded(true);setTrips([]);return;}
+  const searchTrips=async(overrideDate)=>{
+    const useDate=(typeof overrideDate==="string"?overrideDate:null)||searchDate;
+    if(!useDate){setTripsLoaded(true);setTrips([]);setNearbyTrips([]);return;}
     setTripsLoaded(false);
-    let query=supabase.from("trips").select("*").eq("trip_date",searchDate).eq("status","active").eq("approved",true).order("trip_time");
+    let query=supabase.from("trips").select("*").eq("trip_date",useDate).eq("status","active").eq("approved",true).order("trip_time");
     if(searchFrom) query=query.eq("from_city",searchFrom);
     if(searchTo) query=query.eq("to_city",searchTo);
     if(searchGender) query=query.eq("gender_type",searchGender);
     const{data,error}=await query;
-    if(error){console.error("searchTrips failed",error);setTrips([]);setTripsLoaded(true);return;}
+    if(error){console.error("searchTrips failed",error);setTrips([]);setNearbyTrips([]);setTripsLoaded(true);return;}
     const driverIds=[...new Set((data||[]).map(t=>t.driver_id).filter(Boolean))];
     let driverMap={};
     if(driverIds.length){
@@ -1181,6 +1183,20 @@ const [driverEditing,setDriverEditing]=useState(false);
     }
     const enriched=(data||[]).map(t=>({...t,profiles:driverMap[t.driver_id]||null}));
     setTrips(enriched);
+    if(enriched.length===0){
+      const today=new Date().toISOString().slice(0,10);
+      const fromDate=useDate>=today?useDate:today;
+      let nq=supabase.from("trips").select("trip_date,from_city,to_city,gender_type").eq("status","active").eq("approved",true).neq("trip_date",useDate).gte("trip_date",fromDate).order("trip_date").limit(20);
+      if(searchFrom) nq=nq.eq("from_city",searchFrom);
+      if(searchTo) nq=nq.eq("to_city",searchTo);
+      if(searchGender) nq=nq.eq("gender_type",searchGender);
+      const{data:near}=await nq;
+      const uniqueDates=[];const seen=new Set();
+      (near||[]).forEach(t=>{if(!seen.has(t.trip_date)){seen.add(t.trip_date);uniqueDates.push(t.trip_date);}});
+      setNearbyTrips(uniqueDates.slice(0,3));
+    }else{
+      setNearbyTrips([]);
+    }
     setTripsLoaded(true);
   };
 
@@ -2381,7 +2397,19 @@ const [driverEditing,setDriverEditing]=useState(false);
             {!searchDate&&tripsLoaded&&<p style={{marginTop:12,fontSize:12,color:"#EF4444",fontWeight:700}}>{lang==="ar"?"الرجاء اختيار تاريخ السفر":"Please select a travel date"}</p>}
 
             {tripsLoaded&&(<div style={{marginTop:20}}>
-              {trips.length===0?(<div style={{textAlign:"center",padding:"24px 0"}}><p style={{color:"#AAA",fontSize:14,marginBottom:16}}>{b.noTrips}</p></div>)
+              {trips.length===0?(<div style={{textAlign:"center",padding:"24px 0"}}>
+                <p style={{color:"#AAA",fontSize:14,marginBottom:nearbyTrips.length?8:16}}>{lang==="ar"?"لا توجد رحلات في هذا التاريخ":"No trips on this exact date"}</p>
+                {nearbyTrips.length>0&&(<div style={{marginTop:12}}>
+                  <p style={{color:"#1B3A2A",fontSize:13,fontWeight:700,marginBottom:10}}>{lang==="ar"?"لكن توجد رحلات في تواريخ أخرى:":"But there are trips on other dates:"}</p>
+                  <div style={{display:"flex",flexDirection:"column",gap:8,alignItems:"center"}}>
+                    {nearbyTrips.map(d=>(
+                      <button key={d} onClick={()=>{setSearchDate(d);searchTrips(d);}} style={{background:"#F0F7F3",color:"#1B3A2A",border:"1.5px solid #1B3A2A",padding:"10px 22px",borderRadius:10,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
+                        {lang==="ar"?"عرض رحلات ":"View trips on "}{new Date(d).toLocaleDateString(lang==="ar"?"ar-EG":"en-US",{weekday:"short",day:"numeric",month:"short",year:"numeric"})} →
+                      </button>
+                    ))}
+                  </div>
+                </div>)}
+              </div>)
               :(<div>
                 <p style={{fontSize:13,fontWeight:700,color:"#1B3A2A",marginBottom:12}}>{b.availableTrips}:</p>
                 {[...trips].sort((a,b)=>tripSort==="price_asc"?(a.price_per_seat||0)-(b.price_per_seat||0):tripSort==="price_desc"?(b.price_per_seat||0)-(a.price_per_seat||0):(a.trip_time||"").localeCompare(b.trip_time||"")).map((trip,i)=>{
