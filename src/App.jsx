@@ -339,6 +339,7 @@ export default function App(){
   const [lastBookingId,setLastBookingId]=useState(null);
   const [tripRating,setTripRating]=useState(0);
   const [seatBookingError,setSeatBookingError]=useState("");
+  const [seatBookingLoading,setSeatBookingLoading]=useState(false);
   const [ratingSubmitted,setRatingSubmitted]=useState(false);
   const [selectedBookingDetail,setSelectedBookingDetail]=useState(null);
   const [selectedTripDetail,setSelectedTripDetail]=useState(null);
@@ -408,6 +409,7 @@ export default function App(){
   const [promoCode,setPromoCode]=useState("");
   const [promoDiscount,setPromoDiscount]=useState(null);
   const [promoError,setPromoError]=useState("");
+  const [promoChecking,setPromoChecking]=useState(false);
   const [promoCodes,setPromoCodes]=useState([]);
   const [newPromo,setNewPromo]=useState({code:"",discount_type:"fixed",discount_value:"",max_uses:"",expires_at:""});
 
@@ -739,7 +741,7 @@ const [driverEditing,setDriverEditing]=useState(false);
     setProfileSaving(true);
     const{error}=await supabase.from("profiles").update({full_name:profileEdit.fullName,phone:profileEdit.phone,email:profileEdit.email||null,emergency_contact_email:profileEdit.emergencyEmail}).eq("id",user.id);
     setProfileSaving(false);
-    if(error){console.error("saveProfile failed",error);return;}
+    if(error){alert(lang==="ar"?"فشل حفظ التغييرات: "+error.message:"Failed to save changes: "+error.message);return;}
     setProfile(p=>({...p,full_name:profileEdit.fullName,phone:profileEdit.phone,email:profileEdit.email||null,emergency_contact_email:profileEdit.emergencyEmail}));
     setProfileSaved(true);setTimeout(()=>setProfileSaved(false),3000);
   };
@@ -755,14 +757,21 @@ const [driverEditing,setDriverEditing]=useState(false);
   const rejectBooking=async(bookingId)=>{
     const bk=tripDetailBookings.find(b=>b.id===bookingId);
     const tripId=selectedTripDetail?.id;
-    const{error}=await supabase.rpc("driver_action_booking",{p_booking_id:bookingId,p_action:"reject"});
-    if(error){alert(lang==="ar"?"فشل رفض الحجز، حاول مجدداً":"Failed to reject booking, please try again");return;}
+    const prevBookings=[...tripDetailBookings];
+    const prevTripDetail={...selectedTripDetail};
     setTripDetailBookings(bs=>bs.map(b=>b.id===bookingId?{...b,status:"cancelled"}:b));
     if(bk&&tripId){
       setSelectedTripDetail(t=>({...t,available_seats:(t.available_seats||0)+bk.seats}));
       setDriverTrips(ts=>ts.map(t=>t.id===tripId?{...t,available_seats:(t.available_seats||0)+bk.seats}:t));
-      if(bk.user_id) createNotif(bk.user_id,"booking_rejected",lang==="ar"?"تم رفض حجزك":"Booking Rejected",lang==="ar"?`تم رفض حجزك على رحلة ${gc(selectedTripDetail.from_city)?.[lang]||selectedTripDetail.from_city} إلى ${gc(selectedTripDetail.to_city)?.[lang]||selectedTripDetail.to_city}`:`Your booking on ${gc(selectedTripDetail.from_city)?.en||selectedTripDetail.from_city} → ${gc(selectedTripDetail.to_city)?.en||selectedTripDetail.to_city} was rejected by the driver`);
     }
+    const{error}=await supabase.rpc("driver_action_booking",{p_booking_id:bookingId,p_action:"reject"});
+    if(error){
+      setTripDetailBookings(prevBookings);
+      setSelectedTripDetail(prevTripDetail);
+      setDriverTrips(ts=>ts.map(t=>t.id===tripId?{...t,available_seats:prevTripDetail.available_seats}:t));
+      alert(lang==="ar"?"فشل رفض الحجز، حاول مجدداً":"Failed to reject booking, please try again");return;
+    }
+    if(bk&&tripId&&bk.user_id) createNotif(bk.user_id,"booking_rejected",lang==="ar"?"تم رفض حجزك":"Booking Rejected",lang==="ar"?`تم رفض حجزك على رحلة ${gc(selectedTripDetail.from_city)?.[lang]||selectedTripDetail.from_city} إلى ${gc(selectedTripDetail.to_city)?.[lang]||selectedTripDetail.to_city}`:`Your booking on ${gc(selectedTripDetail.from_city)?.en||selectedTripDetail.from_city} → ${gc(selectedTripDetail.to_city)?.en||selectedTripDetail.to_city} was rejected by the driver`);
   };
 
   const markTripCompleted=async(tripId)=>{
@@ -782,13 +791,6 @@ const [driverEditing,setDriverEditing]=useState(false);
 
   const cancelBooking=async(bookingId)=>{
     const bk=upcomingBookings.find(b=>b.id===bookingId);
-    if(bk?.trips){
-      const tripDateTime=new Date(`${bk.trips.trip_date}T${bk.trips.trip_time||"00:00"}`);
-      if((tripDateTime-new Date())<24*60*60*1000){
-        alert(lang==="ar"?"لا يمكن إلغاء الحجز قبل أقل من 24 ساعة من موعد الرحلة":"Bookings cannot be cancelled less than 24 hours before departure");
-        return;
-      }
-    }
     if(!window.confirm(prof.cancelConfirm)) return;
     const{data:result,error}=await supabase.rpc("cancel_passenger_booking",{p_booking_id:bookingId});
     if(error){console.error("cancel_passenger_booking failed",error);alert((lang==="ar"?"حدث خطأ: ":"Error: ")+(error.message||"unknown"));return;}
@@ -945,9 +947,11 @@ const [driverEditing,setDriverEditing]=useState(false);
   };
 
   const checkPromoCode=async()=>{
-    if(!promoCode) return;
+    if(!promoCode||promoChecking) return;
     if(!/^[A-Z0-9]{1,20}$/.test(promoCode.toUpperCase())){setPromoError(lang==="ar"?"كود غير صحيح":"Invalid code");return;}
+    setPromoChecking(true);
     const{data,error:promoErr}=await supabase.from("promo_codes").select("*").eq("code",promoCode.toUpperCase()).eq("active",true).maybeSingle();
+    setPromoChecking(false);
     if(promoErr){setPromoError(lang==="ar"?"حدث خطأ، حاول مجدداً":"Something went wrong, try again");return;}
     if(!data){setPromoError(lang==="ar"?"كود غير صحيح":"Invalid code");setPromoDiscount(null);}
     else if(data.expires_at&&new Date(data.expires_at)<new Date()){setPromoError(lang==="ar"?"انتهت صلاحية هذا الكود":"This promo code has expired");setPromoDiscount(null);}
@@ -1067,11 +1071,13 @@ const [driverEditing,setDriverEditing]=useState(false);
 
   const verifyDriverId=async(driverId)=>{
     await supabase.from("profiles").update({id_verified:true,id_verification_pending:false}).eq("id",driverId);
+    createNotif(driverId,"application_approved",lang==="ar"?"تم التحقق من هويتك ✅":"ID Verified ✅",lang==="ar"?"تم مراجعة هويتك والتحقق منها بنجاح. يمكنك الآن نشر رحلاتك.":"Your ID has been reviewed and verified. You can now publish trips.");
     setAdminIdQueue(q=>q.filter(d=>d.id!==driverId));
   };
 
   const rejectDriverId=async(driverId)=>{
     await supabase.from("profiles").update({id_verified:false,id_verification_pending:false,id_photo_url:null}).eq("id",driverId);
+    createNotif(driverId,"application_denied",lang==="ar"?"تم رفض هويتك ❌":"ID Rejected ❌",lang==="ar"?"للأسف لم يتم قبول هويتك. يرجى رفع صورة واضحة وصالحة للهوية والمحاولة مجدداً.":"Your ID was not accepted. Please upload a clear, valid ID photo and try again.");
     setAdminIdQueue(q=>q.filter(d=>d.id!==driverId));
   };
 
@@ -1201,6 +1207,7 @@ const [driverEditing,setDriverEditing]=useState(false);
   };
 
   const bookTripSeat=async()=>{
+    if(seatBookingLoading||promoChecking) return;
     setSeatBookingError("");
     const name=tripBooking.name.trim();
     const phone=tripBooking.phone.trim();
@@ -1208,6 +1215,7 @@ const [driverEditing,setDriverEditing]=useState(false);
     if(name.length<2){setSeatBookingError(lang==="ar"?"الاسم قصير جداً":"Name is too short");return;}
     if(!/^\+?[\d\s\-]{7,20}$/.test(phone)){setSeatBookingError(lang==="ar"?"رقم الهاتف غير صحيح":"Invalid phone number");return;}
     if(tripBooking.seats>selectedTrip.available_seats){setSeatBookingError(lang==="ar"?"عدد المقاعد غير متاح":"Not enough seats available");return;}
+    setSeatBookingLoading(true);
     const ref=genRef();
     const{data:booking,error}=await supabase.rpc("book_trip_seat",{
       p_trip_id:selectedTrip.id,
@@ -1224,7 +1232,7 @@ const [driverEditing,setDriverEditing]=useState(false);
       if(msg.includes("seats")||msg.includes("available")){setSeatBookingError(lang==="ar"?"عُذراً، لم تعد هناك مقاعد كافية":"Sorry, not enough seats left — someone else just booked");}
       else if(msg.includes("promo")){setSeatBookingError(lang==="ar"?"كود الخصم غير صالح أو منتهي":"Promo code invalid or exhausted");}
       else{setSeatBookingError(lang==="ar"?"فشل الحجز، يرجى المحاولة مرة أخرى":"Booking failed, please try again");}
-      return;
+      setSeatBookingLoading(false);return;
     }
     if(booking) setLastBookingId(booking.booking_id||booking.id);
     // Price is now computed server-side; use booking.total_price for display
@@ -1235,6 +1243,7 @@ const [driverEditing,setDriverEditing]=useState(false);
       ?`🚗 *حجز مقعد - سفّرني*${isWomen?" 💜 نساء فقط":""}\n\n📋 رقم الحجز: ${ref}\n📍 المسار: ${from?.[lang]||selectedTrip.from_city} إلى ${to?.[lang]||selectedTrip.to_city}\n📅 التاريخ: ${selectedTrip.trip_date}\n⏰ الوقت: ${formatTime(selectedTrip.trip_time)}\n💰 السعر: $${Number(finalPrice).toFixed(2)}\n\n👤 الاسم: ${tripBooking.name}\n📞 الهاتف: ${tripBooking.phone}`
       :`🚗 *Seat Booking - Safferni*${isWomen?" 💜 Women Only":""}\n\n📋 Ref: ${ref}\n📍 Route: ${from?.en||selectedTrip.from_city} to ${to?.en||selectedTrip.to_city}\n📅 Date: ${selectedTrip.trip_date}\n⏰ Time: ${formatTime(selectedTrip.trip_time)}\n💰 Price: $${Number(finalPrice).toFixed(2)}\n\n👤 Name: ${tripBooking.name}\n📞 Phone: ${tripBooking.phone}`;
     window.open(`https://wa.me/${WA_PHONE}?text=${encodeURIComponent(msg)}`,"_blank");
+    setSeatBookingLoading(false);
     setTripBooked(true);
     if(selectedTrip?.driver_id) createNotif(selectedTrip.driver_id,"new_booking",lang==="ar"?"حجز جديد على رحلتك 👤":"New booking on your trip 👤",lang==="ar"?`${name} حجز ${tripBooking.seats} مقعد — ${gc(selectedTrip.from_city)?.[lang]||selectedTrip.from_city} إلى ${gc(selectedTrip.to_city)?.[lang]||selectedTrip.to_city} (${selectedTrip.trip_date})`:`${name} booked ${tripBooking.seats} seat(s) on ${gc(selectedTrip.from_city)?.en||selectedTrip.from_city} → ${gc(selectedTrip.to_city)?.en||selectedTrip.to_city} (${selectedTrip.trip_date})`);
   };
@@ -2494,7 +2503,7 @@ const [driverEditing,setDriverEditing]=useState(false);
                   <label style={lbl}>{lang==="ar"?"كود الخصم (اختياري)":"Promo Code (optional)"}</label>
                   <div style={{display:"flex",gap:8}}>
                     <input value={promoCode} onChange={e=>setPromoCode(e.target.value.toUpperCase())} style={{...inp,flex:1}} placeholder="SAFFERNI10"/>
-                    <button onClick={checkPromoCode} style={{background:"#1B3A2A",color:"white",border:"none",padding:"0 14px",borderRadius:10,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{lang==="ar"?"تحقق":"Apply"}</button>
+                    <button onClick={checkPromoCode} disabled={promoChecking} style={{background:"#1B3A2A",color:"white",border:"none",padding:"0 14px",borderRadius:10,fontSize:12,fontWeight:700,cursor:promoChecking?"not-allowed":"pointer",fontFamily:"inherit",opacity:promoChecking?0.7:1}}>{promoChecking?"...":(lang==="ar"?"تحقق":"Apply")}</button>
                   </div>
                   {promoDiscount&&<div style={{fontSize:11,color:"#065F46",fontWeight:700,marginTop:4}}>✓ {lang==="ar"?`خصم ${promoDiscount.discount_type==="fixed"?"$"+promoDiscount.discount_value:promoDiscount.discount_value+"%"}`:`${promoDiscount.discount_type==="fixed"?"$"+promoDiscount.discount_value:promoDiscount.discount_value+"% off"} applied`}</div>}
                   {promoError&&<div style={{fontSize:11,color:"#DC2626",fontWeight:700,marginTop:4}}>{promoError}</div>}
@@ -2509,7 +2518,7 @@ const [driverEditing,setDriverEditing]=useState(false);
                 {seatBookingError&&<div style={{background:"#FEF2F2",border:"1px solid #FECACA",borderRadius:8,padding:"10px 14px",marginBottom:12,fontSize:13,color:"#DC2626",fontWeight:600,textAlign:"center"}}>{seatBookingError}</div>}
                 <div style={{display:"flex",gap:10}}>
                   <button onClick={()=>{setSelectedTrip(null);setSeatBookingError("");}} style={{flex:1,background:"white",color:"#666",border:"1.5px solid #DDD",padding:"12px",borderRadius:10,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>✕</button>
-                  <button onClick={bookTripSeat} style={{flex:2,background:selectedTrip.gender_type==="women_only"?"#7C3AED":"#1B3A2A",color:"white",border:"none",padding:"12px",borderRadius:10,fontSize:14,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>{b.submit}</button>
+                  <button onClick={bookTripSeat} disabled={seatBookingLoading} style={{flex:2,background:selectedTrip.gender_type==="women_only"?"#7C3AED":"#1B3A2A",color:"white",border:"none",padding:"12px",borderRadius:10,fontSize:14,fontWeight:800,cursor:seatBookingLoading?"not-allowed":"pointer",fontFamily:"inherit",opacity:seatBookingLoading?0.7:1}}>{seatBookingLoading?(lang==="ar"?"جاري الحجز...":"Booking..."):b.submit}</button>
                 </div>
               </div>)}
             </div>
