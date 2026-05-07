@@ -2374,8 +2374,9 @@ const [driverEditing,setDriverEditing]=useState(false);
         <section ref={searchRef} style={{maxWidth:680,margin:"0 auto",padding:"40px 24px 20px"}}>
           <div style={{background:"white",borderRadius:16,padding:"28px",border:"1px solid #E8E6E1",boxShadow:"0 4px 20px rgba(0,0,0,0.04)"}}>
             <h3 style={{fontSize:18,fontWeight:900,color:"#1B3A2A",marginBottom:16,textAlign:"center"}}>{b.searchTitle}</h3>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
+            <div style={{display:"grid",gridTemplateColumns:"1fr auto 1fr",gap:8,marginBottom:12,alignItems:"flex-end"}}>
               <div><label style={lbl}>{b.from}</label><select value={searchFrom} onChange={e=>{setSearchFrom(e.target.value);setSearchTo("")}} style={inp}><option value="">{b.selectCity}</option>{cities.map(c=><option key={c.id} value={c.id}>{c[lang]}</option>)}</select></div>
+              <button onClick={()=>{const f=searchFrom,t=searchTo;setSearchFrom(t);setSearchTo(f);}} title={lang==="ar"?"عكس الاتجاه":"Swap"} style={{background:"white",border:"2px solid #E8E6E1",borderRadius:10,padding:"0 10px",fontSize:18,cursor:"pointer",fontFamily:"inherit",height:42,display:"flex",alignItems:"center",justifyContent:"center",color:"#1B3A2A",transition:"border-color 0.2s"}}>⇄</button>
               <div><label style={lbl}>{b.to}</label><select value={searchTo} onChange={e=>setSearchTo(e.target.value)} style={inp} disabled={!searchFrom}><option value="">{searchFrom?b.selectDest:b.selectFromFirst}</option>{searchFrom?getDests(searchFrom).map(id=>{const c=gc(id);return<option key={id} value={id}>{c[lang]}</option>}):null}</select></div>
             </div>
             <div style={{marginBottom:12}}>
@@ -2492,10 +2493,14 @@ const [driverEditing,setDriverEditing]=useState(false);
                 <button onClick={()=>{setTripBooked(false);setSelectedTrip(null);setReviewForm({rating:0,text:""});setPromoCode("");setPromoDiscount(null);}} style={{background:"white",color:"#666",border:"1.5px solid #DDD",padding:"10px 24px",borderRadius:10,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{b.confirmClose}</button>
               </div>)
               :(<div>
-                <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16}}>
+                <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12}}>
                   <h3 style={{fontSize:18,fontWeight:900,color:selectedTrip.gender_type==="women_only"?"#7C3AED":"#1B3A2A"}}>{b.bookSeat}</h3>
                   <GenderBadge type={selectedTrip.gender_type} lang={lang}/>
                 </div>
+                {(()=>{const fc=gc(selectedTrip.from_city);const tc=gc(selectedTrip.to_city);return(<div style={{background:selectedTrip.gender_type==="women_only"?"#F5F3FF":"#F0F7F3",borderRadius:10,padding:"12px 16px",marginBottom:16}}>
+                  <div style={{fontWeight:800,fontSize:15,color:"#1B3A2A",marginBottom:4}}>{fc?.[lang]||selectedTrip.from_city} {lang==="ar"?"→":"→"} {tc?.[lang]||selectedTrip.to_city}</div>
+                  <div style={{fontSize:12,color:"#555"}}>{selectedTrip.trip_date}{selectedTrip.trip_time?" · "+formatTime(selectedTrip.trip_time):""} · ${selectedTrip.price_per_seat}/{lang==="ar"?"مقعد":"seat"} · {selectedTrip.available_seats} {lang==="ar"?"مقاعد متبقية":"seats left"}</div>
+                </div>);})()}
                 <div style={{marginBottom:12}}><label style={lbl}>{b.name} *</label><input value={tripBooking.name} onChange={e=>setTripBooking({...tripBooking,name:e.target.value})} style={inp}/></div>
                 <div style={{marginBottom:12}}><label style={lbl}>{b.phone} *</label><PhoneField value={tripBooking.phone} onChange={v=>setTripBooking({...tripBooking,phone:v})} lang={lang} inp={inp}/></div>
                 <div style={{marginBottom:12}}><label style={lbl}>{b.passengers}</label><select value={tripBooking.seats} onChange={e=>setTripBooking({...tripBooking,seats:parseInt(e.target.value)})} style={inp}>{Array.from({length:Math.min(selectedTrip.available_seats,10)},(_,i)=><option key={i+1} value={i+1}>{i+1}</option>)}</select></div>
