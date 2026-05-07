@@ -43,14 +43,28 @@ async function createTrip({ from_city, to_city, trip_date, trip_time, price_per_
   return { success: true, trip: data };
 }
 
+async function resolveTripId(idOrPrefix) {
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idOrPrefix)) return idOrPrefix;
+  const { data } = await supabase.from("trips").select("id").like("id", `${idOrPrefix.toLowerCase()}%`).limit(2);
+  if (!data?.length) return null;
+  if (data.length > 1) return "AMBIGUOUS";
+  return data[0].id;
+}
+
 async function approveTrip(tripId) {
-  const { error } = await supabase.from("trips").update({ approved: true }).eq("id", tripId);
+  const id = await resolveTripId(tripId);
+  if (!id) return { success: false, error: "Trip not found" };
+  if (id === "AMBIGUOUS") return { success: false, error: "Multiple trips match that ID prefix, use the full ID" };
+  const { error } = await supabase.from("trips").update({ approved: true }).eq("id", id);
   if (error) return { success: false, error: error.message };
   return { success: true };
 }
 
 async function cancelTrip(tripId) {
-  const { error } = await supabase.from("trips").update({ status: "cancelled" }).eq("id", tripId);
+  const id = await resolveTripId(tripId);
+  if (!id) return { success: false, error: "Trip not found" };
+  if (id === "AMBIGUOUS") return { success: false, error: "Multiple trips match that ID prefix, use the full ID" };
+  const { error } = await supabase.from("trips").update({ status: "cancelled" }).eq("id", id);
   if (error) return { success: false, error: error.message };
   return { success: true };
 }
