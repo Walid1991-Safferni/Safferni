@@ -118,6 +118,37 @@ async function getDriverId(nameOrEmail) {
   return data || [];
 }
 
+async function findBooking(refOrId) {
+  const term = refOrId.trim();
+  let { data } = await supabase.from("bookings").select("id,ref_code,passenger_name,passenger_phone,seats,total_price,status,trip_id,trips(from_city,to_city,trip_date,trip_time,available_seats,driver_id)").or(`ref_code.eq.${term.toUpperCase()},id.eq.${term}`).limit(1);
+  if (!data?.length) {
+    const { data: byPrefix } = await supabase.from("bookings").select("id,ref_code,passenger_name,passenger_phone,seats,total_price,status,trip_id,trips(from_city,to_city,trip_date,trip_time,available_seats,driver_id)").like("id", `${term}%`).limit(1);
+    data = byPrefix;
+  }
+  return data?.[0] || null;
+}
+
+async function confirmBooking(refOrId) {
+  const bk = await findBooking(refOrId);
+  if (!bk) return { success: false, error: "Booking not found" };
+  if (bk.status !== "pending") return { success: false, error: `Booking is already ${bk.status}` };
+  const { error } = await supabase.from("bookings").update({ status: "confirmed" }).eq("id", bk.id);
+  if (error) return { success: false, error: error.message };
+  return { success: true, booking: bk };
+}
+
+async function rejectBooking(refOrId) {
+  const bk = await findBooking(refOrId);
+  if (!bk) return { success: false, error: "Booking not found" };
+  if (bk.status === "cancelled") return { success: false, error: "Booking is already cancelled" };
+  const { error: bkErr } = await supabase.from("bookings").update({ status: "cancelled" }).eq("id", bk.id);
+  if (bkErr) return { success: false, error: bkErr.message };
+  if (bk.trips?.available_seats != null && bk.trip_id) {
+    await supabase.from("trips").update({ available_seats: bk.trips.available_seats + bk.seats }).eq("id", bk.trip_id);
+  }
+  return { success: true, booking: bk };
+}
+
 // ── Tool definitions for Claude ───────────────────────────
 
 const tools = [
@@ -214,6 +245,24 @@ const tools = [
       required: ["name"],
     },
   },
+  {
+    name: "confirm_booking",
+    description: "Confirm a passenger booking (changes status to confirmed)",
+    input_schema: {
+      type: "object",
+      properties: { booking_ref: { type: "string", description: "Booking reference code (e.g. ABC12345) or booking ID" } },
+      required: ["booking_ref"],
+    },
+  },
+  {
+    name: "reject_booking",
+    description: "Reject a passenger booking (cancels it and restores the seats to the trip)",
+    input_schema: {
+      type: "object",
+      properties: { booking_ref: { type: "string", description: "Booking reference code or booking ID" } },
+      required: ["booking_ref"],
+    },
+  },
 ];
 
 // ── Tool executor ─────────────────────────────────────────
@@ -239,6 +288,8 @@ async function executeTool(name, input) {
     case "deny_application": return denyApplication(input.application_id);
     case "get_stats": return getStats();
     case "find_driver": return getDriverId(input.name);
+    case "confirm_booking": return confirmBooking(input.booking_ref);
+    case "reject_booking": return rejectBooking(input.booking_ref);
     default: return { error: "Unknown tool" };
   }
 }
@@ -290,6 +341,16 @@ function formatResult(toolName, result) {
       return result.map(d => `👤 ${d.full_name} — \`${d.id}\``).join("\n");
     }
 
+    case "confirm_booking":
+      return result.success
+        ? `✅ Booking *${result.booking.ref_code}* confirmed.\n${result.booking.passenger_name} — ${result.booking.seats} seat(s) on ${result.booking.trips?.from_city||"?"} → ${result.booking.trips?.to_city||"?"}`
+        : `❌ ${result.error}`;
+
+    case "reject_booking":
+      return result.success
+        ? `✅ Booking *${result.booking.ref_code}* rejected. Seats restored to trip.`
+        : `❌ ${result.error}`;
+
     default: return JSON.stringify(result, null, 2).slice(0, 1000);
   }
 }
@@ -321,6 +382,7 @@ You have access to tools to:
 - Create, approve, and cancel trips
 - View pending and upcoming trips
 - View bookings
+- Confirm or reject bookings on behalf of drivers (use booking ref code like ABC12345)
 - Approve or deny driver applications
 - Get platform stats
 - Find drivers by name
