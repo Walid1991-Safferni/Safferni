@@ -382,6 +382,8 @@ export default function App(){
   const [selectedDriver,setSelectedDriver]=useState(null);
   const [driverProfile,setDriverProfile]=useState({fullName:"",dob:"",idNumber:"",carKindYear:"",carPlate:"",transportLicense:"",driverLicense:"",hasWifi:false,hasWater:false,hasAc:false});
   const [driverPublicPage,setDriverPublicPage]=useState(null);
+  const [driversPageData,setDriversPageData]=useState([]);
+  const [driversPageLoading,setDriversPageLoading]=useState(false);
   const [driverProfileMsg,setDriverProfileMsg]=useState("");
   const [avatarUploading,setAvatarUploading]=useState(false);
   const [idUploading,setIdUploading]=useState(false);
@@ -490,6 +492,7 @@ const [driverEditing,setDriverEditing]=useState(false);
   useEffect(()=>{if(adminTab==="idVerification"&&isAdmin)loadAdminIdQueue();},[adminTab]);
   useEffect(()=>{if(page==="admin"&&isAdmin){loadAdminData();if(adminTab==="promoCodes") loadPromoCodes();}},[page,adminTab]);
   useEffect(()=>{if(page==="driver"&&user){setSelectedDriver(null);loadProfile(user);loadDriverData();}},[page,user]);
+  useEffect(()=>{if(page==="drivers") loadDriversPage();},[page]);
   useEffect(()=>{
     if(page==="profile"&&user){
       setProfileEdit({fullName:profile?.full_name||"",phone:profile?.phone||"",email:profile?.email||user.email||"",emergencyEmail:profile?.emergency_contact_email||""});
@@ -993,6 +996,17 @@ const [driverEditing,setDriverEditing]=useState(false);
     setDriverProfile({fullName:driver.full_name||"",dob:driver.date_of_birth||"",idNumber:driver.id_number||"",carKindYear:driver.car_type||"",carPlate:driver.car_plate||"",transportLicense:driver.transport_license||"",driverLicense:driver.driver_license||"",hasWifi:driver.has_wifi||false,hasWater:driver.has_water||false,hasAc:driver.has_ac||false});
   };
 
+  const loadDriversPage=async()=>{
+    setDriversPageLoading(true);
+    const{data:drivers}=await supabase.from("profiles").select("id,full_name,avatar_url,car_type,has_wifi,has_water,has_ac,id_verified").eq("role","driver");
+    if(!drivers){setDriversPageLoading(false);return;}
+    const ids=drivers.map(d=>d.id);
+    const{data:ratings}=await supabase.from("trips").select("driver_id,avg_rating,rating_count").in("driver_id",ids).gt("rating_count",0);
+    const rmap={};(ratings||[]).forEach(r=>{if(!rmap[r.driver_id]||r.rating_count>(rmap[r.driver_id]?.count||0))rmap[r.driver_id]={avg:r.avg_rating,count:r.rating_count};});
+    setDriversPageData(drivers.map(d=>({...d,avg_rating:rmap[d.id]?.avg||0,rating_count:rmap[d.id]?.count||0})));
+    setDriversPageLoading(false);
+  };
+
   const openDriverPublicPage=async(driverId)=>{
     const{data:prof,error:profErr}=await supabase.from("profiles").select("full_name,car_type,has_wifi,has_water,has_ac,avatar_url,id_verified").eq("id",driverId).maybeSingle();
     if(profErr){console.error("openDriverPublicPage profile failed",profErr);return;}
@@ -1295,7 +1309,8 @@ const [driverEditing,setDriverEditing]=useState(false);
     setForm({from:"",to:"",type:"car",date:"",time:"",name:"",phone:"",passengers:"1",bags:"0",notes:"",payment:"cash"});
   };
 
-  const navLinks=[["home",t.nav.home],["contact",t.nav.contact],...(driverApproved?[["driver",t.nav.driver]]:[]),...(isAdmin?[["admin",t.nav.admin]]:[])];
+  const navLinks=[["home",t.nav.home],["contact",t.nav.contact],...(isAdmin?[["drivers",lang==="ar"?"السائقون":"Drivers"]]:[]),...(driverApproved?[["driver",t.nav.driver]]:[]),...(isAdmin?[["admin",t.nav.admin]]:[])];
+  // ↑ Remove `isAdmin?` from "drivers" entry above to make the Drivers page public
   const statusBadge=(s)=>({padding:"4px 12px",borderRadius:20,fontSize:11,fontWeight:700,background:s==="active"?"#D1FAE5":s==="confirmed"?"#BBF7D0":s==="pending"?"#FFF3CD":s==="completed"?"#E0F2FE":s==="no_show"?"#FEF3C7":"#FEE2E2",color:s==="active"?"#065F46":s==="confirmed"?"#065F46":s==="pending"?"#92400E":s==="completed"?"#0369A1":s==="no_show"?"#92400E":"#991B1B"});
 
   const timeOptions=Array.from({length:96},(_,i)=>{
@@ -2305,6 +2320,56 @@ const [driverEditing,setDriverEditing]=useState(false);
               <button onClick={requestTimeEdit} style={{flex:2,background:"#1B3A2A",color:"white",border:"none",padding:"12px",borderRadius:10,fontSize:14,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>{drv.submitRequest}</button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ─── DRIVERS ─────────────────────────────────────────────────────────── */}
+      {page==="drivers"&&(
+        <div style={{maxWidth:900,margin:"0 auto",padding:"40px 24px 80px",...fade}}>
+          <div style={{textAlign:"center",marginBottom:32}}>
+            <h2 style={{fontSize:28,fontWeight:900,color:"#1B3A2A",marginBottom:8}}>{lang==="ar"?"سائقونا":"Our Drivers"}</h2>
+            <p style={{fontSize:14,color:"#888"}}>{lang==="ar"?"فريق سائقين موثوقين ومعتمدين":"A team of trusted, verified drivers"}</p>
+          </div>
+          {driversPageLoading?(
+            <div style={{textAlign:"center",padding:"60px 0",color:"#AAA",fontSize:14}}>{lang==="ar"?"جاري التحميل...":"Loading..."}</div>
+          ):driversPageData.length===0?(
+            <div style={{textAlign:"center",padding:"60px 0",color:"#CCC",fontSize:14}}>{lang==="ar"?"لا يوجد سائقون بعد":"No drivers yet"}</div>
+          ):(
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))",gap:20}}>
+              {driversPageData.map(driver=>(
+                <div key={driver.id} style={{background:"white",borderRadius:16,border:"1px solid #E8E6E1",boxShadow:"0 4px 20px rgba(0,0,0,0.04)",padding:"24px 20px",display:"flex",flexDirection:"column",gap:14,animation:"fadeUp 0.3s ease both"}}>
+                  {/* Avatar + Name */}
+                  <div style={{display:"flex",alignItems:"center",gap:14}}>
+                    {driver.avatar_url
+                      ?<img src={driver.avatar_url} alt={driver.full_name} style={{width:64,height:64,borderRadius:"50%",objectFit:"cover",border:"3px solid #1B3A2A",flexShrink:0}}/>
+                      :<div style={{width:64,height:64,borderRadius:"50%",background:"#C7DDD0",display:"flex",alignItems:"center",justifyContent:"center",fontSize:26,flexShrink:0}}>👤</div>
+                    }
+                    <div>
+                      <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
+                        <span style={{fontSize:16,fontWeight:900,color:"#1B3A2A"}}>{driver.full_name||"—"}</span>
+                        {driver.id_verified&&<VerifiedBadge size={18} title={lang==="ar"?"موثّق":"Verified"}/>}
+                      </div>
+                      {driver.car_type&&<div style={{fontSize:12,color:"#666",fontWeight:600,marginTop:2}}>🚗 {driver.car_type}</div>}
+                      {driver.avg_rating>0&&(
+                        <div style={{display:"flex",alignItems:"center",gap:5,marginTop:4}}>
+                          <span style={{color:"#F59E0B",fontSize:13}}>{"★".repeat(Math.round(driver.avg_rating))}{"☆".repeat(5-Math.round(driver.avg_rating))}</span>
+                          <span style={{fontSize:11,color:"#888",fontWeight:700}}>{driver.avg_rating.toFixed(1)} ({driver.rating_count})</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  {/* Amenities */}
+                  <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                    {[["has_wifi","📶","WiFi","واي فاي"],["has_water","💧","Water","مياه"],["has_ac","❄️","AC","تكييف"]].map(([k,icon,en,ar])=>(
+                      <span key={k} style={{display:"flex",alignItems:"center",gap:4,padding:"4px 10px",borderRadius:20,fontSize:11,fontWeight:700,background:driver[k]?"#D1FAE5":"#F3F4F6",color:driver[k]?"#065F46":"#9CA3AF",border:`1px solid ${driver[k]?"#A7F3D0":"#E5E7EB"}`}}>{icon} {lang==="ar"?ar:en}</span>
+                    ))}
+                  </div>
+                  {/* Reviews button */}
+                  <button onClick={()=>openDriverPublicPage(driver.id)} style={{marginTop:"auto",background:"#F0F7F3",color:"#1B3A2A",border:"1.5px solid #C7DDD0",borderRadius:10,padding:"9px",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",transition:"background 0.2s"}}>{lang==="ar"?"عرض الملف والتقييمات":"View Profile & Reviews"}</button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
