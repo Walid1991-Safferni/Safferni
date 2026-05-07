@@ -22,16 +22,41 @@ async function sendMessage(chatId, text) {
 
 // ── Supabase actions ──────────────────────────────────────
 
-const CITY_NAMES = {
-  damascus: "damascus", aleppo: "aleppo", homs: "homs", hama: "hama",
-  latakia: "latakia", tartus: "tartus", deir_ez_zor: "deir_ez_zor",
-  raqqa: "raqqa", hasaka: "hasaka", qamishli: "qamishli",
-  daraa: "daraa", sweida: "sweida", quneitra: "quneitra",
+// Maps any common name (English, Arabic, full, lowercase) to the canonical city ID used by the website.
+const CITY_MAP = {
+  damascus: "dam", dam: "dam", "دمشق": "dam",
+  aleppo: "ale", ale: "ale", "حلب": "ale",
+  homs: "hom", hom: "hom", "حمص": "hom",
+  hama: "ham", ham: "ham", "حماة": "ham",
+  latakia: "lat", lat: "lat", "اللاذقية": "lat",
+  tartus: "tar", tar: "tar", "طرطوس": "tar",
+  daraa: "dar", dar: "dar", "درعا": "dar",
+  "deir ez-zor": "dez", "deir ez zor": "dez", "deir_ez_zor": "dez", deirezzor: "dez", dez: "dez", "دير الزور": "dez",
+  "al-hasakah": "has", hasakah: "has", hasaka: "has", has: "has", "الحسكة": "has",
+  raqqa: "raq", raq: "raq", "الرقة": "raq",
+  idlib: "idl", idl: "idl", "إدلب": "idl",
+  quneitra: "qun", qun: "qun", "القنيطرة": "qun",
+  "as-suwayda": "suw", suwayda: "suw", sweida: "suw", suw: "suw", "السويداء": "suw",
+  "rural damascus": "rif", rif: "rif", "ريف دمشق": "rif",
+  beirut: "bei", bei: "bei", "بيروت": "bei",
+  amman: "amm", amm: "amm", "عمّان": "amm", "عمان": "amm",
+  "queen alia airport": "qaa", "queen alia": "qaa", qaa: "qaa", "مطار الملكة علياء": "qaa",
+  "damascus international airport": "daa", "damascus airport": "daa", daa: "daa", "مطار دمشق الدولي": "daa",
 };
 
+function normalizeCity(name) {
+  if (!name) return null;
+  const key = name.trim().toLowerCase();
+  return CITY_MAP[key] || (Object.values(CITY_MAP).includes(key) ? key : null);
+}
+
 async function createTrip({ from_city, to_city, trip_date, trip_time, price_per_seat, total_seats, gender_type, driver_id }) {
+  const fromId = normalizeCity(from_city);
+  const toId = normalizeCity(to_city);
+  if (!fromId) return { success: false, error: `Unknown origin city: "${from_city}"` };
+  if (!toId) return { success: false, error: `Unknown destination city: "${to_city}"` };
   const { data, error } = await supabase.from("trips").insert({
-    from_city, to_city, trip_date, trip_time,
+    from_city: fromId, to_city: toId, trip_date, trip_time,
     price_per_seat, total_seats,
     available_seats: total_seats,
     gender_type: gender_type || "mixed",
