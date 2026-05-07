@@ -61,7 +61,7 @@ async function createTrip({ from_city, to_city, trip_date, trip_time, price_per_
     available_seats: total_seats,
     gender_type: gender_type || "mixed",
     driver_id,
-    status: "active",
+    status: "pending",
     approved: false,
   }).select().single();
   if (error) return { success: false, error: error.message };
@@ -80,7 +80,7 @@ async function approveTrip(tripId) {
   const id = await resolveTripId(tripId);
   if (!id) return { success: false, error: "Trip not found" };
   if (id === "AMBIGUOUS") return { success: false, error: "Multiple trips match that ID prefix, use the full ID" };
-  const { error } = await supabase.from("trips").update({ approved: true }).eq("id", id);
+  const { error } = await supabase.from("trips").update({ approved: true, status: "active" }).eq("id", id);
   if (error) return { success: false, error: error.message };
   return { success: true };
 }
