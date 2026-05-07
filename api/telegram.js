@@ -387,7 +387,11 @@ You have access to tools to:
 - Get platform stats
 - Find drivers by name
 
-Cities available: damascus, aleppo, homs, hama, latakia, tartus, deir_ez_zor, raqqa, hasaka, qamishli, daraa, sweida, quneitra
+Cities available (use these exact IDs in tool calls):
+Syria: dam (Damascus), ale (Aleppo), hom (Homs), ham (Hama), lat (Latakia), tar (Tartus), dar (Daraa), dez (Deir ez-Zor), has (Al-Hasakah), raq (Raqqa), idl (Idlib), qun (Quneitra), suw (As-Suwayda), rif (Rural Damascus)
+International: bei (Beirut), amm (Amman), qaa (Queen Alia Airport Amman), daa (Damascus Int'l Airport)
+
+When the user mentions a city by name, convert it to the correct ID before calling tools. For example "Aleppo" → "ale", "Beirut" → "bei", "Amman" → "amm".
 
 When the user asks you to do something, use the appropriate tool. Be concise. For lists, show the most important info only.
 
