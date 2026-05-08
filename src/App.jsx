@@ -869,7 +869,6 @@ const [driverEditing,setDriverEditing]=useState(false);
     if(pastActive.length) await supabase.from("trips").update({status:"completed"}).in("id",pastActive);
     const{data:freshTrips}=pastActive.length?await supabase.from("trips").select("*").order("trip_date",{ascending:false}):{data:allTrips};
     setAdminAllTrips(freshTrips||[]);
-    const today=new Date().toISOString().split("T")[0];
     const{count:bookingsToday}=await supabase.from("bookings").select("*",{count:"exact",head:true}).gte("created_at",today);
     const activeCount=(allTrips||[]).filter(t=>t.status==="active").length;
     const routeCounts={};
