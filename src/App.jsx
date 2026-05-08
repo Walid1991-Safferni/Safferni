@@ -392,7 +392,12 @@ export default function App(){
   const [passengerAvatarMsg,setPassengerAvatarMsg]=useState("");
   const [passengerAvatarUploading,setPassengerAvatarUploading]=useState(false);
 
+  const [routeReqForm,setRouteReqForm]=useState({name:"",phone:""});
+  const [routeReqSent,setRouteReqSent]=useState(false);
+  const [routeReqLoading,setRouteReqLoading]=useState(false);
+
   // Driver panel
+  const [driverEarnings,setDriverEarnings]=useState(null);
   const [driverTrips,setDriverTrips]=useState([]);
   const [tripForm,setTripForm]=useState({from:"",to:"",date:"",time:"",pricePerSeat:"",totalSeats:"4",carType:"",genderType:"mixed",repeatWeeks:"1"});
   const [tripError,setTripError]=useState("");
@@ -491,6 +496,8 @@ const [driverEditing,setDriverEditing]=useState(false);
   },[user?.id]);
   useEffect(()=>{if(adminTab==="activity"&&isAdmin)loadAdminActivity();},[adminTab]);
   useEffect(()=>{if(adminTab==="idVerification"&&isAdmin)loadAdminIdQueue();},[adminTab]);
+  const [adminRouteRequests,setAdminRouteRequests]=useState([]);
+  useEffect(()=>{if(adminTab==="routeRequests"&&isAdmin){supabase.from("route_requests").select("*").order("created_at",{ascending:false}).then(({data})=>setAdminRouteRequests(data||[]));}},[adminTab]);
   useEffect(()=>{if(page==="admin"&&isAdmin){loadAdminData();if(adminTab==="promoCodes") loadPromoCodes();}},[page,adminTab]);
   useEffect(()=>{if(page==="driver"&&user){setSelectedDriver(null);loadProfile(user);loadDriverData();}},[page,user]);
   useEffect(()=>{if(page==="drivers") loadDriversPage();},[page]);
@@ -1134,6 +1141,18 @@ const [driverEditing,setDriverEditing]=useState(false);
       }
       setBookingCounts(counts);
     }
+    if(myTrips&&myTrips.length>0){
+      const allIds=myTrips.map(t=>t.id);
+      const{data:bks}=await supabase.from("bookings").select("total_price,created_at,status").in("trip_id",allIds).eq("status","confirmed");
+      const now=new Date();const thisMonth=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`;
+      const total=(bks||[]).reduce((s,b)=>s+(b.total_price||0),0);
+      const monthly=(bks||[]).filter(b=>b.created_at?.slice(0,7)===thisMonth).reduce((s,b)=>s+(b.total_price||0),0);
+      const completedCount=myTrips.filter(t=>t.status==="completed").length;
+      const upcomingCount=myTrips.filter(t=>t.status==="active"&&t.trip_date>=new Date().toISOString().slice(0,10)).length;
+      const rated=myTrips.filter(t=>t.avg_rating>0);
+      const avgRating=rated.length?rated.reduce((s,t)=>s+t.avg_rating,0)/rated.length:0;
+      setDriverEarnings({total,monthly,completedCount,upcomingCount,avgRating:avgRating.toFixed(1),ratingCount:rated.length});
+    }
   };
 
   const validateTrip=async()=>{
@@ -1188,6 +1207,7 @@ const [driverEditing,setDriverEditing]=useState(false);
 
   const searchTrips=async(overrideDate)=>{
     const useDate=(typeof overrideDate==="string"?overrideDate:null)||searchDate;
+    setRouteReqSent(false);
     if(!useDate){setTripsLoaded(true);setTrips([]);setNearbyTrips([]);return;}
     setTripsLoaded(false);
     let query=supabase.from("trips").select("*").eq("trip_date",useDate).eq("status","active").eq("approved",true).order("trip_time");
@@ -1219,6 +1239,20 @@ const [driverEditing,setDriverEditing]=useState(false);
       setNearbyTrips([]);
     }
     setTripsLoaded(true);
+  };
+
+  const submitRouteRequest=async()=>{
+    if(!routeReqForm.name||!routeReqForm.phone||!searchFrom||!searchTo){return;}
+    setRouteReqLoading(true);
+    await supabase.from("route_requests").insert({
+      from_city:searchFrom,to_city:searchTo,
+      preferred_date:searchDate||null,
+      passenger_name:routeReqForm.name,
+      passenger_phone:routeReqForm.phone,
+      user_id:user?.id||null
+    });
+    setRouteReqSent(true);
+    setRouteReqLoading(false);
   };
 
   const bookTripSeat=async()=>{
@@ -1777,7 +1811,7 @@ const [driverEditing,setDriverEditing]=useState(false);
             </div>
           );})()}
           <div style={{display:"flex",gap:8,marginBottom:28,justifyContent:"center",flexWrap:"wrap"}}>
-            {[["requests",lang==="ar"?"الطلبات 📥":"Requests 📥"],["drivers",adm.drivers],["allTrips",adm.allTrips],["promoCodes",lang==="ar"?"كودات الخصم":"Promo Codes"],["idVerification",lang==="ar"?"التحقق من الهوية 🪪":"ID Verification 🪪"],["activity",lang==="ar"?"سجل النشاط 📋":"Activity Log 📋"]].map(([k,l])=>(
+            {[["requests",lang==="ar"?"الطلبات 📥":"Requests 📥"],["routeRequests",lang==="ar"?"طلبات المسارات 🗺️":"Route Requests 🗺️"],["drivers",adm.drivers],["allTrips",adm.allTrips],["promoCodes",lang==="ar"?"كودات الخصم":"Promo Codes"],["idVerification",lang==="ar"?"التحقق من الهوية 🪪":"ID Verification 🪪"],["activity",lang==="ar"?"سجل النشاط 📋":"Activity Log 📋"]].map(([k,l])=>(
               <button key={k} onClick={()=>setAdminTab(k)} style={{padding:"10px 20px",borderRadius:10,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",border:"2px solid",borderColor:adminTab===k?"#1B3A2A":"#E8E6E1",background:adminTab===k?"#1B3A2A":"white",color:adminTab===k?"white":"#666"}}>{l}</button>
             ))}
           </div>
@@ -1913,6 +1947,23 @@ const [driverEditing,setDriverEditing]=useState(false);
             </div>
           </div>)}
 
+          {adminTab==="routeRequests"&&(<div>
+            <div style={{background:"white",borderRadius:14,padding:"20px",border:"1px solid #E8E6E1"}}>
+              <h3 style={{fontSize:16,fontWeight:800,color:"#1B3A2A",marginBottom:16}}>{lang==="ar"?"طلبات المسارات":"Route Requests"} ({adminRouteRequests.length})</h3>
+              {adminRouteRequests.length===0?<p style={{color:"#CCC",fontSize:13}}>{lang==="ar"?"لا توجد طلبات بعد":"No requests yet"}</p>
+              :adminRouteRequests.map((r,i)=>{const fc=gc(r.from_city);const tc=gc(r.to_city);return(
+                <div key={r.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 0",borderBottom:i<adminRouteRequests.length-1?"1px solid #F0EEEA":"none",flexWrap:"wrap",gap:8}}>
+                  <div>
+                    <div style={{fontWeight:700,fontSize:14,color:"#1B3A2A"}}>{fc?.[lang]||r.from_city} → {tc?.[lang]||r.to_city}</div>
+                    <div style={{fontSize:12,color:"#888"}}>{r.passenger_name} · {r.passenger_phone}{r.preferred_date?` · ${r.preferred_date}`:""}</div>
+                    <div style={{fontSize:11,color:"#BBB"}}>{new Date(r.created_at).toLocaleDateString()}</div>
+                  </div>
+                  {r.passenger_phone&&<a href={`https://wa.me/${r.passenger_phone.replace(/\D/g,"")}`} target="_blank" rel="noopener noreferrer" style={{background:"#25D366",color:"white",border:"none",padding:"6px 14px",borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit",textDecoration:"none"}}>📱 WhatsApp</a>}
+                </div>
+              );})}
+            </div>
+          </div>)}
+
           {adminTab==="promoCodes"&&(<div>
             <div style={{background:"white",borderRadius:14,padding:"24px",border:"1px solid #E8E6E1",marginBottom:24}}>
               <h3 style={{fontSize:16,fontWeight:800,color:"#1B3A2A",marginBottom:16}}>{lang==="ar"?"إنشاء كود جديد":"Create New Code"}</h3>
@@ -1992,7 +2043,21 @@ const [driverEditing,setDriverEditing]=useState(false);
           <div>
             {editRequestMsg&&<div style={{marginBottom:16,padding:"12px 20px",background:"#F0FDF4",border:"1px solid #BBF7D0",borderRadius:10,color:"#166534",fontSize:13,fontWeight:700,textAlign:"center"}}>{editRequestMsg}</div>}
             <div style={{background:"white",borderRadius:16,padding:"28px",border:"1px solid #E8E6E1",marginBottom:24}}>
-              <h3 style={{fontSize:18,fontWeight:800,color:"#1B3A2A",marginBottom:20}}>{drv.addTrip}</h3>
+              {driverEarnings&&(<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(120px,1fr))",gap:12,marginBottom:20,paddingBottom:20,borderBottom:"1px solid #F0EEEA"}}>
+                {[
+                  {label:lang==="ar"?"أرباح الشهر":"This Month",value:`$${driverEarnings.monthly.toFixed(0)}`,color:"#065F46",bg:"#D1FAE5"},
+                  {label:lang==="ar"?"إجمالي الأرباح":"Total Earned",value:`$${driverEarnings.total.toFixed(0)}`,color:"#1B3A2A",bg:"#F0F7F3"},
+                  {label:lang==="ar"?"رحلات مكتملة":"Completed",value:driverEarnings.completedCount,color:"#0369A1",bg:"#E0F2FE"},
+                  {label:lang==="ar"?"رحلات قادمة":"Upcoming",value:driverEarnings.upcomingCount,color:"#92400E",bg:"#FEF3C7"},
+                  ...(driverEarnings.avgRating>0?[{label:lang==="ar"?"التقييم":"Rating",value:`★ ${driverEarnings.avgRating}`,color:"#92400E",bg:"#FEF3C7"}]:[]),
+                ].map((s,i)=>(
+                  <div key={i} style={{background:s.bg,borderRadius:12,padding:"14px 12px",textAlign:"center"}}>
+                    <div style={{fontSize:20,fontWeight:900,color:s.color}}>{s.value}</div>
+                    <div style={{fontSize:11,color:s.color,fontWeight:600,marginTop:3,opacity:0.8}}>{s.label}</div>
+                  </div>
+                ))}
+              </div>)}
+              <h3 style={{fontSize:18,fontWeight:800,color:"#1B3A2A",marginBottom:16}}>{drv.addTrip}</h3>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:16}}>
                 <div><label style={lbl}>{drv.from} *</label><select value={tripForm.from} onChange={e=>setTripForm({...tripForm,from:e.target.value,to:""})} style={inp}><option value="">{drv.selectCity}</option>{cities.map(c=><option key={c.id} value={c.id}>{c[lang]}</option>)}</select></div>
                 <div><label style={lbl}>{drv.to} *</label><select value={tripForm.to} onChange={e=>setTripForm({...tripForm,to:e.target.value})} style={inp} disabled={!tripForm.from}><option value="">{tripForm.from?b.selectDest:b.selectFromFirst}</option>{tripForm.from?getDests(tripForm.from).map(id=>{const c=gc(id);return<option key={id} value={id}>{c[lang]}</option>}):null}</select></div>
@@ -2235,7 +2300,10 @@ const [driverEditing,setDriverEditing]=useState(false);
                     <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10,flexWrap:"wrap"}}>
                       <div>
                         <div style={{fontWeight:800,fontSize:14,color:"#1B3A2A",marginBottom:2}}>{bk.passenger_name}</div>
-                        <div style={{fontSize:12,color:"#555"}}>{bk.status==="confirmed"?bk.passenger_phone:(lang==="ar"?"📞 يظهر الرقم بعد التأكيد":"📞 Phone visible after confirming")}</div>
+                        <div style={{fontSize:12,color:"#555",display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+                          <span>{bk.status==="confirmed"?bk.passenger_phone:(lang==="ar"?"📞 يظهر الرقم بعد التأكيد":"📞 Phone visible after confirming")}</span>
+                          {bk.status==="confirmed"&&bk.passenger_phone&&(()=>{const fc=gc(selectedTripDetail?.from_city);const tc=gc(selectedTripDetail?.to_city);const msg=lang==="ar"?`مرحباً ${bk.passenger_name||""}! ✅ تم تأكيد حجزك على رحلة ${fc?.ar||selectedTripDetail?.from_city} → ${tc?.ar||selectedTripDetail?.to_city} بتاريخ ${selectedTripDetail?.trip_date}. رقم الحجز: ${bk.ref_code||""}. نراك قريباً! 🚗`:`Hi ${bk.passenger_name||""}! ✅ Your booking is confirmed for ${fc?.en||selectedTripDetail?.from_city} → ${tc?.en||selectedTripDetail?.to_city} on ${selectedTripDetail?.trip_date}. Ref: ${bk.ref_code||""}. See you soon! 🚗`;return(<a href={`https://wa.me/${bk.passenger_phone.replace(/\D/g,"")}?text=${encodeURIComponent(msg)}`} target="_blank" rel="noopener noreferrer" style={{background:"#25D366",color:"white",borderRadius:8,padding:"3px 10px",fontSize:11,fontWeight:700,textDecoration:"none",display:"inline-block"}}>📱 WhatsApp</a>);})()}
+                        </div>
                         <div style={{fontSize:11,color:"#888",marginTop:4}}>💺 {bk.seats} {lang==="ar"?"مقعد":"seat(s)"} · {bk.payment_method} · 📋 {bk.ref_code}</div>
                       </div>
                       <div style={{display:"flex",flexDirection:"column",gap:6,alignItems:"flex-end"}}>
@@ -2522,6 +2590,23 @@ const [driverEditing,setDriverEditing]=useState(false);
                       </button>
                     ))}
                   </div>
+                </div>)}
+                {searchFrom&&searchTo&&(<div style={{marginTop:20,background:"white",borderRadius:14,border:"1px solid #E8E6E1",padding:"20px"}}>
+                  {routeReqSent?(<div style={{textAlign:"center",padding:"8px 0"}}>
+                    <div style={{fontSize:28,marginBottom:8}}>📬</div>
+                    <p style={{fontSize:14,fontWeight:800,color:"#1B3A2A",marginBottom:4}}>{lang==="ar"?"تم تسجيل اهتمامك!":"Got it!"}</p>
+                    <p style={{fontSize:12,color:"#888"}}>{lang==="ar"?"سنعلمك فور إضافة رحلة على هذا المسار":"We'll notify you when a trip is added for this route"}</p>
+                  </div>):(
+                    <div>
+                      <p style={{fontSize:13,fontWeight:800,color:"#1B3A2A",marginBottom:4}}>{lang==="ar"?"هل تريد رحلة على هذا المسار؟":"Want a trip on this route?"}</p>
+                      <p style={{fontSize:12,color:"#888",marginBottom:12}}>{lang==="ar"?"سجّل اهتمامك وسنعلمك عند توفر رحلة":"Register your interest and we'll let you know"}</p>
+                      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
+                        <input value={routeReqForm.name} onChange={e=>setRouteReqForm({...routeReqForm,name:e.target.value})} placeholder={lang==="ar"?"اسمك":"Your name"} style={{padding:"9px 12px",borderRadius:10,border:"1.5px solid #E8E6E1",fontSize:13,fontFamily:"inherit",outline:"none"}}/>
+                        <input value={routeReqForm.phone} onChange={e=>setRouteReqForm({...routeReqForm,phone:e.target.value})} placeholder={lang==="ar"?"رقم هاتفك":"Your phone"} style={{padding:"9px 12px",borderRadius:10,border:"1.5px solid #E8E6E1",fontSize:13,fontFamily:"inherit",outline:"none"}}/>
+                      </div>
+                      <button onClick={submitRouteRequest} disabled={routeReqLoading} style={{width:"100%",background:"#1B3A2A",color:"white",border:"none",padding:"10px",borderRadius:10,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",opacity:routeReqLoading?0.7:1}}>{lang==="ar"?"أعلمني عند توفر رحلة 🔔":"Notify me when a trip is added 🔔"}</button>
+                    </div>
+                  )}
                 </div>)}
               </div>)
               :(<div>
