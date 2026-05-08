@@ -863,7 +863,12 @@ const [driverEditing,setDriverEditing]=useState(false);
     const{data:edits}=await supabase.from("trip_edit_requests").select("*, trips(from_city,to_city,trip_date,trip_time)").eq("status","pending").order("created_at",{ascending:false});
     setEditRequests(edits||[]);
     const{data:allTrips}=await supabase.from("trips").select("*").order("trip_date",{ascending:false});
-    setAdminAllTrips(allTrips||[]);
+    // Auto-complete active trips whose date has passed
+    const today=new Date().toISOString().split("T")[0];
+    const pastActive=(allTrips||[]).filter(t=>t.status==="active"&&t.trip_date<today).map(t=>t.id);
+    if(pastActive.length) await supabase.from("trips").update({status:"completed"}).in("id",pastActive);
+    const{data:freshTrips}=pastActive.length?await supabase.from("trips").select("*").order("trip_date",{ascending:false}):{data:allTrips};
+    setAdminAllTrips(freshTrips||[]);
     const today=new Date().toISOString().split("T")[0];
     const{count:bookingsToday}=await supabase.from("bookings").select("*",{count:"exact",head:true}).gte("created_at",today);
     const activeCount=(allTrips||[]).filter(t=>t.status==="active").length;
@@ -915,6 +920,8 @@ const [driverEditing,setDriverEditing]=useState(false);
       await supabase.from("trips").update({approved:false,status:"pending"}).eq("id",id);
     } else if(newStatus==="cancelled"){
       await supabase.from("trips").update({status:"cancelled"}).eq("id",id);
+    } else if(newStatus==="completed"){
+      await supabase.from("trips").update({status:"completed"}).eq("id",id);
     }
     loadAdminData();
   };
@@ -1894,16 +1901,16 @@ const [driverEditing,setDriverEditing]=useState(false);
               <button onClick={exportBookingsCSV} style={{background:"#0369A1",color:"white",border:"none",padding:"11px 28px",borderRadius:10,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>⬇ {lang==="ar"?"تصدير الحجوزات CSV":"Export Bookings CSV"}</button>
             </div>
             <div style={{display:"flex",gap:20,alignItems:"flex-start",flexWrap:"wrap"}}>
-            {["pending","active","cancelled"].map(status=>{
+            {["pending","active","completed","cancelled"].map(status=>{
               const filtered=filteredAdminTrips.filter(t=>t.status===status);
-              const colColor=status==="active"?"#065F46":status==="cancelled"?"#991B1B":"#92400E";
+              const colColor=status==="active"?"#065F46":status==="cancelled"?"#991B1B":status==="completed"?"#0369A1":"#92400E";
               const isDragTarget=dragOverStatus===status;
               return(<div key={status} style={{flex:1,minWidth:280,transition:"background 0.15s",borderRadius:16,padding:"8px",background:isDragTarget?"#F0F7F3":"transparent",border:isDragTarget?"2px dashed #1B3A2A":"2px dashed transparent"}}
                 onDragOver={e=>{e.preventDefault();setDragOverStatus(status);}}
                 onDragLeave={e=>{if(!e.currentTarget.contains(e.relatedTarget))setDragOverStatus(null);}}
                 onDrop={e=>{e.preventDefault();setDragOverStatus(null);if(draggedTripId){const trip=adminAllTrips.find(t=>t.id===draggedTripId);if(trip&&trip.status!==status)adminMoveTripTo(draggedTripId,status);setDraggedTripId(null);}}}>
                 <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12}}>
-                  <h3 style={{fontSize:15,fontWeight:800,color:colColor}}>{status==="pending"?adm.notApprovedYet:status==="active"?(lang==="ar"?"نشط":"Active"):(lang==="ar"?"ملغى":"Cancelled")} ({filtered.length})</h3>
+                  <h3 style={{fontSize:15,fontWeight:800,color:colColor}}>{status==="pending"?adm.notApprovedYet:status==="active"?(lang==="ar"?"نشط":"Active"):status==="completed"?(lang==="ar"?"مكتملة":"Completed"):(lang==="ar"?"ملغى":"Cancelled")} ({filtered.length})</h3>
                   <div style={{flex:1,height:1,background:"#E8E6E1"}}/>
                 </div>
                 {isDragTarget&&filtered.length===0&&<div style={{height:80,borderRadius:12,border:"2px dashed #1B3A2A",display:"flex",alignItems:"center",justifyContent:"center",color:"#1B3A2A",fontSize:13,fontWeight:700,opacity:0.5}}>{lang==="ar"?"أفلت هنا":"Drop here"}</div>}
