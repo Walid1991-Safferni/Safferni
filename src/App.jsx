@@ -1309,8 +1309,8 @@ const [driverEditing,setDriverEditing]=useState(false);
     setForm({from:"",to:"",type:"car",date:"",time:"",name:"",phone:"",passengers:"1",bags:"0",notes:"",payment:"cash"});
   };
 
-  const navLinks=[["home",t.nav.home],["contact",t.nav.contact],...(isAdmin?[["drivers",lang==="ar"?"السائقون":"Drivers"]]:[]),...(driverApproved?[["driver",t.nav.driver]]:[]),...(isAdmin?[["admin",t.nav.admin]]:[])];
-  // ↑ Remove `isAdmin?` from "drivers" entry above to make the Drivers page public
+  const navLinks=[["home",t.nav.home],["contact",t.nav.contact],["drivers",lang==="ar"?"السائقون":"Drivers"],...(driverApproved?[["driver",t.nav.driver]]:[]),...(isAdmin?[["admin",t.nav.admin]]:[])];
+
   const statusBadge=(s)=>({padding:"4px 12px",borderRadius:20,fontSize:11,fontWeight:700,background:s==="active"?"#D1FAE5":s==="confirmed"?"#BBF7D0":s==="pending"?"#FFF3CD":s==="completed"?"#E0F2FE":s==="no_show"?"#FEF3C7":"#FEE2E2",color:s==="active"?"#065F46":s==="confirmed"?"#065F46":s==="pending"?"#92400E":s==="completed"?"#0369A1":s==="no_show"?"#92400E":"#991B1B"});
 
   const timeOptions=Array.from({length:96},(_,i)=>{
@@ -2325,51 +2325,79 @@ const [driverEditing,setDriverEditing]=useState(false);
 
       {/* ─── DRIVERS ─────────────────────────────────────────────────────────── */}
       {page==="drivers"&&(
-        <div style={{maxWidth:900,margin:"0 auto",padding:"40px 24px 80px",...fade}}>
-          <div style={{textAlign:"center",marginBottom:32}}>
-            <h2 style={{fontSize:28,fontWeight:900,color:"#1B3A2A",marginBottom:8}}>{lang==="ar"?"سائقونا":"Our Drivers"}</h2>
-            <p style={{fontSize:14,color:"#888"}}>{lang==="ar"?"فريق سائقين موثوقين ومعتمدين":"A team of trusted, verified drivers"}</p>
-          </div>
-          {driversPageLoading?(
-            <div style={{textAlign:"center",padding:"60px 0",color:"#AAA",fontSize:14}}>{lang==="ar"?"جاري التحميل...":"Loading..."}</div>
-          ):driversPageData.length===0?(
-            <div style={{textAlign:"center",padding:"60px 0",color:"#CCC",fontSize:14}}>{lang==="ar"?"لا يوجد سائقون بعد":"No drivers yet"}</div>
-          ):(
-            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))",gap:20}}>
-              {driversPageData.map(driver=>(
-                <div key={driver.id} style={{background:"white",borderRadius:16,border:"1px solid #E8E6E1",boxShadow:"0 4px 20px rgba(0,0,0,0.04)",padding:"24px 20px",display:"flex",flexDirection:"column",gap:14,animation:"fadeUp 0.3s ease both"}}>
-                  {/* Avatar + Name */}
-                  <div style={{display:"flex",alignItems:"center",gap:14}}>
-                    {driver.avatar_url
-                      ?<img src={driver.avatar_url} alt={driver.full_name} style={{width:64,height:64,borderRadius:"50%",objectFit:"cover",border:"3px solid #1B3A2A",flexShrink:0}}/>
-                      :<div style={{width:64,height:64,borderRadius:"50%",background:"#C7DDD0",display:"flex",alignItems:"center",justifyContent:"center",fontSize:26,flexShrink:0}}>👤</div>
-                    }
-                    <div>
-                      <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
-                        <span style={{fontSize:16,fontWeight:900,color:"#1B3A2A"}}>{driver.full_name||"—"}</span>
-                        {driver.id_verified&&<VerifiedBadge size={18} title={lang==="ar"?"موثّق":"Verified"}/>}
-                      </div>
-                      {driver.car_type&&<div style={{fontSize:12,color:"#666",fontWeight:600,marginTop:2}}>🚗 {driver.car_type}</div>}
-                      {driver.avg_rating>0&&(
-                        <div style={{display:"flex",alignItems:"center",gap:5,marginTop:4}}>
-                          <span style={{color:"#F59E0B",fontSize:13}}>{"★".repeat(Math.round(driver.avg_rating))}{"☆".repeat(5-Math.round(driver.avg_rating))}</span>
-                          <span style={{fontSize:11,color:"#888",fontWeight:700}}>{driver.avg_rating.toFixed(1)} ({driver.rating_count})</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  {/* Amenities */}
-                  <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-                    {[["has_wifi","📶","WiFi","واي فاي"],["has_water","💧","Water","مياه"],["has_ac","❄️","AC","تكييف"]].map(([k,icon,en,ar])=>(
-                      <span key={k} style={{display:"flex",alignItems:"center",gap:4,padding:"4px 10px",borderRadius:20,fontSize:11,fontWeight:700,background:driver[k]?"#D1FAE5":"#F3F4F6",color:driver[k]?"#065F46":"#9CA3AF",border:`1px solid ${driver[k]?"#A7F3D0":"#E5E7EB"}`}}>{icon} {lang==="ar"?ar:en}</span>
-                    ))}
-                  </div>
-                  {/* Reviews button */}
-                  <button onClick={()=>openDriverPublicPage(driver.id)} style={{marginTop:"auto",background:"#F0F7F3",color:"#1B3A2A",border:"1.5px solid #C7DDD0",borderRadius:10,padding:"9px",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",transition:"background 0.2s"}}>{lang==="ar"?"عرض الملف والتقييمات":"View Profile & Reviews"}</button>
+        <div style={{...fade}}>
+          {/* DRIVERS OF THE MONTH banner */}
+          {(()=>{const featured=driversPageData.filter(d=>d.id_verified);return featured.length>0&&(
+            <div style={{background:"linear-gradient(135deg,#1B3A2A,#2D5A40)",padding:"48px 24px 44px"}}>
+              <div style={{maxWidth:900,margin:"0 auto"}}>
+                <div style={{textAlign:"center",marginBottom:28}}>
+                  <div style={{fontSize:22,marginBottom:6}}>🏆</div>
+                  <h2 style={{fontSize:22,fontWeight:900,color:"white",marginBottom:4}}>{lang==="ar"?"سائقو الشهر":"Drivers of the Month"}</h2>
+                  <p style={{fontSize:13,color:"rgba(255,255,255,0.6)"}}>{lang==="ar"?"سائقون موثّقون ومتميّزون":"Verified & top-rated drivers"}</p>
                 </div>
-              ))}
+                <div style={{display:"flex",gap:16,overflowX:"auto",paddingBottom:8,justifyContent:featured.length<4?"center":"flex-start"}}>
+                  {featured.map((driver,i)=>(
+                    <div key={driver.id} onClick={()=>openDriverPublicPage(driver.id)} style={{flexShrink:0,width:160,background:"rgba(255,255,255,0.1)",borderRadius:16,border:"1px solid rgba(255,255,255,0.15)",padding:"20px 16px",textAlign:"center",cursor:"pointer",transition:"background 0.2s",animation:`fadeUp 0.3s ease ${i*0.06}s both"}}>
+                      {driver.avatar_url
+                        ?<img src={driver.avatar_url} alt={driver.full_name} style={{width:64,height:64,borderRadius:"50%",objectFit:"cover",border:"3px solid rgba(255,255,255,0.4)",margin:"0 auto 10px"}}/>
+                        :<div style={{width:64,height:64,borderRadius:"50%",background:"rgba(255,255,255,0.15)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:26,margin:"0 auto 10px"}}>👤</div>
+                      }
+                      <div style={{fontWeight:800,fontSize:13,color:"white",marginBottom:4,lineHeight:1.3}}>{driver.full_name||"—"}</div>
+                      <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:4,marginBottom:6}}>
+                        <VerifiedBadge size={14} title={lang==="ar"?"موثّق":"Verified"}/>
+                        <span style={{fontSize:11,color:"rgba(255,255,255,0.7)",fontWeight:600}}>{lang==="ar"?"موثّق":"Verified"}</span>
+                      </div>
+                      {driver.avg_rating>0&&<div style={{fontSize:12,color:"#F59E0B",fontWeight:700}}>★ {driver.avg_rating.toFixed(1)}</div>}
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
-          )}
+          );})()}
+          {/* ALL DRIVERS grid */}
+          <div style={{maxWidth:900,margin:"0 auto",padding:"40px 24px 80px"}}>
+            <div style={{textAlign:"center",marginBottom:28}}>
+              <h2 style={{fontSize:22,fontWeight:900,color:"#1B3A2A",marginBottom:6}}>{lang==="ar"?"جميع السائقين":"All Drivers"}</h2>
+              <p style={{fontSize:13,color:"#888"}}>{lang==="ar"?"فريق سائقين موثوقين ومعتمدين":"A team of trusted, verified drivers"}</p>
+            </div>
+            {driversPageLoading?(
+              <div style={{textAlign:"center",padding:"60px 0",color:"#AAA",fontSize:14}}>{lang==="ar"?"جاري التحميل...":"Loading..."}</div>
+            ):driversPageData.length===0?(
+              <div style={{textAlign:"center",padding:"60px 0",color:"#CCC",fontSize:14}}>{lang==="ar"?"لا يوجد سائقون بعد":"No drivers yet"}</div>
+            ):(
+              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))",gap:20}}>
+                {driversPageData.map((driver,i)=>(
+                  <div key={driver.id} style={{background:"white",borderRadius:16,border:"1px solid #E8E6E1",boxShadow:"0 4px 20px rgba(0,0,0,0.04)",padding:"24px 20px",display:"flex",flexDirection:"column",gap:14,animation:`fadeUp 0.3s ease ${i*0.04}s both`}}>
+                    <div style={{display:"flex",alignItems:"center",gap:14}}>
+                      {driver.avatar_url
+                        ?<img src={driver.avatar_url} alt={driver.full_name} style={{width:64,height:64,borderRadius:"50%",objectFit:"cover",border:"3px solid #1B3A2A",flexShrink:0}}/>
+                        :<div style={{width:64,height:64,borderRadius:"50%",background:"#C7DDD0",display:"flex",alignItems:"center",justifyContent:"center",fontSize:26,flexShrink:0}}>👤</div>
+                      }
+                      <div>
+                        <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
+                          <span style={{fontSize:16,fontWeight:900,color:"#1B3A2A"}}>{driver.full_name||"—"}</span>
+                          {driver.id_verified&&<VerifiedBadge size={18} title={lang==="ar"?"موثّق":"Verified"}/>}
+                        </div>
+                        {driver.car_type&&<div style={{fontSize:12,color:"#666",fontWeight:600,marginTop:2}}>🚗 {driver.car_type}</div>}
+                        {driver.avg_rating>0&&(
+                          <div style={{display:"flex",alignItems:"center",gap:5,marginTop:4}}>
+                            <span style={{color:"#F59E0B",fontSize:13}}>{"★".repeat(Math.round(driver.avg_rating))}{"☆".repeat(5-Math.round(driver.avg_rating))}</span>
+                            <span style={{fontSize:11,color:"#888",fontWeight:700}}>{driver.avg_rating.toFixed(1)} ({driver.rating_count})</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                      {[["has_wifi","📶","WiFi","واي فاي"],["has_water","💧","Water","مياه"],["has_ac","❄️","AC","تكييف"]].map(([k,icon,en,ar])=>(
+                        <span key={k} style={{display:"flex",alignItems:"center",gap:4,padding:"4px 10px",borderRadius:20,fontSize:11,fontWeight:700,background:driver[k]?"#D1FAE5":"#F3F4F6",color:driver[k]?"#065F46":"#9CA3AF",border:`1px solid ${driver[k]?"#A7F3D0":"#E5E7EB"}`}}>{icon} {lang==="ar"?ar:en}</span>
+                      ))}
+                    </div>
+                    <button onClick={()=>openDriverPublicPage(driver.id)} style={{marginTop:"auto",background:"#F0F7F3",color:"#1B3A2A",border:"1.5px solid #C7DDD0",borderRadius:10,padding:"9px",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{lang==="ar"?"عرض الملف والتقييمات":"View Profile & Reviews"}</button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
