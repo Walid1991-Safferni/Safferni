@@ -2414,7 +2414,17 @@ const [driverEditing,setDriverEditing]=useState(false);
             <div style={{fontSize:16,fontWeight:700,color:"rgba(255,255,255,0.4)",letterSpacing:10,marginBottom:24}}>{t.brandEn}</div>
             <p style={{fontSize:"clamp(16px,3vw,22px)",fontWeight:600,color:"rgba(255,255,255,0.9)",marginBottom:12,maxWidth:500,marginInline:"auto"}}>{t.tagline}</p>
             <p style={{fontSize:13,color:"rgba(255,255,255,0.4)",maxWidth:460,marginInline:"auto",marginBottom:32}}>{t.subtitle}</p>
-            <button onClick={scrollToSearch} style={{background:"white",color:"#1B3A2A",border:"none",padding:"14px 44px",borderRadius:12,fontSize:15,fontWeight:800,cursor:"pointer",fontFamily:"inherit",boxShadow:"0 4px 20px rgba(0,0,0,0.2)",transition:"transform 0.2s"}} onMouseEnter={e=>e.target.style.transform="scale(1.04)"} onMouseLeave={e=>e.target.style.transform="scale(1)"}>{t.nav.book}</button>
+            <div style={{maxWidth:580,margin:"28px auto 0",background:"white",borderRadius:16,padding:"20px 20px 16px",boxShadow:"0 8px 40px rgba(0,0,0,0.3)"}}>
+              <div style={{display:"grid",gridTemplateColumns:"1fr auto 1fr",gap:8,marginBottom:10,alignItems:"flex-end"}}>
+                <div><label style={{display:"block",fontSize:11,fontWeight:700,color:"#1B3A2A",marginBottom:4,textTransform:"uppercase",letterSpacing:.5}}>{b.from}</label><select value={searchFrom} onChange={e=>{setSearchFrom(e.target.value);setSearchTo("")}} style={{width:"100%",padding:"10px 12px",borderRadius:10,border:"1.5px solid #E8E6E1",fontSize:13,fontFamily:"inherit",outline:"none",background:"white",color:"#1B3A2A"}}><option value="">{b.selectCity}</option>{cities.map(c=><option key={c.id} value={c.id}>{c[lang]}</option>)}</select></div>
+                <button onClick={()=>{const f=searchFrom,t=searchTo;setSearchFrom(t);setSearchTo(f);}} title={lang==="ar"?"عكس الاتجاه":"Swap"} style={{background:"#F0F7F3",border:"1.5px solid #C7DDD0",borderRadius:10,padding:"0 10px",fontSize:18,cursor:"pointer",height:42,display:"flex",alignItems:"center",justifyContent:"center",color:"#1B3A2A",alignSelf:"flex-end"}}>⇄</button>
+                <div><label style={{display:"block",fontSize:11,fontWeight:700,color:"#1B3A2A",marginBottom:4,textTransform:"uppercase",letterSpacing:.5}}>{b.to}</label><select value={searchTo} onChange={e=>setSearchTo(e.target.value)} style={{width:"100%",padding:"10px 12px",borderRadius:10,border:"1.5px solid #E8E6E1",fontSize:13,fontFamily:"inherit",outline:"none",background:"white",color:"#1B3A2A"}} disabled={!searchFrom}><option value="">{searchFrom?b.selectDest:b.selectFromFirst}</option>{searchFrom?getDests(searchFrom).map(id=>{const c=gc(id);return<option key={id} value={id}>{c[lang]}</option>}):null}</select></div>
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr auto",gap:8,alignItems:"flex-end"}}>
+                <div><label style={{display:"block",fontSize:11,fontWeight:700,color:"#1B3A2A",marginBottom:4,textTransform:"uppercase",letterSpacing:.5}}>{b.searchDate}</label><input type="date" value={searchDate} onChange={e=>setSearchDate(e.target.value)} style={{width:"100%",padding:"10px 12px",borderRadius:10,border:"1.5px solid #E8E6E1",fontSize:13,fontFamily:"inherit",outline:"none",boxSizing:"border-box"}}/></div>
+                <button onClick={()=>{searchTrips();setTimeout(()=>searchRef.current?.scrollIntoView({behavior:"smooth",block:"start"}),500);}} style={{background:"#1B3A2A",color:"white",border:"none",padding:"0 22px",borderRadius:10,fontSize:14,fontWeight:800,cursor:"pointer",fontFamily:"inherit",height:42,whiteSpace:"nowrap",alignSelf:"flex-end"}}>🔍 {b.searchBtn}</button>
+              </div>
+            </div>
           </div>
         </section>
 
@@ -2542,7 +2552,10 @@ const [driverEditing,setDriverEditing]=useState(false);
                         </div>
                       </div>
                       <div style={{display:"flex",alignItems:"center",gap:12}}>
-                        <span style={{fontSize:20,fontWeight:900,color:isWomen?"#6D28D9":"#1B3A2A"}}>${trip.price_per_seat}</span>
+                        <div style={{textAlign:"end"}}>
+                          {trip.avg_rating>0&&<div style={{fontSize:11,color:"#F59E0B",fontWeight:800,marginBottom:1}}>★ {trip.avg_rating.toFixed(1)} <span style={{color:"#BBB",fontWeight:400}}>({trip.rating_count})</span></div>}
+                          <span style={{fontSize:20,fontWeight:900,color:isWomen?"#6D28D9":"#1B3A2A"}}>${trip.price_per_seat}</span>
+                        </div>
                         {trip.available_seats<=0
                           ?<button disabled style={{background:"#D1D5DB",color:"#6B7280",border:"none",padding:"8px 16px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"not-allowed",fontFamily:"inherit"}}>{lang==="ar"?"اكتملت المقاعد":"Trip Full"}</button>
                           :<button onClick={()=>{
@@ -2615,6 +2628,9 @@ const [driverEditing,setDriverEditing]=useState(false);
                   </div>
                 </div>
                 {seatBookingError&&<div style={{background:"#FEF2F2",border:"1px solid #FECACA",borderRadius:8,padding:"10px 14px",marginBottom:12,fontSize:13,color:"#DC2626",fontWeight:600,textAlign:"center"}}>{seatBookingError}</div>}
+                <div style={{background:"#FFF8F0",border:"1px solid #FED7AA",borderRadius:8,padding:"9px 12px",marginBottom:12}}>
+                  <p style={{fontSize:11,color:"#92400E",margin:0,lineHeight:1.5}}>{lang==="ar"?"✋ الإلغاء مجاني قبل 24 ساعة من موعد الرحلة. الإلغاء بعد ذلك قد لا يكون مؤهلاً لاسترداد المبلغ.":"✋ Free cancellation up to 24 hours before departure. Late cancellations may not be eligible for a refund."}</p>
+                </div>
                 <div style={{display:"flex",gap:10}}>
                   <button onClick={()=>{setSelectedTrip(null);setSeatBookingError("");}} style={{flex:1,background:"white",color:"#666",border:"1.5px solid #DDD",padding:"12px",borderRadius:10,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>✕</button>
                   <button onClick={bookTripSeat} disabled={seatBookingLoading} style={{flex:2,background:selectedTrip.gender_type==="women_only"?"#7C3AED":"#1B3A2A",color:"white",border:"none",padding:"12px",borderRadius:10,fontSize:14,fontWeight:800,cursor:seatBookingLoading?"not-allowed":"pointer",fontFamily:"inherit",opacity:seatBookingLoading?0.7:1}}>{seatBookingLoading?(lang==="ar"?"جاري الحجز...":"Booking..."):b.submit}</button>
