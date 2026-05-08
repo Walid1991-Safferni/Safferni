@@ -2337,7 +2337,7 @@ const [driverEditing,setDriverEditing]=useState(false);
                 </div>
                 <div style={{display:"flex",gap:16,overflowX:"auto",paddingBottom:8,justifyContent:featured.length<4?"center":"flex-start"}}>
                   {featured.map((driver,i)=>(
-                    <div key={driver.id} onClick={()=>openDriverPublicPage(driver.id)} style={{flexShrink:0,width:160,background:"rgba(255,255,255,0.1)",borderRadius:16,border:"1px solid rgba(255,255,255,0.15)",padding:"20px 16px",textAlign:"center",cursor:"pointer",transition:"background 0.2s",animation:`fadeUp 0.3s ease ${i*0.06}s both"}}>
+                    <div key={driver.id} onClick={()=>openDriverPublicPage(driver.id)} style={{flexShrink:0,width:160,background:"rgba(255,255,255,0.1)",borderRadius:16,border:"1px solid rgba(255,255,255,0.15)",padding:"20px 16px",textAlign:"center",cursor:"pointer",transition:"background 0.2s",animation:`fadeUp 0.3s ease ${i*0.06}s both`}}>
                       {driver.avatar_url
                         ?<img src={driver.avatar_url} alt={driver.full_name} style={{width:64,height:64,borderRadius:"50%",objectFit:"cover",border:"3px solid rgba(255,255,255,0.4)",margin:"0 auto 10px"}}/>
                         :<div style={{width:64,height:64,borderRadius:"50%",background:"rgba(255,255,255,0.15)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:26,margin:"0 auto 10px"}}>👤</div>
