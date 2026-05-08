@@ -43,6 +43,7 @@ const routeMap=[
   {from:"hom",to:"ale", seat:25, seatMin:20,seatMax:30, car:90, van:130},
   {from:"hom",to:"ham", seat:18, seatMin:15,seatMax:20, car:65, van:90},
   {from:"ham",to:"ale", seat:25, seatMin:20,seatMax:30, car:90, van:130},
+  {from:"dam",to:"daa", seat:25, seatMin:22,seatMax:28, car:90, van:130},
   {from:"dam",to:"dar", seat:30, seatMin:25,seatMax:35, car:110,van:150},
   {from:"hom",to:"tar", seat:30, seatMin:25,seatMax:35, car:110,van:150},
   {from:"hom",to:"lat", seat:30, seatMin:25,seatMax:35, car:110,van:150},
@@ -1291,7 +1292,7 @@ const [driverEditing,setDriverEditing]=useState(false);
   const handleSubmit=()=>{
     if(!user){resetAuth();setPage("login");return;}
     if(!form.from||!form.to||!form.date||!form.name||!form.phone){setError(b.fillAll);return;}
-    if(!route||route.comingSoon||price==null){setError(b.fillAll);return;}
+    if(!route||route.comingSoon||price==null){setError(lang==="ar"?"هذا المسار غير متاح للحجز الخاص حالياً":"This route isn't available for custom booking yet");return;}
     if(form.payment==="shamcash") return;
     setError("");
     const ref=genRef();setBookingRef(ref);
