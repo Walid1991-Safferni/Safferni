@@ -164,7 +164,7 @@ const T={
       {icon:"💜",t:"رحلات للنساء فقط — قريباً",d:"مو مرتاحة تسافرين مع رجال؟ عندنا سيارات مخصصة للنساء فقط — سافري براحة بال 💅"},
     ],
     deal:{from:"من",to:"إلى",selectCity:"اختر المحافظة",selectDest:"اختر الوجهة",selectFromFirst:"اختر نقطة الانطلاق أولاً",dateRange:"أي وقت بين",dateFrom:"من تاريخ",dateTo:"إلى تاريخ",name:"الاسم",phone:"رقم الهاتف",submit:"خبرني!",fillAll:"يرجى ملء جميع الحقول",confirmTitle:"تم تسجيل طلبك!",confirmMsg:"سنخبرك عبر واتساب لما يتوفر مقعد فاضي.",confirmClose:"تمام"},
-    b:{title:"احجز رحلة خاصة",searchTitle:"ابحث عن رحلة",searchDate:"تاريخ السفر",searchBtn:"ابحث",noTrips:"لا توجد رحلات متاحة",customBook:"احجز رحلة خاصة",availableTrips:"الرحلات المتاحة",bookSeat:"احجز مقعد",seatsLeft:"مقاعد متبقية",from:"من",to:"إلى",filterGender:"نوع الرحلة",mixedOnly:"مختلط",womenOnly:"نساء فقط",type:"نوع الحجز",seat:"مقعد واحد",car:"سيارة كاملة (حتى ٤ ركاب)",van:"فان (حتى ١٠ ركاب)",date:"التاريخ",time:"الوقت",name:"الاسم الكامل",phone:"رقم الهاتف",passengers:"عدد الركاب",bags:"عدد الحقائب",notes:"ملاحظات إضافية",submit:"تأكيد الحجز",selectCity:"اختر المحافظة",selectDest:"اختر الوجهة",selectFromFirst:"اختر نقطة الانطلاق أولاً",price:"السعر",fillAll:"يرجى ملء جميع الحقول المطلوبة",carOnlyNote:"هذا المسار متاح للسيارة الكاملة فقط",formNote:"عبّي المعلومات وبنتواصل معك",payment:"طريقة الدفع",cash:"كاش",crypto:"عملات رقمية",shamcash:"شام كاش",shamcashSoon:"قريباً...",cryptoNote:"أرسل المبلغ بـ USDT على شبكة BEP20 إلى العنوان التالي:",copied:"تم النسخ!",copyAddress:"نسخ العنوان",confirmTitle:"تم الحجز بنجاح!",confirmRef:"رقم الحجز",confirmMsg:"سيتم إرسال تأكيد الحجز عبر واتساب مع تعليمات التواصل مع السائق.",confirmClose:"إغلاق",rateTrip:"قيّم رحلتك",submitRating:"إرسال التقييم",ratingThanks:"شكراً على تقييمك!",customConfirmTitle:"تم إرسال طلب الحجز!",customConfirmMsg:"طلبك وصلنا وسيتم التواصل معك في أقرب وقت لتأكيد الحجز."},
+    b:{title:"احجز رحلة خاصة",searchTitle:"ابحث عن رحلة",searchDate:"تاريخ السفر",searchBtn:"ابحث",noTrips:"لا توجد رحلات متاحة",customBook:"احجز رحلة خاصة",availableTrips:"الرحلات المتاحة",bookSeat:"احجز مقعد",seatsLeft:"مقاعد متبقية",from:"من",to:"إلى",filterGender:"نوع الرحلة",mixedOnly:"مختلط",womenOnly:"نساء فقط",type:"نوع الحجز",seat:"مقعد واحد",car:"سيارة كاملة (حتى ٤ ركاب)",van:"فان (حتى ١٠ ركاب)",date:"التاريخ",time:"الوقت",name:"الاسم الكامل",phone:"رقم الهاتف",passengers:"عدد الركاب",bags:"عدد الحقائب",notes:"ملاحظات إضافية",submit:"تأكيد الحجز",selectCity:"اختر المحافظة",selectDest:"اختر الوجهة",selectFromFirst:"اختر نقطة الانطلاق أولاً",price:"السعر",fillAll:"يرجى ملء جميع الحقول المطلوبة",carOnlyNote:"هذا المسار متاح للسيارة الكاملة فقط",formNote:"عبّي المعلومات وبنتواصل معك",payment:"طريقة الدفع",cash:"كاش",crypto:"عملات رقمية",shamcash:"شام كاش",shamcashSoon:"قريباً...",cryptoNote:"أرسل المبلغ بـ USDT على شبكة BEP20 إلى العنوان التالي:",copied:"تم النسخ!",copyAddress:"نسخ العنوان",confirmTitle:"طلب الحجز وصلنا! ⏳",confirmRef:"رقم الحجز",confirmMsg:"طلبك بانتظار تأكيد السائق. سنخبرك فوراً عند التأكيد.",confirmClose:"إغلاق",rateTrip:"قيّم رحلتك",submitRating:"إرسال التقييم",ratingThanks:"شكراً على تقييمك!",customConfirmTitle:"تم إرسال طلب الحجز!",customConfirmMsg:"طلبك وصلنا وسيتم التواصل معك في أقرب وقت لتأكيد الحجز."},
     pricing:{title:"الأسعار",desc:"أسعار واضحة وثابتة — بدون مفاجآت",route:"المسار",seat:"مقعد",car:"سيارة (٤ ركاب)",van:"فان (١٠ ركاب)",note:"الأسعار بالدولار الأمريكي — نفس الأسعار بالاتجاهين",carOnly:"سيارة فقط"},
     contact:{title:"تواصل معنا",desc:"لأي استفسار أو حجز — نحن بخدمتك",email:"البريد الإلكتروني",whatsapp:"واتساب",hours:"ساعات العمل",hoursVal:"٧ أيام في الأسبوع، ٢٤ ساعة"},
     auth:{
@@ -220,7 +220,7 @@ const T={
       {icon:"💜",t:"Women-only rides — Coming Soon",d:"Not comfortable riding with men? We have dedicated cars for women only — travel with peace of mind 💅"},
     ],
     deal:{from:"From",to:"To",selectCity:"Select city",selectDest:"Select destination",selectFromFirst:"Select origin first",dateRange:"Anytime between",dateFrom:"From date",dateTo:"To date",name:"Name",phone:"Phone number",submit:"Let me know!",fillAll:"Please fill all fields",confirmTitle:"You're on the list!",confirmMsg:"We'll notify you via WhatsApp when a seat is available.",confirmClose:"Got it"},
-    b:{title:"Book a Custom Ride",searchTitle:"Find a Trip",searchDate:"Travel Date",searchBtn:"Search",noTrips:"No trips available",customBook:"Book a custom ride",availableTrips:"Available Trips",bookSeat:"Book a Seat",seatsLeft:"seats left",from:"From",to:"To",filterGender:"Trip Type",mixedOnly:"Mixed",womenOnly:"Women Only",type:"Booking Type",seat:"Single Seat",car:"Full Car (up to 4 pax)",van:"Van (up to 10 pax)",date:"Date",time:"Time",name:"Full Name",phone:"Phone Number",passengers:"Passengers",bags:"Bags",notes:"Additional Notes",submit:"Confirm Booking",selectCity:"Select city",selectDest:"Select destination",selectFromFirst:"Select origin first",price:"Price",fillAll:"Please fill all required fields",carOnlyNote:"This route is available for whole car only",formNote:"Fill in the details and we'll get back to you",payment:"Payment Method",cash:"Cash",crypto:"Crypto",shamcash:"Sham Cash",shamcashSoon:"Coming soon...",cryptoNote:"Send the amount in USDT on BEP20 network to the following address:",copied:"Copied!",copyAddress:"Copy Address",confirmTitle:"Booking Confirmed!",confirmRef:"Booking Reference",confirmMsg:"Your booking confirmation will be sent to you via WhatsApp along with instructions on how to connect with the driver.",confirmClose:"Close",rateTrip:"Rate Your Trip",submitRating:"Submit Rating",ratingThanks:"Thanks for your rating!",customConfirmTitle:"Booking Request Sent!",customConfirmMsg:"Your request has been received. We'll contact you as soon as possible to confirm your booking."},
+    b:{title:"Book a Custom Ride",searchTitle:"Find a Trip",searchDate:"Travel Date",searchBtn:"Search",noTrips:"No trips available",customBook:"Book a custom ride",availableTrips:"Available Trips",bookSeat:"Book a Seat",seatsLeft:"seats left",from:"From",to:"To",filterGender:"Trip Type",mixedOnly:"Mixed",womenOnly:"Women Only",type:"Booking Type",seat:"Single Seat",car:"Full Car (up to 4 pax)",van:"Van (up to 10 pax)",date:"Date",time:"Time",name:"Full Name",phone:"Phone Number",passengers:"Passengers",bags:"Bags",notes:"Additional Notes",submit:"Confirm Booking",selectCity:"Select city",selectDest:"Select destination",selectFromFirst:"Select origin first",price:"Price",fillAll:"Please fill all required fields",carOnlyNote:"This route is available for whole car only",formNote:"Fill in the details and we'll get back to you",payment:"Payment Method",cash:"Cash",crypto:"Crypto",shamcash:"Sham Cash",shamcashSoon:"Coming soon...",cryptoNote:"Send the amount in USDT on BEP20 network to the following address:",copied:"Copied!",copyAddress:"Copy Address",confirmTitle:"Booking Request Received! ⏳",confirmRef:"Booking Reference",confirmMsg:"Your request is pending driver confirmation. You'll be notified as soon as it's confirmed.",confirmClose:"Close",rateTrip:"Rate Your Trip",submitRating:"Submit Rating",ratingThanks:"Thanks for your rating!",customConfirmTitle:"Booking Request Sent!",customConfirmMsg:"Your request has been received. We'll contact you as soon as possible to confirm your booking."},
     pricing:{title:"Pricing",desc:"Clear, fixed prices — no surprises",route:"Route",seat:"Seat",car:"Car (4 pax)",van:"Van (10 pax)",note:"Prices in USD — same prices both directions",carOnly:"Car only"},
     contact:{title:"Contact Us",desc:"For any inquiries or bookings — we're here for you",email:"Email",whatsapp:"WhatsApp",hours:"Working Hours",hoursVal:"7 days a week, 24 hours"},
     auth:{
@@ -399,6 +399,7 @@ export default function App(){
   // Driver panel
   const [driverEarnings,setDriverEarnings]=useState(null);
   const [driverTrips,setDriverTrips]=useState([]);
+  const [driverPendingBookings,setDriverPendingBookings]=useState([]);
   const [tripForm,setTripForm]=useState({from:"",to:"",date:"",time:"",pricePerSeat:"",totalSeats:"4",carType:"",genderType:"mixed",repeatWeeks:"1"});
   const [tripError,setTripError]=useState("");
   const [tripSuccess,setTripSuccess]=useState(false);
@@ -786,6 +787,12 @@ const [driverEditing,setDriverEditing]=useState(false);
   };
 
   const markTripCompleted=async(tripId)=>{
+    const trip=driverTrips.find(t=>t.id===tripId);
+    const todayStr=new Date().toISOString().slice(0,10);
+    if(trip&&trip.trip_date>todayStr){
+      alert(lang==="ar"?"لا يمكن تحديد رحلة مستقبلية كمكتملة. انتظر حتى يوم الرحلة أو بعده.":"Cannot mark a future trip as completed. Wait until the trip date has passed.");
+      return;
+    }
     const{error}=await supabase.from("trips").update({status:"completed"}).eq("id",tripId);
     if(error) return;
     setDriverTrips(ts=>ts.map(t=>t.id===tripId?{...t,status:"completed"}:t));
@@ -1139,6 +1146,11 @@ const [driverEditing,setDriverEditing]=useState(false);
     setDriverProfile({fullName:myProfileData?.full_name||"",dob:myProfileData?.date_of_birth||"",idNumber:myProfileData?.id_number||"",carKindYear:myProfileData?.car_type||myApp?.car_type||"",carPlate:myProfileData?.car_plate||"",transportLicense:myProfileData?.transport_license||"",driverLicense:myProfileData?.driver_license||"",hasWifi:myProfileData?.has_wifi||false,hasWater:myProfileData?.has_water||false,hasAc:myProfileData?.has_ac||false,avatarUrl:myProfileData?.avatar_url||"",idVerified:myProfileData?.id_verified||false,idPending:myProfileData?.id_verification_pending||false});
     const{data:myTrips}=await supabase.from("trips").select("*").eq("driver_id",user.id).order("trip_date",{ascending:false});
     setDriverTrips(myTrips||[]);
+    if(myTrips&&myTrips.length>0){
+      const allIds=myTrips.map(t=>t.id);
+      const{data:pendingBks}=await supabase.from("bookings").select("id,trip_id,seats,name,phone,created_at,trips(from_city,to_city,trip_date,trip_time)").in("trip_id",allIds).eq("status","pending").order("created_at",{ascending:false});
+      setDriverPendingBookings(pendingBks||[]);
+    } else {setDriverPendingBookings([]);}
     if(myTrips){
       const counts={};
       for(const trip of myTrips){
@@ -2048,6 +2060,48 @@ const [driverEditing,setDriverEditing]=useState(false);
           <h2 style={{fontSize:28,fontWeight:900,color:"#1B3A2A",marginBottom:24,textAlign:"center"}}>{drv.title}</h2>
           <div>
             {editRequestMsg&&<div style={{marginBottom:16,padding:"12px 20px",background:"#F0FDF4",border:"1px solid #BBF7D0",borderRadius:10,color:"#166534",fontSize:13,fontWeight:700,textAlign:"center"}}>{editRequestMsg}</div>}
+
+            {/* Pending reservations — shown at top if any */}
+            {driverPendingBookings.length>0&&(
+              <div style={{background:"#FFFBEB",borderRadius:16,padding:"24px",border:"2px solid #FCD34D",marginBottom:24}}>
+                <h3 style={{fontSize:17,fontWeight:800,color:"#92400E",marginBottom:16,display:"flex",alignItems:"center",gap:8}}>
+                  ⏳ {lang==="ar"?"حجوزات بانتظار التأكيد":"Pending Reservations"}
+                  <span style={{background:"#F59E0B",color:"white",borderRadius:20,padding:"2px 10px",fontSize:12,fontWeight:900}}>{driverPendingBookings.length}</span>
+                </h3>
+                {driverPendingBookings.map((bk,i)=>{
+                  const trip=bk.trips;
+                  const fc=gc(trip?.from_city);const tc=gc(trip?.to_city);
+                  return(
+                    <div key={bk.id} style={{background:"white",borderRadius:12,padding:"16px",marginBottom:i<driverPendingBookings.length-1?12:0,border:"1px solid #FDE68A",display:"flex",flexDirection:"column",gap:6}}>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:8}}>
+                        <div>
+                          <div style={{fontWeight:800,fontSize:14,color:"#1B3A2A"}}>{bk.name||"—"}</div>
+                          <div style={{fontSize:12,color:"#666",marginTop:2}}>{fc?.[lang]||trip?.from_city} → {tc?.[lang]||trip?.to_city} · {trip?.trip_date} {trip?.trip_time?formatTime(trip.trip_time):""}</div>
+                          <div style={{fontSize:12,color:"#666",marginTop:1}}>{lang==="ar"?"عدد المقاعد:":"Seats:"} {bk.seats}</div>
+                        </div>
+                        <div style={{display:"flex",gap:8,flexShrink:0}}>
+                          <button onClick={async()=>{
+                            const{error}=await supabase.rpc("driver_action_booking",{p_booking_id:bk.id,p_action:"confirm"});
+                            if(!error){setDriverPendingBookings(prev=>prev.filter(b=>b.id!==bk.id));if(bk.trip?.user_id||bk.user_id) createNotif(bk.user_id,"booking_confirmed",lang==="ar"?"تم تأكيد حجزك ✅":"Booking Confirmed ✅",lang==="ar"?`تم تأكيد حجزك على رحلة ${fc?.[lang]||trip?.from_city} إلى ${tc?.[lang]||trip?.to_city} بتاريخ ${trip?.trip_date}`:`Your booking on ${fc?.en||trip?.from_city} → ${tc?.en||trip?.to_city} on ${trip?.trip_date} was confirmed`);}
+                          }} style={{background:"#065F46",color:"white",border:"none",padding:"8px 16px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
+                            ✓ {lang==="ar"?"تأكيد":"Confirm"}
+                          </button>
+                          <button onClick={async()=>{
+                            if(!window.confirm(lang==="ar"?"هل تريد رفض هذا الحجز؟":"Reject this booking?")) return;
+                            const{error}=await supabase.rpc("driver_action_booking",{p_booking_id:bk.id,p_action:"reject"});
+                            if(!error) setDriverPendingBookings(prev=>prev.filter(b=>b.id!==bk.id));
+                          }} style={{background:"#FEF2F2",color:"#B91C1C",border:"1px solid #FECACA",padding:"8px 16px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
+                            ✗ {lang==="ar"?"رفض":"Reject"}
+                          </button>
+                        </div>
+                      </div>
+                      {bk.phone&&<a href={`https://wa.me/${bk.phone.replace(/\D/g,"")}`} target="_blank" rel="noreferrer" style={{fontSize:12,color:"#16A34A",fontWeight:700,textDecoration:"none"}}>💬 {lang==="ar"?"واتساب":"WhatsApp"}: {bk.phone}</a>}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
             <div style={{background:"white",borderRadius:16,padding:"28px",border:"1px solid #E8E6E1",marginBottom:24}}>
               {driverEarnings&&(<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(120px,1fr))",gap:12,marginBottom:20,paddingBottom:20,borderBottom:"1px solid #F0EEEA"}}>
                 {[
