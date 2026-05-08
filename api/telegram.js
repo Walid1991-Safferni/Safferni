@@ -110,13 +110,21 @@ async function getUpcomingTrips() {
 async function getPendingBookings() {
   const { data, error } = await supabase.from("bookings").select("id,ref_code,passenger_name,passenger_phone,seats,payment_method,total_price,status,trips(from_city,to_city,trip_date)").eq("status", "pending").order("created_at", { ascending: false }).limit(15);
   if (error) return { success: false, error: error.message };
-  return { success: true, bookings: data || [] };
+  const bookings = (data || []).map(b => ({
+    ...b,
+    whatsapp_link: b.passenger_phone ? `https://wa.me/${b.passenger_phone.replace(/\D/g,"")}` : null
+  }));
+  return { success: true, bookings };
 }
 
 async function getRecentBookings() {
-  const { data, error } = await supabase.from("bookings").select("id,ref_code,passenger_name,seats,payment_method,total_price,status,trips(from_city,to_city,trip_date)").order("created_at", { ascending: false }).limit(10);
+  const { data, error } = await supabase.from("bookings").select("id,ref_code,passenger_name,passenger_phone,seats,payment_method,total_price,status,trips(from_city,to_city,trip_date)").order("created_at", { ascending: false }).limit(10);
   if (error) return { success: false, error: error.message };
-  return { success: true, bookings: data || [] };
+  const bookings = (data || []).map(b => ({
+    ...b,
+    whatsapp_link: b.passenger_phone ? `https://wa.me/${b.passenger_phone.replace(/\D/g,"")}` : null
+  }));
+  return { success: true, bookings };
 }
 
 async function getPendingApplications() {
