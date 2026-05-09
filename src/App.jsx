@@ -2588,6 +2588,14 @@ const [driverEditing,setDriverEditing]=useState(false);
 
       {/* ─── HOME ────────────────────────────────────────────────────────────── */}
       {page==="home"&&(<div>
+        {/* BETA BANNER */}
+        <div style={{background:"#1B3A2A",borderBottom:"1px solid rgba(255,255,255,0.1)",padding:"10px 20px",textAlign:"center"}}>
+          <p style={{margin:0,fontSize:13,color:"rgba(255,255,255,0.85)",fontWeight:600}}>
+            🚧 {lang==="ar"
+              ?"الموقع في مرحلة تجريبية — نعمل على تقديم أفضل تجربة ممكنة. شكراً لصبركم! 🙏"
+              :"This site is in beta — we're working hard to bring you the best experience. Thanks for your patience! 🙏"}
+          </p>
+        </div>
         {/* HERO */}
         <section style={{background:"linear-gradient(180deg,#1B3A2A,#234D36)",padding:"70px 24px 80px",textAlign:"center",position:"relative",overflow:"hidden"}}>
           <div style={{position:"absolute",top:0,left:"50%",transform:"translateX(-50%)",width:3,height:"100%",background:"rgba(255,255,255,0.05)"}}/>
