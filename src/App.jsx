@@ -756,8 +756,9 @@ const [driverEditing,setDriverEditing]=useState(false);
     .from("bookings").select("*, trips(trip_date,trip_time,from_city,to_city,driver_id,gender_type,price_per_seat,status)")
     .eq("user_id",user.id).neq("status","cancelled")
     .order("created_at",{ascending:false});
-  const upcoming=(all||[]).filter(b=>b.trips?.trip_date>=today);
-  const past=(all||[]).filter(b=>b.trips?.trip_date<today);
+  const isPast=b=>b.trips?.trip_date<today||b.trips?.status==="completed";
+  const upcoming=(all||[]).filter(b=>!isPast(b));
+  const past=(all||[]).filter(isPast);
   setUpcomingBookings(upcoming);
   setPastBookings(past);
     setProfileLoading(false);
