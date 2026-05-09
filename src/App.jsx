@@ -304,7 +304,11 @@ const IdVerificationRow=({driver,lang,onVerify,onReject})=>{
 
 export default function App(){
   const [lang,setLang]=useState("ar");
-  const [page,setPage]=useState("home");
+  const PAGE_TO_PATH={"home":"/","login":"/login","profile":"/profile","apply":"/apply","admin":"/admin","driver":"/driver","drivers":"/drivers","pricing":"/pricing","contact":"/contact"};
+  const PATH_TO_PAGE=Object.fromEntries(Object.entries(PAGE_TO_PATH).map(([k,v])=>[v,k]));
+  const getPageFromPath=()=>PATH_TO_PAGE[window.location.pathname]||"home";
+  const [page,_setPage]=useState(getPageFromPath);
+  const setPage=(name)=>{const path=PAGE_TO_PATH[name]||"/";window.history.pushState({},"",(path));_setPage(name);};
   const [menuOpen,setMenuOpen]=useState(false);
   const [user,setUser]=useState(null);
   const [profile,setProfile]=useState(null);
@@ -499,6 +503,7 @@ const [driverEditing,setDriverEditing]=useState(false);
   useEffect(()=>{if(adminTab==="idVerification"&&isAdmin)loadAdminIdQueue();},[adminTab]);
   const [adminRouteRequests,setAdminRouteRequests]=useState([]);
   useEffect(()=>{if(adminTab==="routeRequests"&&isAdmin){supabase.from("route_requests").select("*").order("created_at",{ascending:false}).then(({data})=>setAdminRouteRequests(data||[]));}},[adminTab]);
+  useEffect(()=>{const handler=()=>_setPage(getPageFromPath());window.addEventListener("popstate",handler);return()=>window.removeEventListener("popstate",handler);},[]);
   useEffect(()=>{if(page==="admin"&&isAdmin){loadAdminData();if(adminTab==="promoCodes") loadPromoCodes();}},[page,adminTab]);
   useEffect(()=>{if(page==="driver"&&user){setSelectedDriver(null);loadProfile(user);loadDriverData();}},[page,user]);
   useEffect(()=>{if(page==="drivers") loadDriversPage();},[page]);
