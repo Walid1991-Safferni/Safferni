@@ -185,6 +185,11 @@ const T={
       passwordUpdated:"تم تحديث كلمة المرور بنجاح!",
       createAccount:"إنشاء الحساب",
       passwordHint:"ستستخدم هذه الكلمة لتسجيل الدخول لاحقاً بالبريد الإلكتروني",
+      loginCountryQ:"من أين سجّلت حسابك؟",
+      loginFromSyria:"🇸🇾 سجّلت من سوريا",
+      loginFromOther:"🌍 سجّلت من خارج سوريا",
+      loginWithPhone:"الدخول برقم الهاتف",
+      loginWithEmail:"الدخول بالبريد الإلكتروني",
       locationQ:"هل أنت حالياً في سوريا؟",
       inSyria:"نعم، أنا في سوريا",
       notInSyria:"لا، أنا خارج سوريا",
@@ -241,6 +246,11 @@ const T={
       passwordUpdated:"Password updated successfully!",
       createAccount:"Create Account",
       passwordHint:"You'll use this password to log in later with your email",
+      loginCountryQ:"Where did you register your account?",
+      loginFromSyria:"🇸🇾 Registered from Syria",
+      loginFromOther:"🌍 Registered from outside Syria",
+      loginWithPhone:"Login with Phone Number",
+      loginWithEmail:"Login with Email",
       locationQ:"Are you currently located in Syria?",
       inSyria:"Yes, I'm in Syria",
       notInSyria:"No, I'm outside Syria",
@@ -302,11 +312,12 @@ const IdVerificationRow=({driver,lang,onVerify,onReject})=>{
   );
 };
 
+const PAGE_TO_PATH={"home":"/","login":"/login","profile":"/profile","apply":"/apply","admin":"/admin","driver":"/driver","drivers":"/drivers","pricing":"/pricing","contact":"/contact"};
+const PATH_TO_PAGE=Object.fromEntries(Object.entries(PAGE_TO_PATH).map(([k,v])=>[v,k]));
+const getPageFromPath=()=>PATH_TO_PAGE[window.location.pathname]||"home";
+
 export default function App(){
   const [lang,setLang]=useState("ar");
-  const PAGE_TO_PATH={"home":"/","login":"/login","profile":"/profile","apply":"/apply","admin":"/admin","driver":"/driver","drivers":"/drivers","pricing":"/pricing","contact":"/contact"};
-  const PATH_TO_PAGE=Object.fromEntries(Object.entries(PAGE_TO_PATH).map(([k,v])=>[v,k]));
-  const getPageFromPath=()=>PATH_TO_PAGE[window.location.pathname]||"home";
   const [page,_setPage]=useState(getPageFromPath);
   const setPage=(name)=>{const path=PAGE_TO_PATH[name]||"/";window.history.pushState({},"",(path));_setPage(name);};
   const [menuOpen,setMenuOpen]=useState(false);
@@ -352,8 +363,9 @@ export default function App(){
   const [tripDetailLoading,setTripDetailLoading]=useState(false);
 
   // AUTH STATE — new unified flow
-  // authStep: "choice"|"login"|"signup_country"|"signup_method_other"|"signup_info_sy"|"signup_otp_email"|"signup_info_other"|"signup_otp_sms"|"forgot_phone"|"forgot_newpass"
+  // authStep: "choice"|"login_country"|"login"|"login_other"|"signup_country"|"signup_method_other"|"signup_info_sy"|"signup_otp_email"|"signup_info_other"|"signup_otp_sms"|"forgot_phone"|"forgot_newpass"
   const [authStep,setAuthStep]=useState("choice");
+  const [loginTab,setLoginTab]=useState("phone");
   const [authForm,setAuthForm]=useState({fullName:"",email:"",phone:"+963",password:"",dob:""});
   const [authOtp,setAuthOtp]=useState("");
   const [authError,setAuthError]=useState("");
@@ -553,15 +565,14 @@ const [driverEditing,setDriverEditing]=useState(false);
 
   const fullPhone=()=>authForm.phone;
 
-  // Step 1: Login with email or phone + password
+  // Step 1: Login with email (Syria) or phone/email + password (outside Syria)
   const handleLogin=async()=>{
-    const idInput=authForm.email.trim();
-    if(!idInput||!authForm.password){setAuthError(lang==="ar"?"يرجى إدخال البريد/الهاتف وكلمة المرور":"Enter your email/phone and password");return;}
+    const usingPhone=authStep==="login_other"&&loginTab==="phone";
+    const idInput=usingPhone?authForm.phone.trim():authForm.email.trim();
+    if(!idInput||!authForm.password){setAuthError(lang==="ar"?"يرجى إدخال البيانات المطلوبة وكلمة المرور":"Enter your credentials and password");return;}
     didLogOut.current=false;
     setAuthLoading(true);setAuthError("");
-    // Detect: starts with + or only digits/spaces/dashes (no @) → phone, else email
-    const isPhone=/^\+?[\d\s-]+$/.test(idInput)&&!idInput.includes("@");
-    const credentials=isPhone
+    const credentials=usingPhone
       ?{phone:idInput.replace(/[\s-]/g,""),password:authForm.password}
       :{email:idInput.toLowerCase(),password:authForm.password};
     const{error}=await supabase.auth.signInWithPassword(credentials);
@@ -1153,16 +1164,20 @@ const [driverEditing,setDriverEditing]=useState(false);
     setDriverTrips(myTrips||[]);
     if(myTrips&&myTrips.length>0){
       const allIds=myTrips.map(t=>t.id);
-      const{data:pendingBks}=await supabase.from("bookings").select("id,trip_id,seats,name,phone,created_at,trips(from_city,to_city,trip_date,trip_time)").in("trip_id",allIds).eq("status","pending").order("created_at",{ascending:false});
-      setDriverPendingBookings(pendingBks||[]);
-    } else {setDriverPendingBookings([]);}
-    if(myTrips){
-      const counts={};
-      for(const trip of myTrips){
+      const tripById=Object.fromEntries(myTrips.map(t=>[t.id,t]));
+      const countPromises=myTrips.map(async trip=>{
         const{count}=await supabase.from("bookings").select("*",{count:"exact",head:true}).eq("trip_id",trip.id).neq("status","cancelled");
-        counts[trip.id]=count||0;
-      }
-      setBookingCounts(counts);
+        return[trip.id,count||0];
+      });
+      const[{data:pendingBks},countPairs]=await Promise.all([
+        supabase.from("bookings").select("id,trip_id,seats,name,phone,created_at,user_id").in("trip_id",allIds).eq("status","pending").order("created_at",{ascending:false}),
+        Promise.all(countPromises),
+      ]);
+      setDriverPendingBookings((pendingBks||[]).map(bk=>({...bk,trips:tripById[bk.trip_id]})));
+      setBookingCounts(Object.fromEntries(countPairs));
+    } else {
+      setDriverPendingBookings([]);
+      setBookingCounts({});
     }
     if(myTrips&&myTrips.length>0){
       const allIds=myTrips.map(t=>t.id);
@@ -1440,7 +1455,7 @@ const [driverEditing,setDriverEditing]=useState(false);
             <div style={{textAlign:"center",marginBottom:28}}>
               <LogoSVG/>
               <h2 style={{fontSize:22,fontWeight:900,color:"#1B3A2A",marginTop:12}}>
-                {authStep==="choice"||authStep==="login"?t.auth.login
+                {authStep==="choice"||authStep==="login_country"||authStep==="login"||authStep==="login_other"?t.auth.login
                 :authStep==="forgot_phone"||authStep==="forgot_newpass"?t.auth.forgotPassword
                 :t.auth.signup}
               </h2>
@@ -1452,19 +1467,53 @@ const [driverEditing,setDriverEditing]=useState(false);
             {/* CHOICE: login or sign up */}
             {authStep==="choice"&&(
               <div style={{display:"flex",flexDirection:"column",gap:12}}>
-                <button onClick={()=>{setAuthStep("login");setAuthError("");}} style={{width:"100%",background:"#1B3A2A",color:"white",border:"none",padding:"14px",borderRadius:12,fontSize:15,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>{t.auth.loginBtn}</button>
+                <button onClick={()=>{setAuthStep("login_country");setAuthError("");}} style={{width:"100%",background:"#1B3A2A",color:"white",border:"none",padding:"14px",borderRadius:12,fontSize:15,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>{t.auth.loginBtn}</button>
                 <button onClick={()=>{setAuthStep("signup_country");setAuthError("");}} style={{width:"100%",background:"white",color:"#1B3A2A",border:"2px solid #1B3A2A",padding:"14px",borderRadius:12,fontSize:15,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>{t.auth.signupBtn}</button>
               </div>
             )}
 
-            {/* LOGIN */}
-            {authStep==="login"&&(<>
-              <div style={{marginBottom:16}}><label style={lbl}>{lang==="ar"?"البريد الإلكتروني أو رقم الهاتف":"Email or Phone Number"}</label><input type="text" value={authForm.email} onChange={e=>setAuthForm(f=>({...f,email:e.target.value}))} style={inp} placeholder={lang==="ar"?"name@email.com أو ‎+963...":"name@email.com or +963..."}/></div>
+            {/* LOGIN: where did you register? */}
+            {authStep==="login_country"&&(
+              <div>
+                <p style={{textAlign:"center",fontSize:14,color:"#555",marginBottom:24,fontWeight:600}}>{t.auth.loginCountryQ}</p>
+                <div style={{display:"flex",flexDirection:"column",gap:12}}>
+                  <button onClick={()=>{setAuthStep("login");setAuthError("");setAuthForm(f=>({...f,phone:""}));}} style={{width:"100%",background:"#1B3A2A",color:"white",border:"none",padding:"14px",borderRadius:12,fontSize:15,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>{t.auth.loginFromSyria}</button>
+                  <button onClick={()=>{setAuthStep("login_other");setLoginTab("phone");setAuthError("");setAuthForm(f=>({...f,email:"",phone:"+1"}));}} style={{width:"100%",background:"white",color:"#1B3A2A",border:"2px solid #1B3A2A",padding:"14px",borderRadius:12,fontSize:15,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>{t.auth.loginFromOther}</button>
+                </div>
+                <p onClick={()=>{setAuthStep("choice");setAuthError("");}} style={{textAlign:"center",marginTop:20,fontSize:12,color:"#AAA",cursor:"pointer"}}>← {lang==="ar"?"رجوع":"Back"}</p>
+              </div>
+            )}
+
+            {/* LOGIN OUTSIDE SYRIA: phone or email toggle */}
+            {authStep==="login_other"&&(<>
+              <div style={{display:"flex",borderRadius:12,overflow:"hidden",border:"2px solid #1B3A2A",marginBottom:20}}>
+                <button onClick={()=>{setLoginTab("phone");setAuthError("");}} style={{flex:1,padding:"11px",fontFamily:"inherit",fontSize:14,fontWeight:700,cursor:"pointer",border:"none",background:loginTab==="phone"?"#1B3A2A":"white",color:loginTab==="phone"?"white":"#1B3A2A",transition:"all 0.15s"}}>📱 {t.auth.loginWithPhone}</button>
+                <button onClick={()=>{setLoginTab("email");setAuthError("");}} style={{flex:1,padding:"11px",fontFamily:"inherit",fontSize:14,fontWeight:700,cursor:"pointer",border:"none",background:loginTab==="email"?"#1B3A2A":"white",color:loginTab==="email"?"white":"#1B3A2A",transition:"all 0.15s"}}>✉️ {t.auth.loginWithEmail}</button>
+              </div>
+              {loginTab==="phone"&&(
+                <div style={{marginBottom:16}}>
+                  <label style={lbl}>{t.auth.phone}</label>
+                  <PhoneField value={authForm.phone} onChange={v=>setAuthForm(f=>({...f,phone:v}))} lang={lang} inp={inp}/>
+                </div>
+              )}
+              {loginTab==="email"&&(
+                <div style={{marginBottom:16}}><label style={lbl}>{t.auth.email}</label><input type="email" value={authForm.email} onChange={e=>setAuthForm(f=>({...f,email:e.target.value}))} style={inp} placeholder="name@email.com"/></div>
+              )}
               <div style={{marginBottom:8}}><label style={lbl}>{t.auth.password}</label><input type="password" value={authForm.password} onChange={e=>setAuthForm(f=>({...f,password:e.target.value}))} style={inp} onKeyDown={e=>e.key==="Enter"&&handleLogin()}/></div>
               <p onClick={()=>{setAuthStep("forgot_phone");setAuthError("");}} style={{textAlign:"end",fontSize:12,color:"#1B3A2A",fontWeight:700,cursor:"pointer",marginBottom:20}}>{t.auth.forgotPassword}</p>
               <button onClick={handleLogin} disabled={authLoading} style={{width:"100%",background:"#1B3A2A",color:"white",border:"none",padding:"14px",borderRadius:12,fontSize:15,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>{authLoading?"...":t.auth.loginBtn}</button>
               <p style={{textAlign:"center",marginTop:16,fontSize:13,color:"#888"}}>{t.auth.noAccount}{" "}<span onClick={()=>{setAuthStep("signup_country");setAuthError("");}} style={{color:"#1B3A2A",fontWeight:700,cursor:"pointer"}}>{t.auth.signupBtn}</span></p>
-              <p onClick={()=>setAuthStep("choice")} style={{textAlign:"center",marginTop:8,fontSize:12,color:"#AAA",cursor:"pointer"}}>← {lang==="ar"?"رجوع":"Back"}</p>
+              <p onClick={()=>{setAuthStep("login_country");setAuthError("");}} style={{textAlign:"center",marginTop:8,fontSize:12,color:"#AAA",cursor:"pointer"}}>← {lang==="ar"?"رجوع":"Back"}</p>
+            </>)}
+
+            {/* LOGIN SYRIA: email + password */}
+            {authStep==="login"&&(<>
+              <div style={{marginBottom:16}}><label style={lbl}>{t.auth.email}</label><input type="email" value={authForm.email} onChange={e=>setAuthForm(f=>({...f,email:e.target.value}))} style={inp} placeholder="name@email.com" autoComplete="email"/></div>
+              <div style={{marginBottom:8}}><label style={lbl}>{t.auth.password}</label><input type="password" value={authForm.password} onChange={e=>setAuthForm(f=>({...f,password:e.target.value}))} style={inp} onKeyDown={e=>e.key==="Enter"&&handleLogin()}/></div>
+              <p onClick={()=>{setAuthStep("forgot_phone");setAuthError("");}} style={{textAlign:"end",fontSize:12,color:"#1B3A2A",fontWeight:700,cursor:"pointer",marginBottom:20}}>{t.auth.forgotPassword}</p>
+              <button onClick={handleLogin} disabled={authLoading} style={{width:"100%",background:"#1B3A2A",color:"white",border:"none",padding:"14px",borderRadius:12,fontSize:15,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>{authLoading?"...":t.auth.loginBtn}</button>
+              <p style={{textAlign:"center",marginTop:16,fontSize:13,color:"#888"}}>{t.auth.noAccount}{" "}<span onClick={()=>{setAuthStep("signup_country");setAuthError("");}} style={{color:"#1B3A2A",fontWeight:700,cursor:"pointer"}}>{t.auth.signupBtn}</span></p>
+              <p onClick={()=>{setAuthStep("login_country");setAuthError("");}} style={{textAlign:"center",marginTop:8,fontSize:12,color:"#AAA",cursor:"pointer"}}>← {lang==="ar"?"رجوع":"Back"}</p>
             </>)}
 
             {/* SIGNUP: country selection */}
@@ -2073,11 +2122,12 @@ const [driverEditing,setDriverEditing]=useState(false);
                   ⏳ {lang==="ar"?"حجوزات بانتظار التأكيد":"Pending Reservations"}
                   <span style={{background:"#F59E0B",color:"white",borderRadius:20,padding:"2px 10px",fontSize:12,fontWeight:900}}>{driverPendingBookings.length}</span>
                 </h3>
-                {driverPendingBookings.map((bk,i)=>{
+                <div style={{display:"flex",flexDirection:"column",gap:12}}>
+                {driverPendingBookings.map((bk)=>{
                   const trip=bk.trips;
                   const fc=gc(trip?.from_city);const tc=gc(trip?.to_city);
                   return(
-                    <div key={bk.id} style={{background:"white",borderRadius:12,padding:"16px",marginBottom:i<driverPendingBookings.length-1?12:0,border:"1px solid #FDE68A",display:"flex",flexDirection:"column",gap:6}}>
+                    <div key={bk.id} style={{background:"white",borderRadius:12,padding:"16px",border:"1px solid #FDE68A",display:"flex",flexDirection:"column",gap:6}}>
                       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:8}}>
                         <div>
                           <div style={{fontWeight:800,fontSize:14,color:"#1B3A2A"}}>{bk.name||"—"}</div>
@@ -2087,12 +2137,12 @@ const [driverEditing,setDriverEditing]=useState(false);
                         <div style={{display:"flex",gap:8,flexShrink:0}}>
                           <button onClick={async()=>{
                             const{error}=await supabase.rpc("driver_action_booking",{p_booking_id:bk.id,p_action:"confirm"});
-                            if(!error){setDriverPendingBookings(prev=>prev.filter(b=>b.id!==bk.id));if(bk.trip?.user_id||bk.user_id) createNotif(bk.user_id,"booking_confirmed",lang==="ar"?"تم تأكيد حجزك ✅":"Booking Confirmed ✅",lang==="ar"?`تم تأكيد حجزك على رحلة ${fc?.[lang]||trip?.from_city} إلى ${tc?.[lang]||trip?.to_city} بتاريخ ${trip?.trip_date}`:`Your booking on ${fc?.en||trip?.from_city} → ${tc?.en||trip?.to_city} on ${trip?.trip_date} was confirmed`);}
+                            if(!error){setDriverPendingBookings(prev=>prev.filter(b=>b.id!==bk.id));if(bk.user_id) createNotif(bk.user_id,"booking_confirmed",lang==="ar"?"تم تأكيد حجزك ✅":"Booking Confirmed ✅",lang==="ar"?`تم تأكيد حجزك على رحلة ${fc?.[lang]||trip?.from_city} إلى ${tc?.[lang]||trip?.to_city} بتاريخ ${trip?.trip_date}`:`Your booking on ${fc?.en||trip?.from_city} → ${tc?.en||trip?.to_city} on ${trip?.trip_date} was confirmed`);}
                           }} style={{background:"#065F46",color:"white",border:"none",padding:"8px 16px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
                             ✓ {lang==="ar"?"تأكيد":"Confirm"}
                           </button>
                           <button onClick={async()=>{
-                            if(!window.confirm(lang==="ar"?"هل تريد رفض هذا الحجز؟":"Reject this booking?")) return;
+                            if(!window.confirm(lang==="ar"?"هل أنت متأكد من رفض هذا الحجز؟":"Are you sure you want to reject this booking?")) return;
                             const{error}=await supabase.rpc("driver_action_booking",{p_booking_id:bk.id,p_action:"reject"});
                             if(!error) setDriverPendingBookings(prev=>prev.filter(b=>b.id!==bk.id));
                           }} style={{background:"#FEF2F2",color:"#B91C1C",border:"1px solid #FECACA",padding:"8px 16px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
@@ -2104,6 +2154,7 @@ const [driverEditing,setDriverEditing]=useState(false);
                     </div>
                   );
                 })}
+                </div>
               </div>
             )}
 
