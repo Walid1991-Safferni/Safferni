@@ -426,6 +426,7 @@ export default function App(){
 
   // Reviews
   const [reviewSidebarDriver,setReviewSidebarDriver]=useState(null);
+  const [reviewSidebarBooking,setReviewSidebarBooking]=useState(null);
   const [driverReviews,setDriverReviews]=useState([]);
   const [reviewForm,setReviewForm]=useState({rating:0,text:""});
   const [reviewSubmitted,setReviewSubmitted]=useState(false);
@@ -1750,7 +1751,7 @@ const [driverEditing,setDriverEditing]=useState(false);
                       <div style={{fontSize:12,color:"#888"}}>{trip?.trip_date} · {formatTime(trip?.trip_time)}</div>
                       <div style={{fontSize:12,color:"#555",marginTop:4}}>📋 {bk.ref_code} · 💺 {bk.seats} {lang==="ar"?"مقعد":"seat(s)"} · 💰 ${bk.total_price||"—"}</div>
                     </div>
-                    <button onClick={async e=>{e.stopPropagation();setReviewSidebarDriver(trip?.driver_id);await loadDriverReviews(trip?.driver_id);}} style={{background:"#F0F7F3",color:"#1B3A2A",border:"1px solid #1B3A2A",padding:"6px 14px",borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{prof.rateNow} ★</button>
+                    <button onClick={async e=>{e.stopPropagation();setReviewSidebarDriver(trip?.driver_id);setReviewSidebarBooking({bookingId:bk.id,tripId:bk.trip_id,driverId:trip?.driver_id});setReviewForm({rating:0,text:""});setReviewSubmitted(false);await loadDriverReviews(trip?.driver_id);}} style={{background:"#F0F7F3",color:"#1B3A2A",border:"1px solid #1B3A2A",padding:"6px 14px",borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{prof.rateNow} ★</button>
                   </div>
                 </div>);
               })}
@@ -2943,11 +2944,32 @@ const [driverEditing,setDriverEditing]=useState(false);
         <div style={{position:"fixed",top:0,[isRTL?"left":"right"]:0,width:"min(380px,100vw)",height:"100vh",background:"white",boxShadow:"-4px 0 24px rgba(0,0,0,0.1)",zIndex:300,display:"flex",flexDirection:"column",animation:"slideIn 0.3s ease"}}>
           <style>{`@keyframes slideIn{from{transform:translateX(${isRTL?"-100%":"100%"})}to{transform:translateX(0)}}`}</style>
           <div style={{padding:"20px 24px",borderBottom:"1px solid #E8E6E1",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-            <h3 style={{fontSize:16,fontWeight:900,color:"#1B3A2A"}}>{lang==="ar"?"تقييمات السائق":"Driver Reviews"}</h3>
-            <button onClick={()=>setReviewSidebarDriver(null)} style={{background:"transparent",border:"none",fontSize:20,cursor:"pointer",color:"#888"}}>✕</button>
+            <h3 style={{fontSize:16,fontWeight:900,color:"#1B3A2A"}}>{lang==="ar"?"تقييم السائق":"Rate Driver"}</h3>
+            <button onClick={()=>{setReviewSidebarDriver(null);setReviewSidebarBooking(null);setReviewForm({rating:0,text:""});setReviewSubmitted(false);}} style={{background:"transparent",border:"none",fontSize:20,cursor:"pointer",color:"#888"}}>✕</button>
           </div>
           <div style={{flex:1,overflowY:"auto",padding:"16px 24px"}}>
-            {driverReviews.length===0?(<p style={{textAlign:"center",color:"#AAA",padding:"40px 0"}}>{lang==="ar"?"لا توجد تقييمات بعد":"No reviews yet"}</p>)
+            {/* Write review form — shown when opened from a past booking */}
+            {reviewSidebarBooking&&(()=>{
+              const alreadyReviewed=driverReviews.some(r=>r.booking_id===reviewSidebarBooking.bookingId);
+              return alreadyReviewed
+                ?<div style={{background:"#F0FDF4",border:"1px solid #BBF7D0",borderRadius:12,padding:"16px",marginBottom:20,textAlign:"center"}}>
+                  <p style={{fontSize:13,color:"#166534",fontWeight:700}}>✓ {lang==="ar"?"لقد قيّمت هذه الرحلة بالفعل":"You've already reviewed this trip"}</p>
+                </div>
+                :<div style={{background:"#FFFBEB",border:"1px solid #FCD34D",borderRadius:12,padding:"16px",marginBottom:20}}>
+                  <p style={{fontSize:13,fontWeight:700,color:"#92400E",marginBottom:12}}>{lang==="ar"?"قيّم تجربتك":"Rate your experience"}</p>
+                  <div style={{display:"flex",justifyContent:"center",marginBottom:12}}><StarRating value={reviewForm.rating} onChange={v=>setReviewForm(f=>({...f,rating:v}))}/></div>
+                  {reviewForm.rating>0&&<>
+                    <textarea value={reviewForm.text} onChange={e=>setReviewForm(f=>({...f,text:e.target.value}))} placeholder={lang==="ar"?"أضف تعليقاً (اختياري)":"Add a comment (optional)"} style={{...inp,minHeight:64,resize:"vertical",marginBottom:10,textAlign:isRTL?"right":"left"}} rows={2}/>
+                  </>}
+                  {reviewSubmitted
+                    ?<p style={{fontSize:13,color:"#065F46",fontWeight:700,textAlign:"center"}}>✓ {lang==="ar"?"شكراً على تقييمك!":"Thanks for your rating!"}</p>
+                    :<button onClick={async()=>{await submitReview(reviewSidebarBooking.tripId,reviewSidebarBooking.driverId,reviewSidebarBooking.bookingId);await loadDriverReviews(reviewSidebarBooking.driverId);}} disabled={!reviewForm.rating} style={{width:"100%",background:reviewForm.rating?"#1B3A2A":"#CCC",color:"white",border:"none",padding:"10px",borderRadius:10,fontSize:13,fontWeight:700,cursor:reviewForm.rating?"pointer":"default",fontFamily:"inherit"}}>{lang==="ar"?"إرسال التقييم":"Submit Review"}</button>
+                  }
+                </div>;
+            })()}
+            {/* Existing reviews */}
+            <p style={{fontSize:12,fontWeight:700,color:"#888",marginBottom:12}}>{lang==="ar"?"التقييمات السابقة":"Previous reviews"}</p>
+            {driverReviews.length===0?(<p style={{textAlign:"center",color:"#AAA",padding:"20px 0"}}>{lang==="ar"?"لا توجد تقييمات بعد":"No reviews yet"}</p>)
             :driverReviews.map((r,i)=>(
               <div key={i} style={{borderBottom:"1px solid #F0EEEA",paddingBottom:14,marginBottom:14}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}}>
@@ -2961,7 +2983,7 @@ const [driverEditing,setDriverEditing]=useState(false);
           </div>
         </div>
       )}
-      {reviewSidebarDriver&&<div onClick={()=>setReviewSidebarDriver(null)} style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,0.3)",zIndex:299}}/>}
+      {reviewSidebarDriver&&<div onClick={()=>{setReviewSidebarDriver(null);setReviewSidebarBooking(null);setReviewForm({rating:0,text:""});setReviewSubmitted(false);}} style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,0.3)",zIndex:299}}/>}
 
       {user&&showNotifications&&(
         <>
