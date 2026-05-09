@@ -302,11 +302,12 @@ const IdVerificationRow=({driver,lang,onVerify,onReject})=>{
   );
 };
 
+const PAGE_TO_PATH={"home":"/","login":"/login","profile":"/profile","apply":"/apply","admin":"/admin","driver":"/driver","drivers":"/drivers","pricing":"/pricing","contact":"/contact"};
+const PATH_TO_PAGE=Object.fromEntries(Object.entries(PAGE_TO_PATH).map(([k,v])=>[v,k]));
+const getPageFromPath=()=>PATH_TO_PAGE[window.location.pathname]||"home";
+
 export default function App(){
   const [lang,setLang]=useState("ar");
-  const PAGE_TO_PATH={"home":"/","login":"/login","profile":"/profile","apply":"/apply","admin":"/admin","driver":"/driver","drivers":"/drivers","pricing":"/pricing","contact":"/contact"};
-  const PATH_TO_PAGE=Object.fromEntries(Object.entries(PAGE_TO_PATH).map(([k,v])=>[v,k]));
-  const getPageFromPath=()=>PATH_TO_PAGE[window.location.pathname]||"home";
   const [page,_setPage]=useState(getPageFromPath);
   const setPage=(name)=>{const path=PAGE_TO_PATH[name]||"/";window.history.pushState({},"",(path));_setPage(name);};
   const [menuOpen,setMenuOpen]=useState(false);
@@ -1153,16 +1154,20 @@ const [driverEditing,setDriverEditing]=useState(false);
     setDriverTrips(myTrips||[]);
     if(myTrips&&myTrips.length>0){
       const allIds=myTrips.map(t=>t.id);
-      const{data:pendingBks}=await supabase.from("bookings").select("id,trip_id,seats,name,phone,created_at,trips(from_city,to_city,trip_date,trip_time)").in("trip_id",allIds).eq("status","pending").order("created_at",{ascending:false});
-      setDriverPendingBookings(pendingBks||[]);
-    } else {setDriverPendingBookings([]);}
-    if(myTrips){
-      const counts={};
-      for(const trip of myTrips){
+      const tripById=Object.fromEntries(myTrips.map(t=>[t.id,t]));
+      const countPromises=myTrips.map(async trip=>{
         const{count}=await supabase.from("bookings").select("*",{count:"exact",head:true}).eq("trip_id",trip.id).neq("status","cancelled");
-        counts[trip.id]=count||0;
-      }
-      setBookingCounts(counts);
+        return[trip.id,count||0];
+      });
+      const[{data:pendingBks},countPairs]=await Promise.all([
+        supabase.from("bookings").select("id,trip_id,seats,name,phone,created_at,user_id").in("trip_id",allIds).eq("status","pending").order("created_at",{ascending:false}),
+        Promise.all(countPromises),
+      ]);
+      setDriverPendingBookings((pendingBks||[]).map(bk=>({...bk,trips:tripById[bk.trip_id]})));
+      setBookingCounts(Object.fromEntries(countPairs));
+    } else {
+      setDriverPendingBookings([]);
+      setBookingCounts({});
     }
     if(myTrips&&myTrips.length>0){
       const allIds=myTrips.map(t=>t.id);
@@ -2073,11 +2078,12 @@ const [driverEditing,setDriverEditing]=useState(false);
                   ⏳ {lang==="ar"?"حجوزات بانتظار التأكيد":"Pending Reservations"}
                   <span style={{background:"#F59E0B",color:"white",borderRadius:20,padding:"2px 10px",fontSize:12,fontWeight:900}}>{driverPendingBookings.length}</span>
                 </h3>
-                {driverPendingBookings.map((bk,i)=>{
+                <div style={{display:"flex",flexDirection:"column",gap:12}}>
+                {driverPendingBookings.map((bk)=>{
                   const trip=bk.trips;
                   const fc=gc(trip?.from_city);const tc=gc(trip?.to_city);
                   return(
-                    <div key={bk.id} style={{background:"white",borderRadius:12,padding:"16px",marginBottom:i<driverPendingBookings.length-1?12:0,border:"1px solid #FDE68A",display:"flex",flexDirection:"column",gap:6}}>
+                    <div key={bk.id} style={{background:"white",borderRadius:12,padding:"16px",border:"1px solid #FDE68A",display:"flex",flexDirection:"column",gap:6}}>
                       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:8}}>
                         <div>
                           <div style={{fontWeight:800,fontSize:14,color:"#1B3A2A"}}>{bk.name||"—"}</div>
@@ -2087,12 +2093,12 @@ const [driverEditing,setDriverEditing]=useState(false);
                         <div style={{display:"flex",gap:8,flexShrink:0}}>
                           <button onClick={async()=>{
                             const{error}=await supabase.rpc("driver_action_booking",{p_booking_id:bk.id,p_action:"confirm"});
-                            if(!error){setDriverPendingBookings(prev=>prev.filter(b=>b.id!==bk.id));if(bk.trip?.user_id||bk.user_id) createNotif(bk.user_id,"booking_confirmed",lang==="ar"?"تم تأكيد حجزك ✅":"Booking Confirmed ✅",lang==="ar"?`تم تأكيد حجزك على رحلة ${fc?.[lang]||trip?.from_city} إلى ${tc?.[lang]||trip?.to_city} بتاريخ ${trip?.trip_date}`:`Your booking on ${fc?.en||trip?.from_city} → ${tc?.en||trip?.to_city} on ${trip?.trip_date} was confirmed`);}
+                            if(!error){setDriverPendingBookings(prev=>prev.filter(b=>b.id!==bk.id));if(bk.user_id) createNotif(bk.user_id,"booking_confirmed",lang==="ar"?"تم تأكيد حجزك ✅":"Booking Confirmed ✅",lang==="ar"?`تم تأكيد حجزك على رحلة ${fc?.[lang]||trip?.from_city} إلى ${tc?.[lang]||trip?.to_city} بتاريخ ${trip?.trip_date}`:`Your booking on ${fc?.en||trip?.from_city} → ${tc?.en||trip?.to_city} on ${trip?.trip_date} was confirmed`);}
                           }} style={{background:"#065F46",color:"white",border:"none",padding:"8px 16px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
                             ✓ {lang==="ar"?"تأكيد":"Confirm"}
                           </button>
                           <button onClick={async()=>{
-                            if(!window.confirm(lang==="ar"?"هل تريد رفض هذا الحجز؟":"Reject this booking?")) return;
+                            if(!window.confirm(lang==="ar"?"هل أنت متأكد من رفض هذا الحجز؟":"Are you sure you want to reject this booking?")) return;
                             const{error}=await supabase.rpc("driver_action_booking",{p_booking_id:bk.id,p_action:"reject"});
                             if(!error) setDriverPendingBookings(prev=>prev.filter(b=>b.id!==bk.id));
                           }} style={{background:"#FEF2F2",color:"#B91C1C",border:"1px solid #FECACA",padding:"8px 16px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
@@ -2104,6 +2110,7 @@ const [driverEditing,setDriverEditing]=useState(false);
                     </div>
                   );
                 })}
+                </div>
               </div>
             )}
 
