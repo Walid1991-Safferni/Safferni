@@ -8,56 +8,220 @@
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;900&display=swap');
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Montserrat', sans-serif; background: #FAFAF8; color: #333; line-height: 1.8; padding: 40px 24px 80px; }
-    .container { max-width: 700px; margin: 0 auto; }
+    .container { max-width: 760px; margin: 0 auto; }
     h1 { font-size: 28px; font-weight: 900; color: #1B3A2A; margin-bottom: 8px; }
     h2 { font-size: 18px; font-weight: 800; color: #1B3A2A; margin-top: 32px; margin-bottom: 8px; }
-    p { font-size: 14px; color: #555; margin-bottom: 12px; }
+    p, li { font-size: 14px; color: #555; margin-bottom: 10px; }
+    ul { padding-inline-start: 22px; margin-bottom: 12px; }
     .updated { font-size: 12px; color: #999; margin-bottom: 32px; }
+    .lang-toggle { display:flex; gap:8px; margin-bottom:24px; }
+    .lang-toggle button { padding:8px 18px; border-radius:10px; font-family:inherit; font-weight:700; font-size:13px; cursor:pointer; border:2px solid #E8E6E1; background:white; color:#666; }
+    .lang-toggle button.active { background:#1B3A2A; color:white; border-color:#1B3A2A; }
     a { color: #1B3A2A; }
+    .ar { display:none; direction:rtl; text-align:right; }
+    .ar h1, .ar h2 { text-align:right; }
+    body.lang-ar .en { display:none; }
+    body.lang-ar .ar { display:block; }
+    body.lang-ar { direction:rtl; }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>Privacy Policy</h1>
-    <p class="updated">Last updated: April 2026</p>
+    <div class="lang-toggle">
+      <button id="btn-en" class="active" onclick="setLang('en')">English</button>
+      <button id="btn-ar" onclick="setLang('ar')">العربية</button>
+    </div>
 
-    <h2>Introduction</h2>
-    <p>Safferni ("سفّرني", "we", "our", or "us") operates the website safferni.com and the Safferni mobile application. This Privacy Policy explains how we collect, use, and protect your personal information when you use our services.</p>
+    <!-- ENGLISH -->
+    <div class="en">
+      <h1>Privacy Policy</h1>
+      <p class="updated">Last updated: May 2026</p>
 
-    <h2>Information We Collect</h2>
-    <p>When you book a ride through our platform, we collect the following information: your full name, phone number, travel route, travel date and time, number of passengers and bags, preferred payment method, and any additional notes you provide.</p>
+      <h2>1. Introduction</h2>
+      <p>Safferni ("سفّرني", "we", "our", or "us") operates the website <a href="https://safferni.com">safferni.com</a> and the Safferni mobile application (collectively, the "Service"), a ride-sharing platform that connects passengers with drivers. This Privacy Policy explains what personal information we collect, how we use it, and your rights regarding your data.</p>
 
-    <h2>How We Use Your Information</h2>
-    <p>We use your information to process and confirm your booking, connect you with a driver, communicate with you via WhatsApp or email regarding your trip, and improve our services.</p>
+      <h2>2. Information We Collect</h2>
+      <p><strong>Account information:</strong> When you create an account, we collect your full name, email address, phone number, date of birth, password (encrypted), and language preference.</p>
+      <p><strong>Passenger booking information:</strong> When you book a trip, we collect departure city, destination, travel date and time, number of seats, optional notes, and emergency contact email.</p>
+      <p><strong>Driver information:</strong> If you apply as a driver, we additionally collect your national ID number, ID document images, driver's license, transport license, vehicle make/model, license plate, vehicle features (Wi-Fi, AC, etc.), and profile photo.</p>
+      <p><strong>Trip and route data:</strong> Trip origin, destination, date, time, price, and seat availability.</p>
+      <p><strong>Communications:</strong> Messages between passengers and drivers, ratings and reviews, support requests.</p>
+      <p><strong>Device data:</strong> When using the mobile app, basic device information (device type, OS version, app version) for crash reporting and analytics.</p>
+      <p><strong>We do not collect:</strong> precise GPS location in the background, contacts, photos other than ones you explicitly upload, biometric data, or financial card details (we currently do not process payments through the app).</p>
 
-    <h2>Data Storage</h2>
-    <p>Your booking information is stored securely using Google Sheets and is only accessible to authorized Safferni team members. We do not sell, rent, or share your personal information with third parties except as necessary to fulfill your booking.</p>
+      <h2>3. How We Use Your Information</h2>
+      <ul>
+        <li>To create and manage your account</li>
+        <li>To process trip bookings and connect you with drivers</li>
+        <li>To verify driver identities and vehicles</li>
+        <li>To send booking confirmations, status updates, and important service notifications</li>
+        <li>To improve the Service and develop new features</li>
+        <li>To respond to support requests and resolve disputes</li>
+        <li>To enforce our Terms of Service and prevent fraud</li>
+        <li>To comply with legal obligations</li>
+      </ul>
 
-    <h2>WhatsApp Communication</h2>
-    <p>When you confirm a booking, your booking details are sent via WhatsApp to our team for processing. By using our booking service, you consent to receiving booking confirmations and driver connection instructions via WhatsApp.</p>
+      <h2>4. Information Shared With Other Users</h2>
+      <p>To make ride-sharing work, certain information is visible to other users:</p>
+      <ul>
+        <li>When you <strong>book a trip</strong>, the driver receives your name, phone number, number of seats, and any notes you wrote.</li>
+        <li>When you <strong>publish a trip as a driver</strong>, passengers see your name, profile photo, vehicle details, ratings, and verification status.</li>
+        <li>Your <strong>full name and ratings</strong> are publicly visible on driver profile pages.</li>
+        <li>Your <strong>phone number is never shown publicly</strong> — only shared with the driver/passenger after a booking is confirmed.</li>
+      </ul>
 
-    <h2>Cookies</h2>
-    <p>Our website does not use cookies or tracking technologies.</p>
+      <h2>5. Third-Party Services</h2>
+      <p>We use the following third-party providers to operate the Service. Each has its own privacy policy:</p>
+      <ul>
+        <li><strong>Supabase</strong> (database, authentication, file storage) — <a href="https://supabase.com/privacy" target="_blank">supabase.com/privacy</a></li>
+        <li><strong>Vercel</strong> (website hosting) — <a href="https://vercel.com/legal/privacy-policy" target="_blank">vercel.com/legal/privacy-policy</a></li>
+        <li><strong>Google Play / Apple App Store</strong> (app distribution and crash reporting)</li>
+        <li><strong>Telegram</strong> (optional notification channel for the operations team)</li>
+      </ul>
+      <p>We do <strong>not</strong> sell or rent your personal information to advertisers or data brokers.</p>
 
-    <h2>Third-Party Services</h2>
-    <p>We use the following third-party services: Google Sheets for booking data storage, WhatsApp for communication, and Vercel for website hosting. Each of these services has their own privacy policies.</p>
+      <h2>6. App Permissions</h2>
+      <p>The mobile app may request the following permissions:</p>
+      <ul>
+        <li><strong>Internet:</strong> required to connect to our servers</li>
+        <li><strong>Camera / Photo library:</strong> only when you upload a profile photo or driver verification document</li>
+        <li><strong>Notifications:</strong> to alert you about booking confirmations, time changes, or chat messages</li>
+      </ul>
+      <p>You can revoke any permission at any time in your device settings.</p>
 
-    <h2>Data Retention</h2>
-    <p>We retain your booking information for as long as necessary to provide our services and for our records. You may request deletion of your data at any time by contacting us.</p>
+      <h2>7. Data Storage and Security</h2>
+      <p>Your data is stored on Supabase servers using industry-standard encryption (TLS in transit, AES at rest). Passwords are hashed using bcrypt. Access is restricted to authorized Safferni staff. We implement role-based access control and audit trails for sensitive operations.</p>
+      <p>While we take reasonable precautions, no method of transmission over the Internet is 100% secure. We cannot guarantee absolute security.</p>
 
-    <h2>Your Rights</h2>
-    <p>You have the right to access, correct, or delete your personal information. To exercise these rights, contact us at info@safferni.com.</p>
+      <h2>8. Data Retention</h2>
+      <p>We retain your information for as long as your account is active. If you delete your account, we will delete your personal data within 30 days, except where retention is required for legal, tax, or fraud-prevention purposes (in which case we retain only the minimum necessary).</p>
 
-    <h2>Children's Privacy</h2>
-    <p>Our services are not directed to children under 13. We do not knowingly collect personal information from children under 13.</p>
+      <h2>9. Your Rights</h2>
+      <p>You have the right to:</p>
+      <ul>
+        <li>Access the personal data we hold about you</li>
+        <li>Correct inaccurate or incomplete data (directly via your profile or by emailing us)</li>
+        <li>Delete your account and personal data</li>
+        <li>Export your data in a portable format</li>
+        <li>Withdraw consent for non-essential data processing</li>
+      </ul>
+      <p>To exercise any of these rights, email <a href="mailto:info@safferni.com">info@safferni.com</a>. We will respond within 30 days.</p>
 
-    <h2>Changes to This Policy</h2>
-    <p>We may update this Privacy Policy from time to time. Any changes will be posted on this page with an updated date.</p>
+      <h2>10. Children's Privacy</h2>
+      <p>The Service is not intended for users under 18 years old. We do not knowingly collect personal information from children under 18. If you believe a minor has provided us with personal data, please contact us and we will delete it.</p>
 
-    <h2>Contact Us</h2>
-    <p>If you have any questions about this Privacy Policy, contact us at:<br>
-    Email: <a href="mailto:info@safferni.com">info@safferni.com</a><br>
-    Website: <a href="https://safferni.com">safferni.com</a></p>
+      <h2>11. International Users</h2>
+      <p>Our servers are hosted by Supabase. By using the Service, you consent to your data being transferred to and processed in countries where Supabase operates, which may be outside your country of residence.</p>
+
+      <h2>12. Changes to This Policy</h2>
+      <p>We may update this Privacy Policy from time to time. Material changes will be announced via in-app notification or email. The "Last updated" date at the top of this page reflects the most recent revision.</p>
+
+      <h2>13. Contact Us</h2>
+      <p>If you have questions about this Privacy Policy or your personal data, contact us at:<br>
+      Email: <a href="mailto:info@safferni.com">info@safferni.com</a><br>
+      Website: <a href="https://safferni.com">safferni.com</a></p>
+    </div>
+
+    <!-- ARABIC -->
+    <div class="ar">
+      <h1>سياسة الخصوصية</h1>
+      <p class="updated">آخر تحديث: مايو 2026</p>
+
+      <h2>١. مقدمة</h2>
+      <p>تشغّل سفّرني ("نحن"، "خاصتنا") موقع <a href="https://safferni.com">safferni.com</a> وتطبيق سفّرني للجوال (يُشار إليهما معاً بـ "الخدمة")، وهي منصة لمشاركة الرحلات تربط الركاب بالسائقين. توضح هذه السياسة المعلومات الشخصية التي نجمعها وكيفية استخدامها وحقوقك تجاه بياناتك.</p>
+
+      <h2>٢. المعلومات التي نجمعها</h2>
+      <p><strong>معلومات الحساب:</strong> عند إنشاء حساب، نجمع: الاسم الكامل، البريد الإلكتروني، رقم الهاتف، تاريخ الميلاد، كلمة المرور (مشفّرة)، وتفضيل اللغة.</p>
+      <p><strong>معلومات حجز الراكب:</strong> مدينة الانطلاق، الوجهة، تاريخ ووقت الرحلة، عدد المقاعد، الملاحظات، وبريد جهة اتصال للطوارئ.</p>
+      <p><strong>معلومات السائق:</strong> إن قدّمت طلب التحاق كسائق، نجمع إضافةً إلى ما سبق: رقم الهوية الوطنية، صور وثيقة الهوية، رخصة القيادة، رخصة النقل العمومي، نوع وموديل المركبة، رقم اللوحة، مزايا المركبة (واي فاي، تكييف، إلخ)، وصورة الملف الشخصي.</p>
+      <p><strong>بيانات الرحلة:</strong> مكان الانطلاق، الوجهة، التاريخ، الوقت، السعر، عدد المقاعد المتوفرة.</p>
+      <p><strong>التواصل:</strong> الرسائل بين الركاب والسائقين، التقييمات، طلبات الدعم.</p>
+      <p><strong>بيانات الجهاز:</strong> عند استخدام التطبيق، معلومات أساسية عن الجهاز (نوع الجهاز، إصدار النظام، إصدار التطبيق) لأغراض تحليل الأعطال والإحصاءات.</p>
+      <p><strong>لا نجمع:</strong> الموقع الجغرافي الدقيق في الخلفية، جهات الاتصال، الصور الأخرى عدا التي ترفعها بنفسك، البيانات البيومترية، أو بيانات البطاقات المالية (لا نعالج المدفوعات عبر التطبيق حالياً).</p>
+
+      <h2>٣. كيف نستخدم معلوماتك</h2>
+      <ul>
+        <li>إنشاء حسابك وإدارته</li>
+        <li>معالجة حجوزات الرحلات وربطك بالسائقين</li>
+        <li>التحقق من هويات السائقين ومركباتهم</li>
+        <li>إرسال تأكيدات الحجز والإشعارات الهامة</li>
+        <li>تطوير الخدمة وإضافة ميزات جديدة</li>
+        <li>الرد على طلبات الدعم وحل النزاعات</li>
+        <li>تطبيق شروط الخدمة ومنع الاحتيال</li>
+        <li>الالتزام بالمتطلبات القانونية</li>
+      </ul>
+
+      <h2>٤. المعلومات التي تتم مشاركتها مع المستخدمين الآخرين</h2>
+      <p>لتعمل خدمة مشاركة الرحلات، تظهر بعض المعلومات للمستخدمين الآخرين:</p>
+      <ul>
+        <li>عند <strong>حجزك لرحلة</strong>، يستلم السائق اسمك، رقم هاتفك، عدد المقاعد، والملاحظات.</li>
+        <li>عند <strong>نشرك لرحلة كسائق</strong>، يرى الركاب اسمك، صورتك، تفاصيل المركبة، تقييماتك، وحالة التوثيق.</li>
+        <li>يظهر <strong>اسمك الكامل وتقييماتك</strong> علناً في صفحة السائق العامة.</li>
+        <li><strong>رقم هاتفك لا يُعرض علناً أبداً</strong> — يُشارَك فقط مع السائق/الراكب بعد تأكيد الحجز.</li>
+      </ul>
+
+      <h2>٥. خدمات الطرف الثالث</h2>
+      <p>نستخدم الخدمات التالية لتشغيل الخدمة، ولكلٍّ منها سياسة خصوصية خاصة:</p>
+      <ul>
+        <li><strong>Supabase</strong> (قاعدة البيانات والمصادقة وتخزين الملفات)</li>
+        <li><strong>Vercel</strong> (استضافة الموقع)</li>
+        <li><strong>Google Play / App Store</strong> (توزيع التطبيق)</li>
+        <li><strong>Telegram</strong> (قناة إشعارات اختيارية لفريق العمليات)</li>
+      </ul>
+      <p>نحن <strong>لا نبيع</strong> ولا نؤجّر معلوماتك الشخصية للمعلنين أو وسطاء البيانات.</p>
+
+      <h2>٦. أذونات التطبيق</h2>
+      <ul>
+        <li><strong>الإنترنت:</strong> ضروري للاتصال بخوادمنا</li>
+        <li><strong>الكاميرا / مكتبة الصور:</strong> فقط عند رفع صورة شخصية أو وثيقة توثيق سائق</li>
+        <li><strong>الإشعارات:</strong> لتنبيهك بتأكيد الحجز أو تغيّر الوقت أو الرسائل</li>
+      </ul>
+      <p>يمكنك إلغاء أي إذن في أي وقت من إعدادات جهازك.</p>
+
+      <h2>٧. تخزين البيانات والأمان</h2>
+      <p>تُخزَّن بياناتك على خوادم Supabase باستخدام تشفير وفق المعايير الصناعية (TLS أثناء النقل، AES أثناء التخزين). كلمات المرور مُشفّرة بـ bcrypt. الوصول مقتصر على موظفين مخوّلين. نطبّق التحكم بالأدوار وسجلات التدقيق للعمليات الحساسة.</p>
+
+      <h2>٨. مدة الاحتفاظ بالبيانات</h2>
+      <p>نحتفظ بمعلوماتك ما دام حسابك فعّالاً. عند حذف الحساب، تُحذف بياناتك خلال ٣٠ يوماً، إلا حيث يلزم الاحتفاظ لأغراض قانونية أو ضريبية أو لمنع الاحتيال (وفي تلك الحالة نحتفظ بالحد الأدنى الضروري فقط).</p>
+
+      <h2>٩. حقوقك</h2>
+      <p>يحق لك:</p>
+      <ul>
+        <li>الوصول إلى بياناتك الشخصية لدينا</li>
+        <li>تصحيح البيانات غير الدقيقة (من ملفك أو بمراسلتنا)</li>
+        <li>حذف حسابك وبياناتك الشخصية</li>
+        <li>تصدير بياناتك بصيغة قابلة للنقل</li>
+        <li>سحب موافقتك على معالجة البيانات غير الأساسية</li>
+      </ul>
+      <p>لممارسة أي من هذه الحقوق، راسلنا على <a href="mailto:info@safferni.com">info@safferni.com</a>. نردّ خلال ٣٠ يوماً.</p>
+
+      <h2>١٠. خصوصية الأطفال</h2>
+      <p>الخدمة موجّهة للبالغين فوق ١٨ عاماً. لا نجمع عن قصد بيانات من قاصرين دون ١٨. إن علمت بأن قاصراً قدّم لنا بياناته، يرجى إبلاغنا وسنقوم بحذفها.</p>
+
+      <h2>١١. المستخدمون الدوليون</h2>
+      <p>خوادمنا مستضافة عبر Supabase. باستخدامك للخدمة، توافق على نقل بياناتك ومعالجتها في الدول التي تعمل بها Supabase والتي قد تكون خارج بلد إقامتك.</p>
+
+      <h2>١٢. تغييرات على هذه السياسة</h2>
+      <p>قد نُحدّث هذه السياسة من وقت لآخر. ستُعلَن التغييرات الجوهرية عبر إشعار داخل التطبيق أو البريد الإلكتروني. التاريخ في الأعلى يعكس آخر تعديل.</p>
+
+      <h2>١٣. تواصل معنا</h2>
+      <p>لأي استفسار حول هذه السياسة أو بياناتك:<br>
+      البريد الإلكتروني: <a href="mailto:info@safferni.com">info@safferni.com</a><br>
+      الموقع: <a href="https://safferni.com">safferni.com</a></p>
+    </div>
   </div>
+
+  <script>
+    function setLang(l){
+      document.body.classList.toggle('lang-ar', l==='ar');
+      document.documentElement.lang = l;
+      document.documentElement.dir = l==='ar' ? 'rtl' : 'ltr';
+      document.getElementById('btn-en').classList.toggle('active', l==='en');
+      document.getElementById('btn-ar').classList.toggle('active', l==='ar');
+    }
+    // Auto-detect from URL: /privacy?lang=ar
+    const params = new URLSearchParams(location.search);
+    if(params.get('lang')==='ar') setLang('ar');
+  </script>
 </body>
 </html>
