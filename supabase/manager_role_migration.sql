@@ -3,6 +3,11 @@
 -- Run these statements in the Supabase SQL editor in order.
 -- ============================================================
 
+-- 0. Allow 'manager' as a valid role value
+alter table profiles drop constraint if exists profiles_role_check;
+alter table profiles add constraint profiles_role_check
+  check (role in ('passenger','driver','admin','manager'));
+
 -- 1. driver_managers table
 create table if not exists driver_managers (
   id uuid default gen_random_uuid() primary key,
