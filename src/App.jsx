@@ -779,8 +779,8 @@ const [driverEditing,setDriverEditing]=useState(false);
 
   const confirmBooking=async(bookingId)=>{
     const bk=tripDetailBookings.find(b=>b.id===bookingId);
-    const{error}=await supabase.rpc("driver_action_booking",{p_booking_id:bookingId,p_action:"confirm"});
-    if(error){alert(lang==="ar"?"فشل تأكيد الحجز، حاول مجدداً":"Failed to confirm booking, please try again");return;}
+    const{data,error}=await supabase.rpc("driver_action_booking",{p_booking_id:bookingId,p_action:"confirm"});
+    if(error||data?.success===false){alert(lang==="ar"?"فشل تأكيد الحجز، حاول مجدداً":"Failed to confirm booking, please try again");return;}
     setTripDetailBookings(bs=>bs.map(b=>b.id===bookingId?{...b,status:"confirmed"}:b));
     if(bk?.user_id&&selectedTripDetail) createNotif(bk.user_id,"booking_confirmed",lang==="ar"?"تم تأكيد حجزك ✅":"Booking Confirmed ✅",lang==="ar"?`تم تأكيد حجزك على رحلة ${gc(selectedTripDetail.from_city)?.[lang]||selectedTripDetail.from_city} إلى ${gc(selectedTripDetail.to_city)?.[lang]||selectedTripDetail.to_city} بتاريخ ${selectedTripDetail.trip_date}`:`Your booking on ${gc(selectedTripDetail.from_city)?.en||selectedTripDetail.from_city} → ${gc(selectedTripDetail.to_city)?.en||selectedTripDetail.to_city} on ${selectedTripDetail.trip_date} was confirmed by the driver`);
   };
@@ -795,8 +795,8 @@ const [driverEditing,setDriverEditing]=useState(false);
       setSelectedTripDetail(t=>({...t,available_seats:(t.available_seats||0)+bk.seats}));
       setDriverTrips(ts=>ts.map(t=>t.id===tripId?{...t,available_seats:(t.available_seats||0)+bk.seats}:t));
     }
-    const{error}=await supabase.rpc("driver_action_booking",{p_booking_id:bookingId,p_action:"reject"});
-    if(error){
+    const{data,error}=await supabase.rpc("driver_action_booking",{p_booking_id:bookingId,p_action:"reject"});
+    if(error||data?.success===false){
       setTripDetailBookings(prevBookings);
       setSelectedTripDetail(prevTripDetail);
       setDriverTrips(ts=>ts.map(t=>t.id===tripId?{...t,available_seats:prevTripDetail.available_seats}:t));
@@ -2140,15 +2140,18 @@ const [driverEditing,setDriverEditing]=useState(false);
                         </div>
                         <div style={{display:"flex",gap:8,flexShrink:0}}>
                           <button onClick={async()=>{
-                            const{error}=await supabase.rpc("driver_action_booking",{p_booking_id:bk.id,p_action:"confirm"});
-                            if(!error){setDriverPendingBookings(prev=>prev.filter(b=>b.id!==bk.id));if(bk.user_id) createNotif(bk.user_id,"booking_confirmed",lang==="ar"?"تم تأكيد حجزك ✅":"Booking Confirmed ✅",lang==="ar"?`تم تأكيد حجزك على رحلة ${fc?.[lang]||trip?.from_city} إلى ${tc?.[lang]||trip?.to_city} بتاريخ ${trip?.trip_date}`:`Your booking on ${fc?.en||trip?.from_city} → ${tc?.en||trip?.to_city} on ${trip?.trip_date} was confirmed`);}
+                            const{data,error}=await supabase.rpc("driver_action_booking",{p_booking_id:bk.id,p_action:"confirm"});
+                            if(error||data?.success===false){alert(lang==="ar"?"فشل تأكيد الحجز":"Failed to confirm booking");return;}
+                            setDriverPendingBookings(prev=>prev.filter(b=>b.id!==bk.id));
+                            if(bk.user_id) createNotif(bk.user_id,"booking_confirmed",lang==="ar"?"تم تأكيد حجزك ✅":"Booking Confirmed ✅",lang==="ar"?`تم تأكيد حجزك على رحلة ${fc?.[lang]||trip?.from_city} إلى ${tc?.[lang]||trip?.to_city} بتاريخ ${trip?.trip_date}`:`Your booking on ${fc?.en||trip?.from_city} → ${tc?.en||trip?.to_city} on ${trip?.trip_date} was confirmed`);
                           }} style={{background:"#065F46",color:"white",border:"none",padding:"8px 16px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
                             ✓ {lang==="ar"?"تأكيد":"Confirm"}
                           </button>
                           <button onClick={async()=>{
                             if(!window.confirm(lang==="ar"?"هل أنت متأكد من رفض هذا الحجز؟":"Are you sure you want to reject this booking?")) return;
-                            const{error}=await supabase.rpc("driver_action_booking",{p_booking_id:bk.id,p_action:"reject"});
-                            if(!error) setDriverPendingBookings(prev=>prev.filter(b=>b.id!==bk.id));
+                            const{data,error}=await supabase.rpc("driver_action_booking",{p_booking_id:bk.id,p_action:"reject"});
+                            if(error||data?.success===false){alert(lang==="ar"?"فشل رفض الحجز":"Failed to reject booking");return;}
+                            setDriverPendingBookings(prev=>prev.filter(b=>b.id!==bk.id));
                           }} style={{background:"#FEF2F2",color:"#B91C1C",border:"1px solid #FECACA",padding:"8px 16px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
                             ✗ {lang==="ar"?"رفض":"Reject"}
                           </button>
@@ -2432,7 +2435,15 @@ const [driverEditing,setDriverEditing]=useState(false);
                           <button onClick={()=>confirmBooking(bk.id)} style={{background:"#1B3A2A",color:"white",border:"none",padding:"5px 12px",borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{lang==="ar"?"قبول":"Confirm"}</button>
                           <button onClick={()=>rejectBooking(bk.id)} style={{background:"#EF4444",color:"white",border:"none",padding:"5px 12px",borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{lang==="ar"?"رفض":"Reject"}</button>
                         </div>}
-                        {bk.status==="confirmed"&&selectedTripDetail?.status==="active"&&<button onClick={async()=>{if(!window.confirm(lang==="ar"?"هل تأكد عدم حضور الراكب؟":"Mark passenger as no-show?"))return;const{error}=await supabase.rpc("driver_action_booking",{p_booking_id:bk.id,p_action:"reject"});if(!error){setTripDetailBookings(bs=>bs.map(b=>b.id===bk.id?{...b,status:"no_show"}:b));setSelectedTripDetail(t=>({...t,available_seats:(t.available_seats||0)+bk.seats}));setDriverTrips(ts=>ts.map(t=>t.id===selectedTripDetail.id?{...t,available_seats:(t.available_seats||0)+bk.seats}:t));}}} style={{background:"#FFF7ED",color:"#C2410C",border:"1px solid #FED7AA",padding:"5px 12px",borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{lang==="ar"?"لم يحضر":"No-show"}</button>}
+                        {bk.status==="confirmed"&&selectedTripDetail?.status==="active"&&<button onClick={async()=>{
+                          if(!window.confirm(lang==="ar"?"هل تأكد عدم حضور الراكب؟":"Mark passenger as no-show?"))return;
+                          const{error}=await supabase.from("bookings").update({status:"no_show"}).eq("id",bk.id).eq("status","confirmed");
+                          if(error){alert(lang==="ar"?"فشل تسجيل الغياب":"Failed to mark no-show");return;}
+                          await supabase.from("trips").update({available_seats:(selectedTripDetail.available_seats||0)+bk.seats}).eq("id",selectedTripDetail.id);
+                          setTripDetailBookings(bs=>bs.map(b=>b.id===bk.id?{...b,status:"no_show"}:b));
+                          setSelectedTripDetail(t=>({...t,available_seats:(t.available_seats||0)+bk.seats}));
+                          setDriverTrips(ts=>ts.map(t=>t.id===selectedTripDetail.id?{...t,available_seats:(t.available_seats||0)+bk.seats}:t));
+                        }} style={{background:"#FFF7ED",color:"#C2410C",border:"1px solid #FED7AA",padding:"5px 12px",borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{lang==="ar"?"لم يحضر":"No-show"}</button>}
                       </div>
                     </div>
                   </div>
