@@ -312,7 +312,7 @@ const IdVerificationRow=({driver,lang,onVerify,onReject})=>{
   );
 };
 
-const PAGE_TO_PATH={"home":"/","login":"/login","profile":"/profile","apply":"/apply","admin":"/admin","driver":"/driver","drivers":"/drivers","pricing":"/pricing","contact":"/contact"};
+const PAGE_TO_PATH={"home":"/","login":"/login","profile":"/profile","apply":"/apply","admin":"/admin","driver":"/driver","manager":"/manager","drivers":"/drivers","pricing":"/pricing","contact":"/contact"};
 const PATH_TO_PAGE=Object.fromEntries(Object.entries(PAGE_TO_PATH).map(([k,v])=>[v,k]));
 const getPageFromPath=()=>PATH_TO_PAGE[window.location.pathname]||"home";
 
@@ -427,6 +427,14 @@ export default function App(){
   // External seat reservation
   const [externalSeats,setExternalSeats]=useState(1);
 
+  // Manager role
+  const [managedDrivers,setManagedDrivers]=useState([]);
+  const [managerSelectedDriver,setManagerSelectedDriver]=useState(null);
+  const [adminManagers,setAdminManagers]=useState([]);
+  const [adminManagerAssignments,setAdminManagerAssignments]=useState([]);
+  const [managerEmail,setManagerEmail]=useState("");
+  const [managerAssignDriverId,setManagerAssignDriverId]=useState({});
+
   // Reviews
   const [reviewSidebarDriver,setReviewSidebarDriver]=useState(null);
   const [reviewSidebarBooking,setReviewSidebarBooking]=useState(null);
@@ -468,6 +476,7 @@ const [driverEditing,setDriverEditing]=useState(false);
   const searchRef=useRef(null);
   const bkRef=useRef(null);
   const isAdmin=user&&ADMIN_EMAILS.includes(user.email);
+  const isManager=!!(profile?.role==="manager");
   const isDriverApplied=driverApproved||(driverApplication&&(driverApplication.status==="pending"||driverApplication.status==="approved"));
   const fade={animation:"fadeUp 0.7s ease both"};
   const unreadCount=notifications.filter(n=>!n.read).length;
@@ -516,12 +525,14 @@ const [driverEditing,setDriverEditing]=useState(false);
     return()=>supabase.removeChannel(ch);
   },[user?.id]);
   useEffect(()=>{if(adminTab==="activity"&&isAdmin)loadAdminActivity();},[adminTab]);
+  useEffect(()=>{if(adminTab==="managers"&&isAdmin)loadAdminManagers();},[adminTab]);
   useEffect(()=>{if(adminTab==="idVerification"&&isAdmin)loadAdminIdQueue();},[adminTab]);
   const [adminRouteRequests,setAdminRouteRequests]=useState([]);
   useEffect(()=>{if(adminTab==="routeRequests"&&isAdmin){supabase.from("route_requests").select("*").order("created_at",{ascending:false}).then(({data})=>setAdminRouteRequests(data||[]));}},[adminTab]);
   useEffect(()=>{const handler=()=>_setPage(getPageFromPath());window.addEventListener("popstate",handler);return()=>window.removeEventListener("popstate",handler);},[]);
   useEffect(()=>{if(page==="admin"&&isAdmin){loadAdminData();if(adminTab==="promoCodes") loadPromoCodes();}},[page,adminTab]);
   useEffect(()=>{if(page==="driver"&&user){setSelectedDriver(null);loadProfile(user);loadDriverData();}},[page,user]);
+  useEffect(()=>{if(page==="manager"&&user&&isManager){loadManagedDrivers();}},[page,user,isManager]);
   useEffect(()=>{if(page==="drivers") loadDriversPage();},[page]);
   useEffect(()=>{
     if(page==="profile"&&user){
@@ -1211,6 +1222,102 @@ const [driverEditing,setDriverEditing]=useState(false);
     }
   };
 
+  // ─── MANAGER ──────────────────────────────────────────────────────────────
+
+  const loadManagedDrivers=async()=>{
+    if(!user) return;
+    const{data}=await supabase.from("driver_managers").select("driver_id, profiles!driver_managers_driver_id_fkey(id,full_name,avatar_url,car_type)").eq("manager_id",user.id);
+    setManagedDrivers((data||[]).map(r=>r.profiles).filter(Boolean));
+  };
+
+  const loadManagerDriverData=async(driverId)=>{
+    const{data:myTrips}=await supabase.from("trips").select("*").eq("driver_id",driverId).order("trip_date",{ascending:false});
+    setDriverTrips(myTrips||[]);
+    if(myTrips&&myTrips.length>0){
+      const allIds=myTrips.map(t=>t.id);
+      const tripById=Object.fromEntries(myTrips.map(t=>[t.id,t]));
+      const countPromises=myTrips.map(async trip=>{
+        const{count}=await supabase.from("bookings").select("*",{count:"exact",head:true}).eq("trip_id",trip.id).neq("status","cancelled");
+        return[trip.id,count||0];
+      });
+      const[{data:pendingBks},countPairs]=await Promise.all([
+        supabase.from("bookings").select("id,trip_id,seats,name,phone,created_at,user_id").in("trip_id",allIds).eq("status","pending").order("created_at",{ascending:false}),
+        Promise.all(countPromises),
+      ]);
+      setDriverPendingBookings((pendingBks||[]).map(bk=>({...bk,trips:tripById[bk.trip_id]})));
+      setBookingCounts(Object.fromEntries(countPairs));
+    } else {
+      setDriverPendingBookings([]);setBookingCounts({});
+    }
+  };
+
+  const managerAddTrip=async()=>{
+    if(!user?.id||!managerSelectedDriver?.id){return;}
+    if(!tripForm.from||!tripForm.to||!tripForm.date||!tripForm.pricePerSeat){setTripError(lang==="ar"?"يرجى ملء جميع الحقول المطلوبة":"Please fill all required fields");return;}
+    const weeks=Math.min(Math.max(parseInt(tripForm.repeatWeeks)||1,1),12);
+    const base={driver_id:managerSelectedDriver.id,from_city:tripForm.from,to_city:tripForm.to,trip_time:tripForm.time||null,price_per_seat:parseFloat(tripForm.pricePerSeat),total_seats:parseInt(tripForm.totalSeats),available_seats:parseInt(tripForm.totalSeats),car_type:tripForm.carType||managerSelectedDriver.car_type||"",gender_type:tripForm.genderType,approved:false,status:"pending",created_by:user.id};
+    const rows=Array.from({length:weeks},(_,i)=>{const d=new Date(tripForm.date);d.setDate(d.getDate()+i*7);return{...base,trip_date:d.toISOString().split("T")[0]};});
+    const{error}=await supabase.from("trips").insert(rows);
+    if(!error){setTripSuccess(true);setTimeout(()=>setTripSuccess(false),3000);setTripForm({from:"",to:"",date:"",time:"",pricePerSeat:"",totalSeats:"4",carType:"",genderType:"mixed",repeatWeeks:"1"});loadManagerDriverData(managerSelectedDriver.id);}
+    else setTripError(lang==="ar"?"فشل إضافة الرحلة":"Failed to add trip: "+(error.message||""));
+  };
+
+  const managerConfirmBooking=async(bookingId,bkObj)=>{
+    const bk=bkObj||tripDetailBookings.find(b=>b.id===bookingId);
+    const{error}=await supabase.from("bookings").update({status:"confirmed",action_taken_by:user.id}).eq("id",bookingId).eq("status","pending");
+    if(error){alert(lang==="ar"?"فشل تأكيد الحجز":"Failed to confirm booking");return;}
+    const newAvail=(selectedTripDetail?.available_seats||0)-(bk?.seats||1);
+    await supabase.from("trips").update({available_seats:newAvail}).eq("id",bk?.trip_id||selectedTripDetail?.id);
+    setTripDetailBookings(bs=>bs.map(b=>b.id===bookingId?{...b,status:"confirmed"}:b));
+    setSelectedTripDetail(t=>t?{...t,available_seats:newAvail}:t);
+    setDriverPendingBookings(prev=>prev.filter(b=>b.id!==bookingId));
+    if(bk?.user_id) createNotif(bk.user_id,"booking_confirmed",lang==="ar"?"تم تأكيد حجزك ✅":"Booking Confirmed ✅","");
+  };
+
+  const managerRejectBooking=async(bookingId)=>{
+    if(!window.confirm(lang==="ar"?"هل أنت متأكد من رفض هذا الحجز؟":"Reject this booking?")) return;
+    const{error}=await supabase.from("bookings").update({status:"rejected",action_taken_by:user.id}).eq("id",bookingId).eq("status","pending");
+    if(error){alert(lang==="ar"?"فشل رفض الحجز":"Failed to reject booking");return;}
+    setTripDetailBookings(bs=>bs.map(b=>b.id===bookingId?{...b,status:"rejected"}:b));
+    setDriverPendingBookings(prev=>prev.filter(b=>b.id!==bookingId));
+  };
+
+  const loadAdminManagers=async()=>{
+    const[{data:mgrs},{data:assignments}]=await Promise.all([
+      supabase.from("profiles").select("id,full_name,email").eq("role","manager"),
+      supabase.from("driver_managers").select("manager_id,driver_id"),
+    ]);
+    setAdminManagers(mgrs||[]);
+    setAdminManagerAssignments(assignments||[]);
+  };
+
+  const promoteToManager=async(email)=>{
+    const{data}=await supabase.from("profiles").select("id,role").eq("email",email.trim()).maybeSingle();
+    if(!data){alert(lang==="ar"?"لا يوجد مستخدم بهذا البريد":"User not found");return;}
+    if(data.role==="manager"){alert(lang==="ar"?"هذا المستخدم مدير بالفعل":"Already a manager");return;}
+    const{error}=await supabase.from("profiles").update({role:"manager"}).eq("id",data.id);
+    if(error){alert("Failed: "+error.message);return;}
+    setManagerEmail("");loadAdminManagers();
+  };
+
+  const revokeManager=async(managerId)=>{
+    if(!window.confirm(lang==="ar"?"إزالة صلاحيات المدير؟":"Remove manager role?")) return;
+    await supabase.from("profiles").update({role:"passenger"}).eq("id",managerId);
+    await supabase.from("driver_managers").delete().eq("manager_id",managerId);
+    loadAdminManagers();
+  };
+
+  const assignDriverToManager=async(managerId,driverId)=>{
+    if(!driverId) return;
+    await supabase.from("driver_managers").upsert({manager_id:managerId,driver_id:driverId,assigned_by:user?.id},{onConflict:"manager_id,driver_id"});
+    loadAdminManagers();
+  };
+
+  const unassignDriverFromManager=async(managerId,driverId)=>{
+    await supabase.from("driver_managers").delete().eq("manager_id",managerId).eq("driver_id",driverId);
+    loadAdminManagers();
+  };
+
   const validateTrip=async()=>{
     const today=new Date(new Date().toDateString());
     if(tripForm.date&&new Date(tripForm.date)<today){setTripError(lang==="ar"?"لا يمكن نشر رحلة بتاريخ سابق":"Cannot post a trip with a past date");return false;}
@@ -1400,7 +1507,7 @@ const [driverEditing,setDriverEditing]=useState(false);
     setForm({from:"",to:"",type:"car",date:"",time:"",name:"",phone:"",passengers:"1",bags:"0",notes:"",payment:"cash"});
   };
 
-  const navLinks=[["home",t.nav.home],["contact",t.nav.contact],["drivers",lang==="ar"?"السائقون":"Drivers"],...(driverApproved?[["driver",t.nav.driver]]:[]),...(isAdmin?[["admin",t.nav.admin]]:[])];
+  const navLinks=[["home",t.nav.home],["contact",t.nav.contact],["drivers",lang==="ar"?"السائقون":"Drivers"],...(driverApproved?[["driver",t.nav.driver]]:[]),...(isManager?[["manager",lang==="ar"?"لوحة المدير":"Manager Panel"]]:[]),...(isAdmin?[["admin",t.nav.admin]]:[])];
 
   const statusBadge=(s)=>({padding:"4px 12px",borderRadius:20,fontSize:11,fontWeight:700,background:s==="active"?"#D1FAE5":s==="confirmed"?"#BBF7D0":s==="pending"?"#FFF3CD":s==="completed"?"#E0F2FE":s==="no_show"?"#FEF3C7":"#FEE2E2",color:s==="active"?"#065F46":s==="confirmed"?"#065F46":s==="pending"?"#92400E":s==="completed"?"#0369A1":s==="no_show"?"#92400E":"#991B1B"});
 
@@ -1654,7 +1761,7 @@ const [driverEditing,setDriverEditing]=useState(false);
               <div style={{fontSize:13,opacity:0.7,marginTop:2}}>{profile?.phone||""}</div>
               <div style={{marginTop:6}}>
                 <span style={{fontSize:11,fontWeight:700,padding:"3px 10px",borderRadius:20,background:"rgba(255,255,255,0.2)"}}>
-                  {profile?.role==="admin"?"👑 Admin":profile?.role==="driver"?"🚗 Driver":"🧳 Passenger"}
+                  {profile?.role==="admin"?"👑 Admin":profile?.role==="driver"?"🚗 Driver":profile?.role==="manager"?"🗂️ Manager":"🧳 Passenger"}
                 </span>
               </div>
             </div>
@@ -1902,7 +2009,7 @@ const [driverEditing,setDriverEditing]=useState(false);
             </div>
           );})()}
           <div style={{display:"flex",gap:8,marginBottom:28,justifyContent:"center",flexWrap:"wrap"}}>
-            {[["requests",lang==="ar"?"الطلبات 📥":"Requests 📥"],["routeRequests",lang==="ar"?"طلبات المسارات 🗺️":"Route Requests 🗺️"],["drivers",adm.drivers],["allTrips",adm.allTrips],["promoCodes",lang==="ar"?"كودات الخصم":"Promo Codes"],["idVerification",lang==="ar"?"التحقق من الهوية 🪪":"ID Verification 🪪"],["activity",lang==="ar"?"سجل النشاط 📋":"Activity Log 📋"]].map(([k,l])=>(
+            {[["requests",lang==="ar"?"الطلبات 📥":"Requests 📥"],["routeRequests",lang==="ar"?"طلبات المسارات 🗺️":"Route Requests 🗺️"],["drivers",adm.drivers],["allTrips",adm.allTrips],["promoCodes",lang==="ar"?"كودات الخصم":"Promo Codes"],["idVerification",lang==="ar"?"التحقق من الهوية 🪪":"ID Verification 🪪"],["managers",lang==="ar"?"المديرون 🗂️":"Managers 🗂️"],["activity",lang==="ar"?"سجل النشاط 📋":"Activity Log 📋"]].map(([k,l])=>(
               <button key={k} onClick={()=>setAdminTab(k)} style={{padding:"10px 20px",borderRadius:10,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",border:"2px solid",borderColor:adminTab===k?"#1B3A2A":"#E8E6E1",background:adminTab===k?"#1B3A2A":"white",color:adminTab===k?"white":"#666"}}>{l}</button>
             ))}
           </div>
@@ -2088,6 +2195,55 @@ const [driverEditing,setDriverEditing]=useState(false);
             adminIdQueue.map(driver=>(
               <IdVerificationRow key={driver.id} driver={driver} lang={lang} onVerify={verifyDriverId} onReject={rejectDriverId}/>
             ))}
+          </div>)}
+
+          {adminTab==="managers"&&(<div>
+            <h3 style={{fontSize:16,fontWeight:800,color:"#1B3A2A",marginBottom:16}}>{lang==="ar"?"إدارة مديري الرحلات":"Trip Managers"}</h3>
+            {/* Promote new manager */}
+            <div style={{background:"white",borderRadius:14,border:"1px solid #E8E6E1",padding:"20px",marginBottom:20}}>
+              <div style={{fontSize:13,fontWeight:700,color:"#555",marginBottom:10}}>{lang==="ar"?"ترقية مستخدم إلى مدير (بالبريد الإلكتروني)":"Promote user to manager (by email)"}</div>
+              <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                <input value={managerEmail} onChange={e=>setManagerEmail(e.target.value)} placeholder={lang==="ar"?"البريد الإلكتروني":"Email address"} style={{flex:1,minWidth:200,padding:"10px 14px",borderRadius:10,border:"1.5px solid #E8E6E1",fontSize:13,fontFamily:"inherit"}}/>
+                <button onClick={()=>promoteToManager(managerEmail)} style={{background:"#1B3A2A",color:"white",border:"none",padding:"10px 20px",borderRadius:10,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{lang==="ar"?"ترقية":"Promote"}</button>
+              </div>
+            </div>
+            {/* Managers list */}
+            {adminManagers.length===0?<div style={{padding:"40px",textAlign:"center",color:"#CCC",background:"white",borderRadius:16,border:"1px solid #E8E6E1"}}><div style={{fontSize:32,marginBottom:8}}>🗂️</div><div style={{fontWeight:600}}>{lang==="ar"?"لا يوجد مديرون بعد":"No managers yet"}</div></div>
+            :adminManagers.map(mgr=>{
+              const myAssignments=adminManagerAssignments.filter(a=>a.manager_id===mgr.id);
+              const assignedDriverIds=new Set(myAssignments.map(a=>a.driver_id));
+              const unassigned=adminDrivers.filter(d=>!assignedDriverIds.has(d.id));
+              const assignSel=managerAssignDriverId[mgr.id]||"";
+              return(<div key={mgr.id} style={{background:"white",borderRadius:14,border:"1px solid #E8E6E1",padding:"18px 20px",marginBottom:12}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8,marginBottom:12}}>
+                  <div>
+                    <div style={{fontWeight:800,fontSize:14,color:"#1B3A2A"}}>{mgr.full_name||"—"}</div>
+                    <div style={{fontSize:12,color:"#888"}}>{mgr.email}</div>
+                  </div>
+                  <button onClick={()=>revokeManager(mgr.id)} style={{background:"#FEF2F2",color:"#B91C1C",border:"1px solid #FECACA",padding:"6px 14px",borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{lang==="ar"?"إزالة الصلاحيات":"Revoke"}</button>
+                </div>
+                {/* Assigned drivers */}
+                <div style={{fontSize:12,fontWeight:700,color:"#555",marginBottom:6}}>{lang==="ar"?"السائقون المعيّنون:":"Assigned drivers:"}</div>
+                {myAssignments.length===0?<p style={{fontSize:12,color:"#AAA",margin:"0 0 10px"}}>{lang==="ar"?"لا يوجد سائقون معيّنون بعد":"None yet"}</p>
+                :<div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:10}}>
+                  {myAssignments.map(a=>{
+                    const drv=adminDrivers.find(d=>d.id===a.driver_id);
+                    return(<span key={a.driver_id} style={{background:"#F0F7F3",border:"1px solid #C7DDD0",borderRadius:20,padding:"4px 12px",fontSize:12,fontWeight:600,color:"#1B3A2A",display:"flex",alignItems:"center",gap:6}}>
+                      {drv?.full_name||a.driver_id}
+                      <button onClick={()=>unassignDriverFromManager(mgr.id,a.driver_id)} style={{background:"transparent",border:"none",cursor:"pointer",color:"#888",fontSize:14,lineHeight:1,padding:0}}>×</button>
+                    </span>);
+                  })}
+                </div>}
+                {/* Add driver */}
+                {unassigned.length>0&&<div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                  <select value={assignSel} onChange={e=>setManagerAssignDriverId(prev=>({...prev,[mgr.id]:e.target.value}))} style={{flex:1,minWidth:150,padding:"7px 12px",borderRadius:8,border:"1.5px solid #E8E6E1",fontSize:12,fontFamily:"inherit"}}>
+                    <option value="">{lang==="ar"?"اختر سائقاً":"Select driver"}</option>
+                    {unassigned.map(d=><option key={d.id} value={d.id}>{d.full_name}</option>)}
+                  </select>
+                  <button onClick={()=>assignDriverToManager(mgr.id,assignSel)} style={{background:"#065F46",color:"white",border:"none",padding:"7px 16px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{lang==="ar"?"إضافة":"Assign"}</button>
+                </div>}
+              </div>);
+            })}
           </div>)}
 
           {adminTab==="activity"&&(<div>
@@ -2548,6 +2704,95 @@ const [driverEditing,setDriverEditing]=useState(false);
               <button onClick={requestTimeEdit} style={{flex:2,background:"#1B3A2A",color:"white",border:"none",padding:"12px",borderRadius:10,fontSize:14,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>{drv.submitRequest}</button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ─── MANAGER PANEL ───────────────────────────────────────────────────── */}
+      {page==="manager"&&user&&isManager&&(
+        <div style={{maxWidth:700,margin:"0 auto",padding:"32px 24px 80px",...fade}}>
+          <h2 style={{fontSize:22,fontWeight:900,color:"#1B3A2A",marginBottom:4}}>{lang==="ar"?"لوحة المدير 🗂️":"Manager Panel 🗂️"}</h2>
+          <p style={{fontSize:13,color:"#888",marginBottom:24}}>{lang==="ar"?"أنت تدير الرحلات نيابةً عن السائقين المعيّنين لك":"You manage trips on behalf of your assigned drivers"}</p>
+
+          {/* Driver selector */}
+          <div style={{background:"white",borderRadius:16,border:"1px solid #E8E6E1",padding:"20px",marginBottom:24}}>
+            <label style={{fontSize:13,fontWeight:700,color:"#555",display:"block",marginBottom:8}}>{lang==="ar"?"اختر سائقاً لإدارة رحلاته:":"Select a driver to manage:"}</label>
+            {managedDrivers.length===0
+              ?<p style={{color:"#AAA",fontSize:13}}>{lang==="ar"?"لم يتم تعيين سائقين لك بعد. تواصل مع الإدارة.":"No drivers assigned yet. Contact admin."}</p>
+              :<div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                {managedDrivers.map(d=>(
+                  <button key={d.id} onClick={()=>{setManagerSelectedDriver(d);loadManagerDriverData(d.id);setTripForm({from:"",to:"",date:"",time:"",pricePerSeat:"",totalSeats:"4",carType:d.car_type||"",genderType:"mixed",repeatWeeks:"1"});setTripError("");setTripSuccess(false);}}
+                    style={{padding:"10px 18px",borderRadius:12,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",border:"2px solid",borderColor:managerSelectedDriver?.id===d.id?"#1B3A2A":"#E8E6E1",background:managerSelectedDriver?.id===d.id?"#1B3A2A":"white",color:managerSelectedDriver?.id===d.id?"white":"#333",display:"flex",alignItems:"center",gap:8}}>
+                    {d.avatar_url?<img src={d.avatar_url} style={{width:24,height:24,borderRadius:"50%",objectFit:"cover"}} alt=""/>:<span>👤</span>}
+                    {d.full_name}
+                  </button>
+                ))}
+              </div>
+            }
+          </div>
+
+          {managerSelectedDriver&&(<>
+            {/* Pending bookings */}
+            {driverPendingBookings.length>0&&(
+              <div style={{background:"#FFFBEB",border:"1px solid #FDE68A",borderRadius:16,padding:"18px 20px",marginBottom:20}}>
+                <div style={{fontWeight:800,fontSize:14,color:"#92400E",marginBottom:12}}>⏳ {lang==="ar"?"حجوزات معلّقة":"Pending Reservations"} ({driverPendingBookings.length})</div>
+                {driverPendingBookings.map(bk=>{
+                  const trip=bk.trips;const fc=gc(trip?.from_city);const tc=gc(trip?.to_city);
+                  return(<div key={bk.id} style={{background:"white",borderRadius:10,padding:"12px 14px",marginBottom:8,border:"1px solid #FDE68A"}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,flexWrap:"wrap"}}>
+                      <div>
+                        <div style={{fontWeight:700,fontSize:13,color:"#1B3A2A"}}>{bk.name||"—"} · 💺 {bk.seats}</div>
+                        <div style={{fontSize:11,color:"#888",marginTop:2}}>{fc?.[lang]||trip?.from_city} → {tc?.[lang]||trip?.to_city} · {trip?.trip_date}</div>
+                      </div>
+                      <div style={{display:"flex",gap:6}}>
+                        <button onClick={()=>managerConfirmBooking(bk.id,bk)} style={{background:"#065F46",color:"white",border:"none",padding:"6px 14px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>✓ {lang==="ar"?"تأكيد":"Confirm"}</button>
+                        <button onClick={()=>managerRejectBooking(bk.id)} style={{background:"#FEF2F2",color:"#B91C1C",border:"1px solid #FECACA",padding:"6px 14px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>✗ {lang==="ar"?"رفض":"Reject"}</button>
+                      </div>
+                    </div>
+                  </div>);
+                })}
+              </div>
+            )}
+
+            {/* Add trip form */}
+            <div style={{background:"white",borderRadius:16,border:"1px solid #E8E6E1",padding:"24px",marginBottom:24}}>
+              <h3 style={{fontSize:16,fontWeight:800,color:"#1B3A2A",marginBottom:4}}>{lang==="ar"?"إضافة رحلة":"Add a Trip"}</h3>
+              <p style={{fontSize:12,color:"#888",marginBottom:16}}>{lang==="ar"?`نيابةً عن: ${managerSelectedDriver.full_name}`:`On behalf of: ${managerSelectedDriver.full_name}`}</p>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+                <div><label style={lbl}>{lang==="ar"?"من":"From"} *</label><select value={tripForm.from} onChange={e=>setTripForm({...tripForm,from:e.target.value,to:""})} style={inp}><option value="">{lang==="ar"?"اختر المحافظة":"Select city"}</option>{cities.map(c=><option key={c.id} value={c.id}>{c[lang]}</option>)}</select></div>
+                <div><label style={lbl}>{lang==="ar"?"إلى":"To"} *</label><select value={tripForm.to} onChange={e=>setTripForm({...tripForm,to:e.target.value})} style={inp} disabled={!tripForm.from}><option value="">{lang==="ar"?"اختر":"Select"}</option>{tripForm.from?getDests(tripForm.from).map(id=>{const c=gc(id);return<option key={id} value={id}>{c[lang]}</option>}):null}</select></div>
+                <div><label style={lbl}>{lang==="ar"?"التاريخ":"Date"} *</label><input type="date" value={tripForm.date} min={new Date().toISOString().split("T")[0]} onChange={e=>setTripForm({...tripForm,date:e.target.value})} style={inp}/></div>
+                <div><label style={lbl}>{lang==="ar"?"الوقت":"Time"}</label><select value={tripForm.time} onChange={e=>setTripForm({...tripForm,time:e.target.value})} style={inp}><option value="">--</option>{timeOptions.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}</select></div>
+                <div><label style={lbl}>{lang==="ar"?"سعر المقعد ($)":"Price/Seat ($)"} *</label><input type="number" value={tripForm.pricePerSeat} onChange={e=>setTripForm({...tripForm,pricePerSeat:e.target.value})} style={inp} placeholder="0"/></div>
+                <div><label style={lbl}>{lang==="ar"?"عدد المقاعد":"Total Seats"}</label><select value={tripForm.totalSeats} onChange={e=>setTripForm({...tripForm,totalSeats:e.target.value})} style={inp}>{[2,3,4,5,6,7,8,9,10].map(n=><option key={n} value={n}>{n}</option>)}</select></div>
+                <div><label style={lbl}>{lang==="ar"?"نوع السيارة":"Car Type"}</label><input value={tripForm.carType} onChange={e=>setTripForm({...tripForm,carType:e.target.value})} style={inp}/></div>
+                <div><label style={lbl}>{lang==="ar"?"التكرار":"Repeat"}</label><select value={tripForm.repeatWeeks} onChange={e=>setTripForm({...tripForm,repeatWeeks:e.target.value})} style={inp}>{[1,2,3,4,5,6,8,10,12].map(n=><option key={n} value={n}>{n===1?(lang==="ar"?"مرة واحدة":"Once"):`${n} ${lang==="ar"?"أسابيع":"weeks"}`}</option>)}</select></div>
+              </div>
+              {tripError&&<p style={{color:"#DC2626",fontSize:12,marginTop:8}}>{tripError}</p>}
+              {tripSuccess&&<p style={{color:"#065F46",fontSize:12,fontWeight:700,marginTop:8}}>✓ {lang==="ar"?"تم إرسال الرحلة للمراجعة!":"Trip submitted for review!"}</p>}
+              <button onClick={managerAddTrip} style={{width:"100%",marginTop:16,background:"#1B3A2A",color:"white",border:"none",padding:"14px",borderRadius:12,fontSize:14,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>
+                {lang==="ar"?"نشر الرحلة":"Post Trip"}
+              </button>
+            </div>
+
+            {/* Trips list */}
+            <h3 style={{fontSize:15,fontWeight:800,color:"#1B3A2A",marginBottom:12}}>{lang==="ar"?`رحلات ${managerSelectedDriver.full_name}`:`${managerSelectedDriver.full_name}'s Trips`} ({driverTrips.length})</h3>
+            {driverTrips.length===0?<div style={{padding:"40px",textAlign:"center",color:"#AAA",background:"white",borderRadius:14,border:"1px solid #E8E6E1"}}>{lang==="ar"?"لا توجد رحلات بعد":"No trips yet"}</div>
+            :driverTrips.map((trip,i)=>{
+              const fc=gc(trip.from_city);const tc=gc(trip.to_city);
+              return(<div key={trip.id} onClick={()=>{setSelectedTripDetail(trip);loadTripBookings(trip.id);setExternalSeats(1);}} style={{background:"white",borderRadius:14,padding:"16px 18px",border:"1px solid #E8E6E1",marginBottom:10,animation:`fadeUp 0.4s ease ${0.05*i}s both`,cursor:"pointer"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10,flexWrap:"wrap"}}>
+                  <div>
+                    <div style={{fontWeight:800,fontSize:14,color:"#1B3A2A"}}>{fc?.[lang]||trip.from_city} → {tc?.[lang]||trip.to_city}</div>
+                    <div style={{fontSize:12,color:"#888",marginTop:3}}>{trip.trip_date} · {formatTime(trip.trip_time)} · 💺 {trip.total_seats-trip.available_seats}/{trip.total_seats}</div>
+                  </div>
+                  <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                    <span style={statusBadge(trip.status)}>{trip.status}</span>
+                    {(bookingCounts[trip.id]||0)>0&&<span style={{background:"#EFF6FF",color:"#1D4ED8",borderRadius:20,padding:"3px 10px",fontSize:11,fontWeight:700}}>{bookingCounts[trip.id]} {lang==="ar"?"حجز":"bkg"}</span>}
+                  </div>
+                </div>
+              </div>);
+            })}
+          </>)}
         </div>
       )}
 
