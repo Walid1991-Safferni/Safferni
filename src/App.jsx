@@ -424,6 +424,9 @@ export default function App(){
   const [editRequestMsg,setEditRequestMsg]=useState("");
   const [bookingCounts,setBookingCounts]=useState({});
 
+  // External seat reservation
+  const [externalSeats,setExternalSeats]=useState(1);
+
   // Reviews
   const [reviewSidebarDriver,setReviewSidebarDriver]=useState(null);
   const [reviewSidebarBooking,setReviewSidebarBooking]=useState(null);
@@ -824,6 +827,18 @@ const [driverEditing,setDriverEditing]=useState(false);
       const route=`${fc?.ar||bk.trips?.from_city} → ${tc?.ar||bk.trips?.to_city} / ${fc?.en||bk.trips?.from_city} → ${tc?.en||bk.trips?.to_city}`;
       createNotif(bk.user_id,"review_trip",lang==="ar"?"⭐ قيّم رحلتك":"⭐ Rate your trip",`${route} · ${bk.trips?.trip_date}`);
     });
+  };
+
+  const markExternalSeats=async(n)=>{
+    if(!selectedTripDetail) return;
+    const avail=selectedTripDetail.available_seats||0;
+    if(n<1||n>avail){alert(lang==="ar"?`عدد المقاعد يجب أن يكون بين 1 و ${avail}`:`Seats must be between 1 and ${avail}`);return;}
+    if(!window.confirm(lang==="ar"?`هل تريد حجز ${n} مقعد(مقاعد) خارجي؟`:`Mark ${n} external seat(s) as occupied?`)) return;
+    const{error}=await supabase.from("trips").update({available_seats:avail-n}).eq("id",selectedTripDetail.id);
+    if(error){alert(lang==="ar"?"فشل تحديث المقاعد":"Failed to update seats");return;}
+    setSelectedTripDetail(t=>({...t,available_seats:avail-n}));
+    setDriverTrips(ts=>ts.map(t=>t.id===selectedTripDetail.id?{...t,available_seats:avail-n}:t));
+    setExternalSeats(1);
   };
 
   const cancelBooking=async(bookingId)=>{
@@ -2291,7 +2306,7 @@ const [driverEditing,setDriverEditing]=useState(false);
             driverTrips.map((trip,i)=>{
               const fc=gc(trip.from_city);const tc=gc(trip.to_city);
               const isPast=new Date(trip.trip_date)<new Date(new Date().toDateString());
-              return(<div key={trip.id} onClick={()=>{setSelectedTripDetail(trip);loadTripBookings(trip.id);}} style={{background:"white",borderRadius:14,padding:"18px 20px",border:"1px solid #E8E6E1",marginBottom:10,animation:`fadeUp 0.4s ease ${0.05*i}s both`,cursor:"pointer"}}>
+              return(<div key={trip.id} onClick={()=>{setSelectedTripDetail(trip);loadTripBookings(trip.id);setExternalSeats(1);}} style={{background:"white",borderRadius:14,padding:"18px 20px",border:"1px solid #E8E6E1",marginBottom:10,animation:`fadeUp 0.4s ease ${0.05*i}s both`,cursor:"pointer"}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:10}}>
                   <div style={{flex:1}}>
                     <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
@@ -2415,6 +2430,19 @@ const [driverEditing,setDriverEditing]=useState(false);
                   <div style={{fontSize:12,color:"#555",marginTop:4}}>{trip.trip_date} · {formatTime(trip.trip_time)} · {trip.total_seats-trip.available_seats}/{trip.total_seats} {lang==="ar"?"مقعد محجوز":"seats booked"}</div>
                   {trip.status==="active"&&<button onClick={()=>markTripCompleted(trip.id)} style={{marginTop:10,background:"#0369A1",color:"white",border:"none",padding:"7px 18px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>✓ {lang==="ar"?"تحديد كمكتملة":"Mark as Completed"}</button>}
                   {trip.status==="completed"&&<div style={{marginTop:8,fontSize:12,fontWeight:700,color:"#0369A1"}}>✓ {lang==="ar"?"الرحلة مكتملة":"Trip completed"}</div>}
+                  {trip.status==="active"&&(trip.available_seats||0)>0&&(
+                    <div style={{marginTop:12,paddingTop:12,borderTop:"1px solid #D1E7D8",display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+                      <span style={{fontSize:12,color:"#555",fontWeight:600}}>{lang==="ar"?"حجز خارجي:":"External reservation:"}</span>
+                      <div style={{display:"flex",alignItems:"center",gap:4}}>
+                        <button onClick={()=>setExternalSeats(s=>Math.max(1,s-1))} style={{width:26,height:26,background:"#E8F5EE",border:"1px solid #B7D9C3",borderRadius:6,fontSize:14,fontWeight:700,cursor:"pointer",color:"#1B3A2A",lineHeight:"1"}}>−</button>
+                        <span style={{fontSize:13,fontWeight:800,color:"#1B3A2A",minWidth:20,textAlign:"center"}}>{externalSeats}</span>
+                        <button onClick={()=>setExternalSeats(s=>Math.min((trip.available_seats||0),s+1))} style={{width:26,height:26,background:"#E8F5EE",border:"1px solid #B7D9C3",borderRadius:6,fontSize:14,fontWeight:700,cursor:"pointer",color:"#1B3A2A",lineHeight:"1"}}>+</button>
+                      </div>
+                      <button onClick={()=>markExternalSeats(externalSeats)} style={{background:"#92400E",color:"white",border:"none",padding:"5px 14px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
+                        {lang==="ar"?"تسجيل مقعد خارجي":"Mark as Occupied"}
+                      </button>
+                    </div>
+                  )}
                 </div>
                 {tripDetailLoading?<p style={{textAlign:"center",color:"#AAA",padding:"24px"}}>{lang==="ar"?"جاري التحميل...":"Loading..."}</p>
                 :tripDetailBookings.length===0?<p style={{textAlign:"center",color:"#AAA",padding:"24px"}}>{lang==="ar"?"لا توجد حجوزات بعد":"No bookings yet"}</p>
