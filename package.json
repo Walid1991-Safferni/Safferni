@@ -6,10 +6,15 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "android:sync": "vite build && cap sync android",
+    "android:open": "vite build && cap sync android && cap open android"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.95.1",
+    "@capacitor/android": "^8.3.3",
+    "@capacitor/cli": "^8.3.3",
+    "@capacitor/core": "^8.3.3",
     "@supabase/supabase-js": "^2.39.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
