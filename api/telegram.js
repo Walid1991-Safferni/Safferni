@@ -95,7 +95,7 @@ async function cancelTrip(tripId) {
 }
 
 async function getPendingTrips() {
-  const { data, error } = await supabase.from("trips").select("id,from_city,to_city,trip_date,trip_time,price_per_seat,available_seats,approved,status").eq("approved", false).eq("status", "active").order("trip_date");
+  const { data, error } = await supabase.from("trips").select("id,from_city,to_city,trip_date,trip_time,price_per_seat,available_seats,approved,status").eq("approved", false).eq("status", "pending").order("trip_date");
   if (error) return { success: false, error: error.message };
   return { success: true, trips: data || [] };
 }
@@ -179,7 +179,7 @@ async function confirmBooking(refOrId) {
   const bk = await findBooking(refOrId);
   if (!bk) return { success: false, error: "Booking not found" };
   if (bk.status !== "pending") return { success: false, error: `Booking is already ${bk.status}` };
-  const { error } = await supabase.from("bookings").update({ status: "confirmed" }).eq("id", bk.id);
+  const { error } = await supabase.rpc("driver_action_booking", { p_booking_id: bk.id, p_action: "confirm" });
   if (error) return { success: false, error: error.message };
   return { success: true, booking: bk };
 }
@@ -188,11 +188,8 @@ async function rejectBooking(refOrId) {
   const bk = await findBooking(refOrId);
   if (!bk) return { success: false, error: "Booking not found" };
   if (bk.status === "cancelled") return { success: false, error: "Booking is already cancelled" };
-  const { error: bkErr } = await supabase.from("bookings").update({ status: "cancelled" }).eq("id", bk.id);
-  if (bkErr) return { success: false, error: bkErr.message };
-  if (bk.trips?.available_seats != null && bk.trip_id) {
-    await supabase.from("trips").update({ available_seats: bk.trips.available_seats + bk.seats }).eq("id", bk.trip_id);
-  }
+  const { error } = await supabase.rpc("driver_action_booking", { p_booking_id: bk.id, p_action: "reject" });
+  if (error) return { success: false, error: error.message };
   return { success: true, booking: bk };
 }
 
@@ -413,8 +410,8 @@ export default async function handler(req, res) {
   const chatId = String(message.chat.id);
   const text = message.text;
 
-  // Security: only allow configured chat IDs
-  if (ALLOWED_CHAT_IDS.length && !ALLOWED_CHAT_IDS.includes(chatId)) {
+  // Security: block if list is empty (env var not set) OR chat not in list
+  if (!ALLOWED_CHAT_IDS.length || !ALLOWED_CHAT_IDS.includes(chatId)) {
     await sendMessage(chatId, "⛔ Unauthorized.");
     return res.status(200).json({ ok: true });
   }

@@ -647,7 +647,8 @@ const [driverEditing,setDriverEditing]=useState(false);
 
   // Signup Other: send SMS OTP via Supabase phone auth (Twilio configured in Supabase dashboard)
   const handleSignupOtherStart=async()=>{
-    if(!authForm.fullName.trim()||detectCC(authForm.phone).num.length<6||!authForm.password||!authForm.dob){setAuthError(lang==="ar"?"يرجى ملء جميع الحقول":"Please fill all fields");return;}
+    if(!authForm.fullName.trim()||detectCC(authForm.phone).num.length<6||!authForm.password||!authForm.dob||!authForm.email.trim()){setAuthError(lang==="ar"?"يرجى ملء جميع الحقول":"Please fill all fields");return;}
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(authForm.email.trim())){setAuthError(lang==="ar"?"البريد الإلكتروني غير صالح":"Invalid email address");return;}
     if(authForm.password.length<8){setAuthError(lang==="ar"?"كلمة المرور يجب أن تكون ٨ أحرف على الأقل":"Password must be at least 8 characters");return;}
     const ageYearsOther=(Date.now()-new Date(authForm.dob).getTime())/(365.25*24*3600*1000);
     if(isNaN(ageYearsOther)||ageYearsOther<18){setAuthError(lang==="ar"?"يجب أن يكون عمرك 18 عامًا على الأقل":"You must be at least 18 years old");return;}
@@ -1571,10 +1572,11 @@ const [driverEditing,setDriverEditing]=useState(false);
               <p onClick={()=>{setAuthStep("signup_info_sy");setAuthOtp("");setAuthError("");}} style={{textAlign:"center",marginTop:4,fontSize:12,color:"#AAA",cursor:"pointer"}}>← {lang==="ar"?"رجوع":"Back"}</p>
             </>)}
 
-            {/* SIGNUP NON-SYRIA phone path: name + DOB + phone + password */}
+            {/* SIGNUP NON-SYRIA phone path: name + DOB + email + phone + password */}
             {authStep==="signup_info_other"&&(<>
               <div style={{marginBottom:14}}><label style={lbl}>{t.auth.fullName} *</label><input value={authForm.fullName} onChange={e=>setAuthForm(f=>({...f,fullName:e.target.value}))} style={inp}/></div>
               <div style={{marginBottom:14}}><label style={lbl}>{t.auth.dob} * <span style={{fontSize:11,color:"#AAA",fontWeight:400}}>{lang==="ar"?"(18 سنة فأكثر)":"(18+ years)"}</span></label><input type="date" value={authForm.dob} onChange={e=>setAuthForm(f=>({...f,dob:e.target.value}))} style={inp}/></div>
+              <div style={{marginBottom:14}}><label style={lbl}>{t.auth.email} *</label><input type="email" value={authForm.email} onChange={e=>setAuthForm(f=>({...f,email:e.target.value}))} style={inp} placeholder="name@email.com"/></div>
               <div style={{marginBottom:14}}>
                 <label style={lbl}>{t.auth.phone} *</label>
                 <PhoneField value={authForm.phone} onChange={v=>setAuthForm(f=>({...f,phone:v}))} lang={lang} inp={inp}/>
