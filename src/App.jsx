@@ -552,7 +552,7 @@ const [driverEditing,setDriverEditing]=useState(false);
   useEffect(()=>{if(page==="drivers") loadDriversPage();},[page]);
   useEffect(()=>{
     if(page==="profile"&&user){
-      setProfileEdit({fullName:profile?.full_name||"",phone:profile?.phone||"",email:profile?.email||user.email||"",emergencyEmail:profile?.emergency_contact_email||""});
+      setProfileEdit({fullName:profile?.full_name||"",phone:profile?.phone||"",email:profile?.email||user?.email||"",emergencyEmail:profile?.emergency_contact_email||""});
       setApplyForm(f=>({...f,fullName:profile?.full_name||"",phone:profile?.phone||""}));
       loadPassengerBookings();
     }
@@ -962,6 +962,7 @@ const [driverEditing,setDriverEditing]=useState(false);
   };
 
   const updateApplication=async(id,status)=>{
+    if(!user?.id) return;
     await supabase.from("driver_applications").update({status,reviewed_by:user.id}).eq("id",id);
     const app=applications.find(a=>a.id===id);
     if(status==="approved"){
@@ -981,6 +982,7 @@ const [driverEditing,setDriverEditing]=useState(false);
   };
 
   const handleEditRequest=async(id,status,tripId,newTime)=>{
+    if(!user?.id) return;
     await supabase.from("trip_edit_requests").update({status,reviewed_by:user.id}).eq("id",id);
     if(status==="approved") await supabase.from("trips").update({trip_time:newTime}).eq("id",tripId);
     loadAdminData();
@@ -1279,6 +1281,7 @@ const [driverEditing,setDriverEditing]=useState(false);
 
   // Re-verifies the manager is still assigned to this driver before acting (admin may have revoked assignment).
   const verifyManagerOf=async(driverId)=>{
+    if(!user?.id) return false;
     const{data}=await supabase.from("driver_managers").select("driver_id").eq("manager_id",user.id).eq("driver_id",driverId).maybeSingle();
     return!!data;
   };
@@ -1371,7 +1374,8 @@ const [driverEditing,setDriverEditing]=useState(false);
   };
 
   const validateTrip=async(driverId)=>{
-    const tdId=driverId||user.id;
+    const tdId=driverId||user?.id;
+    if(!tdId) return false;
     const today=new Date(new Date().toDateString());
     if(tripForm.date&&new Date(tripForm.date)<today){setTripError(lang==="ar"?"لا يمكن نشر رحلة بتاريخ سابق":"Cannot post a trip with a past date");return false;}
     const{data:activeTripsList}=await supabase.from("trips").select("id").eq("driver_id",tdId).eq("status","active");
@@ -1416,7 +1420,7 @@ const [driverEditing,setDriverEditing]=useState(false);
   };
 
   const requestTimeEdit=async()=>{
-    if(!editRequestForm.newTime) return;
+    if(!user?.id||!editRequestForm.newTime) return;
     await supabase.from("trip_edit_requests").insert({trip_id:editRequestForm.tripId,driver_id:user.id,requested_time:editRequestForm.newTime});
     setEditRequestMsg(drv.requestSent);setShowEditModal(false);setTimeout(()=>setEditRequestMsg(""),3000);
   };
@@ -1809,7 +1813,7 @@ const [driverEditing,setDriverEditing]=useState(false);
                 :(profile?.full_name||"?").charAt(0).toUpperCase()}
             </div>
             <div>
-              <div style={{fontSize:20,fontWeight:900}}>{profile?.full_name||user.email}</div>
+              <div style={{fontSize:20,fontWeight:900}}>{profile?.full_name||user?.email}</div>
               <div style={{fontSize:13,opacity:0.7,marginTop:2}}>{profile?.phone||""}</div>
               <div style={{marginTop:6}}>
                 <span style={{fontSize:11,fontWeight:700,padding:"3px 10px",borderRadius:20,background:"rgba(255,255,255,0.2)"}}>
@@ -1870,7 +1874,7 @@ const [driverEditing,setDriverEditing]=useState(false);
               {profileEditing&&(<>
                 {profileSaved&&<div style={{marginBottom:12,padding:"10px 16px",background:"#F0FDF4",border:"1px solid #BBF7D0",borderRadius:10,color:"#166534",fontSize:13,fontWeight:700}}>{prof.saved}</div>}
                 <div style={{display:"flex",gap:10,marginBottom:24}}>
-                  <button onClick={()=>{setProfileEditing(false);setProfileEdit({fullName:profile?.full_name||"",phone:profile?.phone||"",email:profile?.email||user.email||"",emergencyEmail:profile?.emergency_contact_email||""});}} style={{flex:1,background:"white",color:"#666",border:"1.5px solid #DDD",padding:"12px",borderRadius:10,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{lang==="ar"?"إلغاء":"Cancel"}</button>
+                  <button onClick={()=>{setProfileEditing(false);setProfileEdit({fullName:profile?.full_name||"",phone:profile?.phone||"",email:profile?.email||user?.email||"",emergencyEmail:profile?.emergency_contact_email||""});}} style={{flex:1,background:"white",color:"#666",border:"1.5px solid #DDD",padding:"12px",borderRadius:10,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{lang==="ar"?"إلغاء":"Cancel"}</button>
                   <button onClick={async()=>{await saveProfile();setProfileEditing(false);}} disabled={profileSaving} style={{flex:2,background:"#1B3A2A",color:"white",border:"none",padding:"12px",borderRadius:10,fontSize:14,fontWeight:800,cursor:profileSaving?"not-allowed":"pointer",fontFamily:"inherit",opacity:profileSaving?0.7:1}}>{profileSaving?"...":(prof.saveChanges)}</button>
                 </div>
               </>)}
