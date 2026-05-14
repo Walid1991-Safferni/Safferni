@@ -540,6 +540,25 @@ const [driverEditing,setDriverEditing]=useState(false);
     const ch=supabase.channel(`notifs-${user.id}`).on("postgres_changes",{event:"INSERT",schema:"public",table:"notifications",filter:`user_id=eq.${user.id}`},pl=>{setNotifications(prev=>[pl.new,...prev]);}).subscribe();
     return()=>supabase.removeChannel(ch);
   },[user?.id]);
+
+  // Pick up role/verification changes made server-side (admin approval, promote to manager, ID verification).
+  // Requires `profiles` in the supabase_realtime publication; visibilitychange effect below is the fallback.
+  useEffect(()=>{
+    if(!user?.id) return;
+    const ch=supabase.channel(`profile-${user.id}`).on("postgres_changes",{event:"UPDATE",schema:"public",table:"profiles",filter:`id=eq.${user.id}`},pl=>{
+      const next=pl.new;if(!next) return;
+      setProfile(next);setDriverApproved(next.role==="driver");
+    }).subscribe();
+    return()=>supabase.removeChannel(ch);
+  },[user?.id]);
+
+  // Fallback for missed realtime events (network blip, app backgrounded during approval).
+  useEffect(()=>{
+    if(!user) return;
+    const onVis=()=>{if(document.visibilityState==="visible") loadProfile(user);};
+    document.addEventListener("visibilitychange",onVis);
+    return()=>document.removeEventListener("visibilitychange",onVis);
+  },[user]);
   useEffect(()=>{if(adminTab==="activity"&&isAdmin)loadAdminActivity();},[adminTab]);
   useEffect(()=>{if(adminTab==="managers"&&isAdmin)loadAdminManagers();},[adminTab]);
   useEffect(()=>{if(adminTab==="idVerification"&&isAdmin)loadAdminIdQueue();},[adminTab]);
