@@ -720,7 +720,15 @@ const [driverEditing,setDriverEditing]=useState(false);
     const{error:pwErr}=await supabase.auth.updateUser({password});
     if(pwErr){setAuthError((lang==="ar"?"فشل في تعيين كلمة المرور: ":"Failed to set password: ")+(pwErr.message||""));setAuthLoading(false);return;}
     // Link email identity so email+password login works (confirmation email sent by Supabase)
-    if(email){await supabase.auth.updateUser({email}).catch(()=>{});}
+   if(email){
+  const{error:emailErr}=await supabase.auth.updateUser({email});
+  if(emailErr){
+    setAuthError((lang==="ar"?"فشل ربط البريد الإلكتروني: ":"Failed to link email: ")+(emailErr.message||""));
+    setAuthLoading(false);
+    return;
+  }
+}
+
     // Upsert profile (DB trigger may have already created a stub — this fills it in)
     const uid=otpData.user.id;
     const role=ADMIN_EMAILS.includes(email)?"admin":"passenger";
