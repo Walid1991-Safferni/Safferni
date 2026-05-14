@@ -13,3 +13,15 @@ build/
 # Editor
 .DS_Store
 *.local
+
+# Android (Capacitor)
+android/.gradle/
+android/.idea/
+android/app/build/
+android/build/
+android/captures/
+android/local.properties
+android/app/release/
+*.apk
+*.aab
+*.keystore
