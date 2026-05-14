@@ -547,12 +547,19 @@ const [driverEditing,setDriverEditing]=useState(false);
     const editsLimit=Math.max(10,Math.floor(limit/2));
     const[{data:apps},{data:bks},{data:edits}]=await Promise.all([
       supabase.from("driver_applications").select("id,full_name,status,created_at").order("created_at",{ascending:false}).limit(limit),
-      supabase.from("bookings").select("id,passenger_name,seats,status,created_at,trips(from_city,to_city,trip_date)").order("created_at",{ascending:false}).limit(limit),
+      supabase.from("bookings").select("id,passenger_name,seats,status,created_at,action_taken_by,trips(from_city,to_city,trip_date)").order("created_at",{ascending:false}).limit(limit),
       supabase.from("trip_edit_requests").select("id,status,requested_time,created_at,trips(from_city,to_city)").order("created_at",{ascending:false}).limit(editsLimit),
     ]);
+    // action_taken_by is only set by manager_action_booking; resolve manager names in one batched query.
+    const actorIds=[...new Set((bks||[]).map(b=>b.action_taken_by).filter(Boolean))];
+    let actorMap={};
+    if(actorIds.length){
+      const{data:actors}=await supabase.from("profiles").select("id,full_name").in("id",actorIds);
+      actorMap=Object.fromEntries((actors||[]).map(a=>[a.id,a.full_name||"—"]));
+    }
     const events=[
       ...(apps||[]).map(a=>({type:"application",id:a.id,title:a.full_name,status:a.status,ts:a.created_at})),
-      ...(bks||[]).map(b=>({type:"booking",id:b.id,title:b.passenger_name,status:b.status,seats:b.seats,route:`${gc(b.trips?.from_city)?.[lang]||b.trips?.from_city||"?"}→${gc(b.trips?.to_city)?.[lang]||b.trips?.to_city||"?"}`,date:b.trips?.trip_date,ts:b.created_at})),
+      ...(bks||[]).map(b=>({type:"booking",id:b.id,title:b.passenger_name,status:b.status,seats:b.seats,route:`${gc(b.trips?.from_city)?.[lang]||b.trips?.from_city||"?"}→${gc(b.trips?.to_city)?.[lang]||b.trips?.to_city||"?"}`,date:b.trips?.trip_date,ts:b.created_at,managerName:b.action_taken_by?actorMap[b.action_taken_by]:null})),
       ...(edits||[]).map(e=>({type:"edit",id:e.id,status:e.status,route:`${gc(e.trips?.from_city)?.[lang]||e.trips?.from_city||"?"}→${gc(e.trips?.to_city)?.[lang]||e.trips?.to_city||"?"}`,newTime:e.requested_time,ts:e.created_at})),
     ].sort((a,b)=>new Date(b.ts)-new Date(a.ts));
     setAdminActivity(events);
@@ -2376,7 +2383,7 @@ const [driverEditing,setDriverEditing]=useState(false);
                     <div style={{fontWeight:700,color:"#444",fontSize:12}}>{typeLabel}</div>
                     <div style={{color:"#333",fontWeight:600,fontSize:13}}>
                       {ev.type==="application"&&ev.title}
-                      {ev.type==="booking"&&`${ev.title||"—"} · ${ev.seats} ${lang==="ar"?"مقعد":"seat(s)"} · ${ev.route||""} ${ev.date?`(${ev.date})`:""}`}
+                      {ev.type==="booking"&&<>{`${ev.title||"—"} · ${ev.seats} ${lang==="ar"?"مقعد":"seat(s)"} · ${ev.route||""} ${ev.date?`(${ev.date})`:""}`}{ev.managerName&&<span style={{marginInlineStart:8,display:"inline-block",padding:"2px 8px",borderRadius:20,fontSize:10,fontWeight:700,background:"#EDE9FE",color:"#5B21B6",verticalAlign:"middle"}}>🗂️ {lang==="ar"?`بواسطة المدير ${ev.managerName}`:`by Manager ${ev.managerName}`}</span>}</>}
                       {ev.type==="edit"&&`${ev.route||""} → ${ev.newTime||""}`}
                     </div>
                     <div style={{textAlign:"center"}}><span style={{padding:"3px 10px",borderRadius:20,fontSize:11,fontWeight:700,background:statusBg,color:statusFg}}>{ev.status||"—"}</span></div>
