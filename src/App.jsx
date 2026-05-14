@@ -1269,9 +1269,18 @@ const [driverEditing,setDriverEditing]=useState(false);
     }
   };
 
+  // Re-verifies the manager is still assigned to this driver before acting (admin may have revoked assignment).
+  const verifyManagerOf=async(driverId)=>{
+    const{data}=await supabase.from("driver_managers").select("driver_id").eq("manager_id",user.id).eq("driver_id",driverId).maybeSingle();
+    return!!data;
+  };
+
   const managerAddTrip=async()=>{
     if(!user?.id||!managerSelectedDriver?.id){return;}
     if(!tripForm.from||!tripForm.to||!tripForm.date||!tripForm.pricePerSeat){setTripError(lang==="ar"?"يرجى ملء جميع الحقول المطلوبة":"Please fill all required fields");return;}
+    if(!(await verifyManagerOf(managerSelectedDriver.id))){setTripError(lang==="ar"?"لم تعد مديراً لهذا السائق":"You're no longer assigned to this driver");loadManagedDrivers();return;}
+    const valid=await validateTrip(managerSelectedDriver.id);
+    if(!valid) return;
     const weeks=Math.min(Math.max(parseInt(tripForm.repeatWeeks)||1,1),12);
     const base={driver_id:managerSelectedDriver.id,from_city:tripForm.from,to_city:tripForm.to,trip_time:tripForm.time||null,price_per_seat:parseFloat(tripForm.pricePerSeat),total_seats:parseInt(tripForm.totalSeats),available_seats:parseInt(tripForm.totalSeats),car_type:tripForm.carType||managerSelectedDriver.car_type||"",gender_type:tripForm.genderType,approved:false,status:"pending",created_by:user.id};
     const rows=Array.from({length:weeks},(_,i)=>{const d=new Date(tripForm.date);d.setDate(d.getDate()+i*7);return{...base,trip_date:d.toISOString().split("T")[0]};});
@@ -1280,24 +1289,41 @@ const [driverEditing,setDriverEditing]=useState(false);
     else setTripError(lang==="ar"?"فشل إضافة الرحلة":"Failed to add trip: "+(error.message||""));
   };
 
-  const managerConfirmBooking=async(bookingId,bkObj)=>{
-    const bk=bkObj||tripDetailBookings.find(b=>b.id===bookingId);
-    const{error}=await supabase.from("bookings").update({status:"confirmed",action_taken_by:user.id}).eq("id",bookingId).eq("status","pending");
-    if(error){alert(lang==="ar"?"فشل تأكيد الحجز":"Failed to confirm booking");return;}
-    const newAvail=(selectedTripDetail?.available_seats||0)-(bk?.seats||1);
-    await supabase.from("trips").update({available_seats:newAvail}).eq("id",bk?.trip_id||selectedTripDetail?.id);
-    setTripDetailBookings(bs=>bs.map(b=>b.id===bookingId?{...b,status:"confirmed"}:b));
-    setSelectedTripDetail(t=>t?{...t,available_seats:newAvail}:t);
-    setDriverPendingBookings(prev=>prev.filter(b=>b.id!==bookingId));
-    if(bk?.user_id) createNotif(bk.user_id,"booking_confirmed",lang==="ar"?"تم تأكيد حجزك ✅":"Booking Confirmed ✅","");
+  const cancelManagerTrip=async(tripId,driverId)=>{
+    if(!window.confirm(lang==="ar"?"هل أنت متأكد من إلغاء هذه الرحلة؟":"Are you sure you want to cancel this trip?")) return;
+    if(!(await verifyManagerOf(driverId))){alert(lang==="ar"?"لم تعد مديراً لهذا السائق":"You're no longer assigned to this driver");loadManagedDrivers();return;}
+    const{error}=await supabase.from("trips").update({status:"cancelled"}).eq("id",tripId);
+    if(error){alert(lang==="ar"?"فشل إلغاء الرحلة":"Failed to cancel trip");return;}
+    loadManagerDriverData(driverId);
   };
 
-  const managerRejectBooking=async(bookingId)=>{
+  const managerConfirmBooking=async(bookingId,bkObj)=>{
+    const bk=bkObj||tripDetailBookings.find(b=>b.id===bookingId);
+    if(!bk?.trip_id){alert("Booking missing trip reference");return;}
+    const{data,error}=await supabase.rpc("manager_action_booking",{p_booking_id:bookingId,p_action:"confirm"});
+    if(error||!data?.success){alert(lang==="ar"?"فشل تأكيد الحجز: ":"Failed to confirm booking: "+(data?.error||error?.message||""));return;}
+    setTripDetailBookings(bs=>bs.map(b=>b.id===bookingId?{...b,status:"confirmed"}:b));
+    if(selectedTripDetail?.id===bk.trip_id) setSelectedTripDetail(t=>t?{...t,available_seats:data.available_seats??t.available_seats}:t);
+    setDriverTrips(ts=>ts.map(t=>t.id===bk.trip_id?{...t,available_seats:data.available_seats??t.available_seats}:t));
+    setDriverPendingBookings(prev=>prev.filter(b=>b.id!==bookingId));
+    if(bk?.user_id){
+      const trip=bk.trips||driverTrips.find(t=>t.id===bk.trip_id);
+      const fc=gc(trip?.from_city);const tc=gc(trip?.to_city);
+      const route=trip?`${fc?.[lang]||trip.from_city} → ${tc?.[lang]||trip.to_city}`:"";
+      createNotif(bk.user_id,"booking_confirmed",lang==="ar"?"تم تأكيد حجزك ✅":"Booking Confirmed ✅",lang==="ar"?`${route} بتاريخ ${trip?.trip_date||""}`:`${route} on ${trip?.trip_date||""}`);
+    }
+  };
+
+  const managerRejectBooking=async(bookingId,bkObj)=>{
     if(!window.confirm(lang==="ar"?"هل أنت متأكد من رفض هذا الحجز؟":"Reject this booking?")) return;
-    const{error}=await supabase.from("bookings").update({status:"rejected",action_taken_by:user.id}).eq("id",bookingId).eq("status","pending");
-    if(error){alert(lang==="ar"?"فشل رفض الحجز":"Failed to reject booking");return;}
+    const bk=bkObj||tripDetailBookings.find(b=>b.id===bookingId);
+    const{data,error}=await supabase.rpc("manager_action_booking",{p_booking_id:bookingId,p_action:"reject"});
+    if(error||!data?.success){alert(lang==="ar"?"فشل رفض الحجز":"Failed to reject booking: "+(data?.error||error?.message||""));return;}
     setTripDetailBookings(bs=>bs.map(b=>b.id===bookingId?{...b,status:"rejected"}:b));
     setDriverPendingBookings(prev=>prev.filter(b=>b.id!==bookingId));
+    if(bk?.user_id){
+      createNotif(bk.user_id,"booking_rejected",lang==="ar"?"تم رفض حجزك":"Booking Rejected",lang==="ar"?"عذراً، تم رفض حجزك. حاول حجز رحلة أخرى.":"Sorry, your booking was rejected. Try another trip.");
+    }
   };
 
   const loadAdminManagers=async()=>{
@@ -1336,12 +1362,13 @@ const [driverEditing,setDriverEditing]=useState(false);
     loadAdminManagers();
   };
 
-  const validateTrip=async()=>{
+  const validateTrip=async(driverId)=>{
+    const tdId=driverId||user.id;
     const today=new Date(new Date().toDateString());
     if(tripForm.date&&new Date(tripForm.date)<today){setTripError(lang==="ar"?"لا يمكن نشر رحلة بتاريخ سابق":"Cannot post a trip with a past date");return false;}
-    const{data:activeTripsList}=await supabase.from("trips").select("id").eq("driver_id",user.id).eq("status","active");
+    const{data:activeTripsList}=await supabase.from("trips").select("id").eq("driver_id",tdId).eq("status","active");
     if((activeTripsList?.length||0)>=10){setTripError(drv.limitReached);return false;}
-    const{data:dayTrips}=await supabase.from("trips").select("trip_time").eq("driver_id",user.id).eq("trip_date",tripForm.date).neq("status","cancelled");
+    const{data:dayTrips}=await supabase.from("trips").select("trip_time").eq("driver_id",tdId).eq("trip_date",tripForm.date).neq("status","cancelled");
     if((dayTrips?.length||0)>=2){setTripError(drv.dayLimitReached);return false;}
     if(dayTrips&&dayTrips.length===1&&tripForm.time){
       const existingMins=timeToMinutes(dayTrips[0].trip_time);
@@ -2762,7 +2789,7 @@ const [driverEditing,setDriverEditing]=useState(false);
                       </div>
                       <div style={{display:"flex",gap:6}}>
                         <button onClick={()=>managerConfirmBooking(bk.id,bk)} style={{background:"#065F46",color:"white",border:"none",padding:"6px 14px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>✓ {lang==="ar"?"تأكيد":"Confirm"}</button>
-                        <button onClick={()=>managerRejectBooking(bk.id)} style={{background:"#FEF2F2",color:"#B91C1C",border:"1px solid #FECACA",padding:"6px 14px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>✗ {lang==="ar"?"رفض":"Reject"}</button>
+                        <button onClick={()=>managerRejectBooking(bk.id,bk)} style={{background:"#FEF2F2",color:"#B91C1C",border:"1px solid #FECACA",padding:"6px 14px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>✗ {lang==="ar"?"رفض":"Reject"}</button>
                       </div>
                     </div>
                   </div>);
@@ -2779,7 +2806,7 @@ const [driverEditing,setDriverEditing]=useState(false);
                 <div><label style={lbl}>{lang==="ar"?"إلى":"To"} *</label><select value={tripForm.to} onChange={e=>setTripForm({...tripForm,to:e.target.value})} style={inp} disabled={!tripForm.from}><option value="">{lang==="ar"?"اختر":"Select"}</option>{tripForm.from?getDests(tripForm.from).map(id=>{const c=gc(id);return<option key={id} value={id}>{c[lang]}</option>}):null}</select></div>
                 <div><label style={lbl}>{lang==="ar"?"التاريخ":"Date"} *</label><input type="date" value={tripForm.date} min={new Date().toISOString().split("T")[0]} onChange={e=>setTripForm({...tripForm,date:e.target.value})} style={inp}/></div>
                 <div><label style={lbl}>{lang==="ar"?"الوقت":"Time"}</label><select value={tripForm.time} onChange={e=>setTripForm({...tripForm,time:e.target.value})} style={inp}><option value="">--</option>{timeOptions.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}</select></div>
-                <div><label style={lbl}>{lang==="ar"?"سعر المقعد ($)":"Price/Seat ($)"} *</label><input type="number" value={tripForm.pricePerSeat} onChange={e=>setTripForm({...tripForm,pricePerSeat:e.target.value})} style={inp} placeholder="0"/></div>
+                <div>{(()=>{const dr=tripForm.from&&tripForm.to?findRoute(tripForm.from,tripForm.to):null;const lim=dr&&!dr.comingSoon?dr:null;return(<><label style={lbl}>{lang==="ar"?"سعر المقعد ($)":"Price/Seat ($)"} *{lim&&<span style={{fontWeight:600,color:"#1B3A2A",marginInlineStart:4,fontSize:10}}>(${lim.seatMin}–${lim.seatMax})</span>}</label><input type="number" min={lim?.seatMin} max={lim?.seatMax} value={tripForm.pricePerSeat} onChange={e=>setTripForm({...tripForm,pricePerSeat:e.target.value})} style={inp} placeholder={lim?`${lim.seatMin}–${lim.seatMax}`:"0"}/></>);})()}</div>
                 <div><label style={lbl}>{lang==="ar"?"عدد المقاعد":"Total Seats"}</label><select value={tripForm.totalSeats} onChange={e=>setTripForm({...tripForm,totalSeats:e.target.value})} style={inp}>{[2,3,4,5,6,7,8,9,10].map(n=><option key={n} value={n}>{n}</option>)}</select></div>
                 <div><label style={lbl}>{lang==="ar"?"نوع السيارة":"Car Type"}</label><input value={tripForm.carType} onChange={e=>setTripForm({...tripForm,carType:e.target.value})} style={inp}/></div>
                 <div><label style={lbl}>{lang==="ar"?"التكرار":"Repeat"}</label><select value={tripForm.repeatWeeks} onChange={e=>setTripForm({...tripForm,repeatWeeks:e.target.value})} style={inp}>{[1,2,3,4,5,6,8,10,12].map(n=><option key={n} value={n}>{n===1?(lang==="ar"?"مرة واحدة":"Once"):`${n} ${lang==="ar"?"أسابيع":"weeks"}`}</option>)}</select></div>
@@ -2805,6 +2832,7 @@ const [driverEditing,setDriverEditing]=useState(false);
                   <div style={{display:"flex",gap:6,alignItems:"center"}}>
                     <span style={statusBadge(trip.status)}>{trip.status}</span>
                     {(bookingCounts[trip.id]||0)>0&&<span style={{background:"#EFF6FF",color:"#1D4ED8",borderRadius:20,padding:"3px 10px",fontSize:11,fontWeight:700}}>{bookingCounts[trip.id]} {lang==="ar"?"حجز":"bkg"}</span>}
+                    {trip.status!=="cancelled"&&trip.status!=="completed"&&<button onClick={e=>{e.stopPropagation();cancelManagerTrip(trip.id,managerSelectedDriver.id);}} style={{background:"#FEF2F2",color:"#B91C1C",border:"1px solid #FECACA",padding:"4px 10px",borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{lang==="ar"?"إلغاء":"Cancel"}</button>}
                   </div>
                 </div>
               </div>);
