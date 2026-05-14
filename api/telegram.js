@@ -179,8 +179,8 @@ async function confirmBooking(refOrId) {
   const bk = await findBooking(refOrId);
   if (!bk) return { success: false, error: "Booking not found" };
   if (bk.status !== "pending") return { success: false, error: `Booking is already ${bk.status}` };
-  const { error } = await supabase.rpc("driver_action_booking", { p_booking_id: bk.id, p_action: "confirm" });
-  if (error) return { success: false, error: error.message };
+  const { data, error } = await supabase.rpc("driver_action_booking", { p_booking_id: bk.id, p_action: "confirm" });
+  if (error || !data?.success) return { success: false, error: data?.error || error?.message || "Action failed" };
   return { success: true, booking: bk };
 }
 
@@ -188,8 +188,8 @@ async function rejectBooking(refOrId) {
   const bk = await findBooking(refOrId);
   if (!bk) return { success: false, error: "Booking not found" };
   if (bk.status === "cancelled") return { success: false, error: "Booking is already cancelled" };
-  const { error } = await supabase.rpc("driver_action_booking", { p_booking_id: bk.id, p_action: "reject" });
-  if (error) return { success: false, error: error.message };
+  const { data, error } = await supabase.rpc("driver_action_booking", { p_booking_id: bk.id, p_action: "reject" });
+  if (error || !data?.success) return { success: false, error: data?.error || error?.message || "Action failed" };
   return { success: true, booking: bk };
 }
 
