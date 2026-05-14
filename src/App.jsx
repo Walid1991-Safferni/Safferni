@@ -486,6 +486,9 @@ const [driverEditing,setDriverEditing]=useState(false);
   const [notifications,setNotifications]=useState([]);
   const [showNotifications,setShowNotifications]=useState(false);
   const [adminActivity,setAdminActivity]=useState([]);
+  const [activityLimit,setActivityLimit]=useState(20);
+  const [activityHasMore,setActivityHasMore]=useState(false);
+  const [activityLoading,setActivityLoading]=useState(false);
 
   const t=T[lang];const b=t.b;const adm=t.admin;const drv=t.driver;const prof=t.profile;
   const isRTL=lang==="ar";
@@ -529,10 +532,34 @@ const [driverEditing,setDriverEditing]=useState(false);
   },[]);
 
   const timeAgo=(ts)=>{const diff=Date.now()-new Date(ts).getTime();const m=Math.floor(diff/60000);if(m<1)return lang==="ar"?"الآن":"just now";if(m<60)return lang==="ar"?`منذ ${m}د`:`${m}m ago`;const h=Math.floor(m/60);if(h<24)return lang==="ar"?`منذ ${h}س`:`${h}h ago`;const d=Math.floor(h/24);return lang==="ar"?`منذ ${d}ي`:`${d}d ago`;};
+  const validatePassword=(p)=>{
+    if(!p||p.length<8) return lang==="ar"?"كلمة المرور يجب أن تكون ٨ أحرف على الأقل":"Password must be at least 8 characters";
+    if(!/[A-Z]/.test(p)) return lang==="ar"?"يجب أن تحتوي على حرف لاتيني كبير (A-Z)":"Password must contain an uppercase letter (A-Z)";
+    if(!/[a-z]/.test(p)) return lang==="ar"?"يجب أن تحتوي على حرف لاتيني صغير (a-z)":"Password must contain a lowercase letter (a-z)";
+    if(!/\d/.test(p)) return lang==="ar"?"يجب أن تحتوي على رقم (0-9)":"Password must contain a digit (0-9)";
+    return "";
+  };
   const createNotif=async(userId,type,title,message)=>{if(!userId)return;try{await supabase.from("notifications").insert({user_id:userId,type,title,message});}catch(e){}};
   const markNotifRead=async(id)=>{await supabase.from("notifications").update({read:true}).eq("id",id);setNotifications(prev=>prev.map(n=>n.id===id?{...n,read:true}:n));};
   const markAllRead=async()=>{if(!user)return;await supabase.from("notifications").update({read:true}).eq("user_id",user.id).eq("read",false);setNotifications(prev=>prev.map(n=>({...n,read:true})));};
-  const loadAdminActivity=async()=>{const[{data:apps},{data:bks},{data:edits}]=await Promise.all([supabase.from("driver_applications").select("id,full_name,status,created_at").order("created_at",{ascending:false}).limit(20),supabase.from("bookings").select("id,passenger_name,seats,status,created_at,trips(from_city,to_city,trip_date)").order("created_at",{ascending:false}).limit(20),supabase.from("trip_edit_requests").select("id,status,requested_time,created_at,trips(from_city,to_city)").order("created_at",{ascending:false}).limit(10)]);const events=[...(apps||[]).map(a=>({type:"application",id:a.id,title:a.full_name,status:a.status,ts:a.created_at})),...(bks||[]).map(b=>({type:"booking",id:b.id,title:b.passenger_name,status:b.status,seats:b.seats,route:`${gc(b.trips?.from_city)?.[lang]||b.trips?.from_city||"?"}→${gc(b.trips?.to_city)?.[lang]||b.trips?.to_city||"?"}`,date:b.trips?.trip_date,ts:b.created_at})),...(edits||[]).map(e=>({type:"edit",id:e.id,status:e.status,route:`${gc(e.trips?.from_city)?.[lang]||e.trips?.from_city||"?"}→${gc(e.trips?.to_city)?.[lang]||e.trips?.to_city||"?"}`,newTime:e.requested_time,ts:e.created_at}))].sort((a,b)=>new Date(b.ts)-new Date(a.ts));setAdminActivity(events);};
+  const loadAdminActivity=async(limit=activityLimit)=>{
+    setActivityLoading(true);
+    const editsLimit=Math.max(10,Math.floor(limit/2));
+    const[{data:apps},{data:bks},{data:edits}]=await Promise.all([
+      supabase.from("driver_applications").select("id,full_name,status,created_at").order("created_at",{ascending:false}).limit(limit),
+      supabase.from("bookings").select("id,passenger_name,seats,status,created_at,trips(from_city,to_city,trip_date)").order("created_at",{ascending:false}).limit(limit),
+      supabase.from("trip_edit_requests").select("id,status,requested_time,created_at,trips(from_city,to_city)").order("created_at",{ascending:false}).limit(editsLimit),
+    ]);
+    const events=[
+      ...(apps||[]).map(a=>({type:"application",id:a.id,title:a.full_name,status:a.status,ts:a.created_at})),
+      ...(bks||[]).map(b=>({type:"booking",id:b.id,title:b.passenger_name,status:b.status,seats:b.seats,route:`${gc(b.trips?.from_city)?.[lang]||b.trips?.from_city||"?"}→${gc(b.trips?.to_city)?.[lang]||b.trips?.to_city||"?"}`,date:b.trips?.trip_date,ts:b.created_at})),
+      ...(edits||[]).map(e=>({type:"edit",id:e.id,status:e.status,route:`${gc(e.trips?.from_city)?.[lang]||e.trips?.from_city||"?"}→${gc(e.trips?.to_city)?.[lang]||e.trips?.to_city||"?"}`,newTime:e.requested_time,ts:e.created_at})),
+    ].sort((a,b)=>new Date(b.ts)-new Date(a.ts));
+    setAdminActivity(events);
+    // If any source returned a full page, there may be more to load.
+    setActivityHasMore((apps?.length||0)>=limit||(bks?.length||0)>=limit||(edits?.length||0)>=editsLimit);
+    setActivityLoading(false);
+  };
 
   useEffect(()=>{
     if(!user?.id){setNotifications([]);return;}
@@ -559,7 +586,7 @@ const [driverEditing,setDriverEditing]=useState(false);
     document.addEventListener("visibilitychange",onVis);
     return()=>document.removeEventListener("visibilitychange",onVis);
   },[user]);
-  useEffect(()=>{if(adminTab==="activity"&&isAdmin)loadAdminActivity();},[adminTab]);
+  useEffect(()=>{if(adminTab==="activity"&&isAdmin)loadAdminActivity(activityLimit);},[adminTab,activityLimit]);
   useEffect(()=>{if(adminTab==="managers"&&isAdmin)loadAdminManagers();},[adminTab]);
   useEffect(()=>{if(adminTab==="idVerification"&&isAdmin)loadAdminIdQueue();},[adminTab]);
   const [adminRouteRequests,setAdminRouteRequests]=useState([]);
@@ -638,7 +665,8 @@ const [driverEditing,setDriverEditing]=useState(false);
     const phoneNum=detectCC(authForm.phone).num;
     if(!authForm.fullName.trim()||!authForm.dob||!authForm.email.trim()||phoneNum.length<6||!authForm.password){setAuthError(lang==="ar"?"يرجى ملء جميع الحقول":"Please fill all fields");return;}
     if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(authForm.email.trim())){setAuthError(lang==="ar"?"البريد الإلكتروني غير صالح":"Invalid email address");return;}
-    if(authForm.password.length<8){setAuthError(lang==="ar"?"كلمة المرور يجب أن تكون ٨ أحرف على الأقل":"Password must be at least 8 characters");return;}
+    const pwErr=validatePassword(authForm.password);
+    if(pwErr){setAuthError(pwErr);return;}
     const ageYears=(Date.now()-new Date(authForm.dob).getTime())/(365.25*24*3600*1000);
     if(isNaN(ageYears)||ageYears<18){setAuthError(lang==="ar"?"يجب أن يكون عمرك 18 عامًا على الأقل":"You must be at least 18 years old");return;}
     if(ageYears>120){setAuthError(lang==="ar"?"تاريخ الميلاد غير صالح":"Invalid date of birth");return;}
@@ -698,7 +726,8 @@ const [driverEditing,setDriverEditing]=useState(false);
   const handleSignupOtherStart=async()=>{
     if(!authForm.fullName.trim()||detectCC(authForm.phone).num.length<6||!authForm.password||!authForm.dob||!authForm.email.trim()){setAuthError(lang==="ar"?"يرجى ملء جميع الحقول":"Please fill all fields");return;}
     if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(authForm.email.trim())){setAuthError(lang==="ar"?"البريد الإلكتروني غير صالح":"Invalid email address");return;}
-    if(authForm.password.length<8){setAuthError(lang==="ar"?"كلمة المرور يجب أن تكون ٨ أحرف على الأقل":"Password must be at least 8 characters");return;}
+    const pwErrOther=validatePassword(authForm.password);
+    if(pwErrOther){setAuthError(pwErrOther);return;}
     const ageYearsOther=(Date.now()-new Date(authForm.dob).getTime())/(365.25*24*3600*1000);
     if(isNaN(ageYearsOther)||ageYearsOther<18){setAuthError(lang==="ar"?"يجب أن يكون عمرك 18 عامًا على الأقل":"You must be at least 18 years old");return;}
     if(ageYearsOther>120){setAuthError(lang==="ar"?"تاريخ الميلاد غير صالح":"Invalid date of birth");return;}
@@ -782,7 +811,8 @@ const [driverEditing,setDriverEditing]=useState(false);
 
   // Forgot password: set new password (reached via email reset link)
   const handleForgotNewPass=async()=>{
-    if(!authForm.password||authForm.password.length<8){setAuthError(lang==="ar"?"كلمة المرور يجب أن تكون ٨ أحرف على الأقل":"Password must be at least 8 characters");return;}
+    const pwErrReset=validatePassword(authForm.password);
+    if(pwErrReset){setAuthError(pwErrReset);return;}
     setAuthLoading(true);setAuthError("");
     const{data:meData}=await supabase.auth.getUser();
     const currentUser=meData?.user;
@@ -914,7 +944,8 @@ const [driverEditing,setDriverEditing]=useState(false);
   };
 
   const changePassword=async()=>{
-    if(!pwForm.next||pwForm.next.length<8){setPwMsg(lang==="ar"?"كلمة المرور يجب أن تكون ٨ أحرف على الأقل":"Password must be at least 8 characters");return;}
+    const pwErrChange=validatePassword(pwForm.next);
+    if(pwErrChange){setPwMsg(pwErrChange);return;}
     const{error}=await supabase.auth.updateUser({password:pwForm.next});
     if(error) setPwMsg(t.auth.error);
     else{setPwMsg(prof.passwordChanged+" ✓");setPwForm({next:""});}
@@ -1814,7 +1845,7 @@ const [driverEditing,setDriverEditing]=useState(false);
               <div style={{background:"#F0FDF4",border:"1px solid #BBF7D0",borderRadius:12,padding:"12px 16px",marginBottom:20,textAlign:"center"}}>
                 <p style={{fontSize:13,color:"#166534",fontWeight:700}}>✓ {lang==="ar"?"تم التحقق — أنشئ كلمة مرور جديدة":"Verified — set your new password"}</p>
               </div>
-              <div style={{marginBottom:20}}><label style={lbl}>{t.auth.newPassword} *</label><input type="password" value={authForm.password} onChange={e=>setAuthForm(f=>({...f,password:e.target.value}))} style={inp} placeholder={lang==="ar"?"٨ أحرف على الأقل":"At least 8 characters"}/></div>
+              <div style={{marginBottom:20}}><label style={lbl}>{t.auth.newPassword} *</label><input type="password" value={authForm.password} onChange={e=>setAuthForm(f=>({...f,password:e.target.value}))} style={inp} placeholder={lang==="ar"?"٨+ أحرف، حرف كبير وصغير ورقم":"8+ chars, upper, lower, digit"}/></div>
               <button onClick={handleForgotNewPass} disabled={authLoading} style={{width:"100%",background:"#1B3A2A",color:"white",border:"none",padding:"14px",borderRadius:12,fontSize:15,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>{authLoading?"...":t.auth.resetPassword}</button>
             </>)}
           </div>
@@ -1899,7 +1930,7 @@ const [driverEditing,setDriverEditing]=useState(false);
               </>)}
               <div style={{borderTop:"1px solid #E8E6E1",paddingTop:20}}>
                 <h3 style={{fontSize:15,fontWeight:800,color:"#1B3A2A",marginBottom:16}}>{prof.changePassword}</h3>
-                <div style={{marginBottom:12}}><label style={lbl}>{prof.newPassword}</label><input type="password" value={pwForm.next} onChange={e=>setPwForm(p=>({...p,next:e.target.value}))} style={inp} placeholder={lang==="ar"?"٦ أحرف على الأقل":"At least 6 characters"}/></div>
+                <div style={{marginBottom:12}}><label style={lbl}>{prof.newPassword}</label><input type="password" value={pwForm.next} onChange={e=>setPwForm(p=>({...p,next:e.target.value}))} style={inp} placeholder={lang==="ar"?"٨+ أحرف، حرف كبير وصغير ورقم":"8+ chars, upper, lower, digit"}/></div>
                 {pwMsg&&<div style={{marginBottom:12,padding:"10px 16px",background:pwMsg.includes("✓")?"#F0FDF4":"#FEF2F2",border:`1px solid ${pwMsg.includes("✓")?"#BBF7D0":"#FECACA"}`,borderRadius:10,color:pwMsg.includes("✓")?"#166534":"#B91C1C",fontSize:13,fontWeight:700}}>{pwMsg}</div>}
                 <button onClick={changePassword} style={{background:"#F0F7F3",color:"#1B3A2A",border:"1.5px solid #1B3A2A",padding:"11px 24px",borderRadius:10,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{prof.changePassword}</button>
               </div>
@@ -2327,7 +2358,7 @@ const [driverEditing,setDriverEditing]=useState(false);
                 <h3 style={{fontSize:16,fontWeight:800,color:"#1B3A2A",marginBottom:4}}>{lang==="ar"?"سجل النشاط الأخير":"Recent Activity Log"}</h3>
                 <p style={{fontSize:12,color:"#AAA",margin:0}}>{lang==="ar"?"آخر الطلبات والحجوزات وطلبات التعديل":"Latest applications, bookings, and edit requests"}</p>
               </div>
-              <button onClick={loadAdminActivity} style={{background:"#1B3A2A",color:"white",border:"none",padding:"8px 18px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{lang==="ar"?"🔄 تحديث":"🔄 Refresh"}</button>
+              <button onClick={()=>loadAdminActivity(activityLimit)} style={{background:"#1B3A2A",color:"white",border:"none",padding:"8px 18px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{lang==="ar"?"🔄 تحديث":"🔄 Refresh"}</button>
             </div>
             {adminActivity.length===0?<div style={{padding:"60px",textAlign:"center",color:"#CCC",background:"white",borderRadius:16,border:"1px solid #E8E6E1"}}><div style={{fontSize:36,marginBottom:8}}>📋</div><div style={{fontSize:14,fontWeight:600}}>{lang==="ar"?"لا توجد بيانات — انقر تحديث":"No data — click Refresh"}</div></div>:(
               <div style={{background:"white",borderRadius:16,border:"1px solid #E8E6E1",overflow:"hidden"}}>
@@ -2352,6 +2383,9 @@ const [driverEditing,setDriverEditing]=useState(false);
                     <div style={{textAlign:"right",fontSize:11,color:"#AAA",fontWeight:600}}>{timeAgo(ev.ts)}</div>
                   </div>);
                 })}
+                {activityHasMore&&(<div style={{padding:"14px 20px",textAlign:"center",borderTop:"1px solid #F0EEEA"}}>
+                  <button onClick={()=>setActivityLimit(l=>l+20)} disabled={activityLoading} style={{background:"#F0F7F3",color:"#1B3A2A",border:"1.5px solid #1B3A2A",padding:"8px 22px",borderRadius:8,fontSize:12,fontWeight:700,cursor:activityLoading?"not-allowed":"pointer",fontFamily:"inherit",opacity:activityLoading?0.6:1}}>{activityLoading?(lang==="ar"?"جاري التحميل...":"Loading..."):(lang==="ar"?"تحميل المزيد":"Load more")}</button>
+                </div>)}
               </div>
             )}
           </div>)}
