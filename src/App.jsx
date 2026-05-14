@@ -1,10 +1,26 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, Component } from "react";
 import { createClient } from "@supabase/supabase-js";
+
+class ErrorBoundary extends Component {
+  constructor(props){super(props);this.state={hasError:false,error:null};}
+  static getDerivedStateFromError(error){return{hasError:true,error};}
+  render(){
+    if(!this.state.hasError) return this.props.children;
+    return(
+      <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",height:"100vh",fontFamily:"Montserrat,sans-serif",padding:24,textAlign:"center"}}>
+        <div style={{fontSize:48,marginBottom:16}}>⚠️</div>
+        <h2 style={{color:"#1B3A2A",marginBottom:8}}>Something went wrong</h2>
+        <p style={{color:"#888",fontSize:14,marginBottom:24}}>حدث خطأ غير متوقع. يرجى تحديث الصفحة.</p>
+        <button onClick={()=>window.location.reload()} style={{background:"#1B3A2A",color:"white",border:"none",padding:"12px 28px",borderRadius:10,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Reload / تحديث</button>
+        {import.meta.env.DEV&&<pre style={{marginTop:24,fontSize:11,color:"#999",textAlign:"left",maxWidth:600,overflow:"auto"}}>{this.state.error?.toString()}</pre>}
+      </div>
+    );
+  }
+}
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON = import.meta.env.VITE_SUPABASE_ANON_KEY;
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON);
-const SHEET_URL = import.meta.env.VITE_SHEET_URL;
 const USDT_ADDRESS = import.meta.env.VITE_USDT_ADDRESS;
 const WA_PHONE = import.meta.env.VITE_WA_PHONE;
 const ADMIN_EMAILS = (import.meta.env.VITE_ADMIN_EMAILS || "").split(",").map(e => e.trim()).filter(Boolean);
@@ -316,7 +332,7 @@ const PAGE_TO_PATH={"home":"/","login":"/login","profile":"/profile","apply":"/a
 const PATH_TO_PAGE=Object.fromEntries(Object.entries(PAGE_TO_PATH).map(([k,v])=>[v,k]));
 const getPageFromPath=()=>PATH_TO_PAGE[window.location.pathname]||"home";
 
-export default function App(){
+function AppInner(){
   const [lang,setLang]=useState("ar");
   const [page,_setPage]=useState(getPageFromPath);
   const setPage=(name)=>{const path=PAGE_TO_PATH[name]||"/";window.history.pushState({},"",(path));_setPage(name);};
@@ -845,10 +861,12 @@ const [driverEditing,setDriverEditing]=useState(false);
     const avail=selectedTripDetail.available_seats||0;
     if(n<1||n>avail){alert(lang==="ar"?`عدد المقاعد يجب أن يكون بين 1 و ${avail}`:`Seats must be between 1 and ${avail}`);return;}
     if(!window.confirm(lang==="ar"?`هل تريد حجز ${n} مقعد(مقاعد) خارجي؟`:`Mark ${n} external seat(s) as occupied?`)) return;
-    const{error}=await supabase.from("trips").update({available_seats:avail-n}).eq("id",selectedTripDetail.id);
-    if(error){alert(lang==="ar"?"فشل تحديث المقاعد":"Failed to update seats");return;}
-    setSelectedTripDetail(t=>({...t,available_seats:avail-n}));
-    setDriverTrips(ts=>ts.map(t=>t.id===selectedTripDetail.id?{...t,available_seats:avail-n}:t));
+    // Use atomic decrement to avoid race conditions
+    const{data:updated,error}=await supabase.rpc("decrement_seats",{p_trip_id:selectedTripDetail.id,p_seats:n});
+    if(error||!updated){alert(lang==="ar"?"فشل تحديث المقاعد":"Failed to update seats");return;}
+    const newAvail=updated.available_seats??avail-n;
+    setSelectedTripDetail(t=>({...t,available_seats:newAvail}));
+    setDriverTrips(ts=>ts.map(t=>t.id===selectedTripDetail.id?{...t,available_seats:newAvail}:t));
     setExternalSeats(1);
   };
 
@@ -1498,7 +1516,6 @@ const [driverEditing,setDriverEditing]=useState(false);
     const rtEn=`${fc.en} to ${tc.en}`;
     const tl=eType==="seat"?"Seat":eType==="car"?"Car":"Van";
     const pl=form.payment==="cash"?"Cash":form.payment==="crypto"?"Crypto (USDT)":"Sham Cash";
-    try{const p=new URLSearchParams({date:form.date,time:form.time||"-",route:rtEn,type:tl,price:`$${price}`,name:form.name,phone:form.phone,passengers:form.passengers,bags:form.bags||"0",notes:form.notes||"-",payment:pl,ref});fetch(`${SHEET_URL}?${p.toString()}`,{method:"GET",mode:"no-cors"})}catch(e){console.log(e)}
     const msg=lang==="ar"
       ?`🚗 *طلب حجز جديد - سفّرني*\n\n📋 رقم الحجز: ${ref}\n📍 المسار: ${rt}\n🧾 النوع: ${eType==="seat"?"مقعد":eType==="car"?"سيارة كاملة":"فان"}\n💰 السعر: $${price}\n💳 الدفع: ${form.payment==="cash"?"كاش":form.payment==="crypto"?"عملات رقمية (USDT)":"شام كاش"}\n\n📅 التاريخ: ${form.date}\n⏰ الوقت: ${form.time?formatTime(form.time):"-"}\n👥 عدد الركاب: ${form.passengers}\n🧳 الحقائب: ${form.bags||"0"}\n\n👤 الاسم: ${form.name}\n📞 الهاتف: ${form.phone}\n📝 ملاحظات: ${form.notes||"-"}`
       :`🚗 *New Booking - Safferni*\n\n📋 Ref: ${ref}\n📍 Route: ${rt}\n🧾 Type: ${tl}\n💰 Price: $${price}\n💳 Payment: ${pl}\n\n📅 Date: ${form.date}\n⏰ Time: ${form.time?formatTime(form.time):"-"}\n👥 Passengers: ${form.passengers}\n🧳 Bags: ${form.bags||"0"}\n\n👤 Name: ${form.name}\n📞 Phone: ${form.phone}\n📝 Notes: ${form.notes||"-"}`;
@@ -3316,6 +3333,10 @@ const [driverEditing,setDriverEditing]=useState(false);
       </a>
     </div>
   );
+}
+
+export default function App(){
+  return <ErrorBoundary><AppInner/></ErrorBoundary>;
 }
 
 const lbl={display:"block",fontSize:12,fontWeight:700,color:"#666",marginBottom:6};
