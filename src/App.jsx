@@ -493,6 +493,8 @@ const [driverEditing,setDriverEditing]=useState(false);
   const [activityLoading,setActivityLoading]=useState(false);
 
   const t=T[lang];const b=t.b;const adm=t.admin;const drv=t.driver;const prof=t.profile;
+  // Route arrow: ← in Arabic so it points correctly when read RTL.
+  const arr=lang==="ar"?"←":"→";
   const isRTL=lang==="ar";
   const searchRef=useRef(null);
   const bkRef=useRef(null);
@@ -561,8 +563,8 @@ const [driverEditing,setDriverEditing]=useState(false);
     }
     const events=[
       ...(apps||[]).map(a=>({type:"application",id:a.id,title:a.full_name,status:a.status,ts:a.created_at})),
-      ...(bks||[]).map(b=>({type:"booking",id:b.id,title:b.passenger_name,status:b.status,seats:b.seats,route:`${gc(b.trips?.from_city)?.[lang]||b.trips?.from_city||"?"}→${gc(b.trips?.to_city)?.[lang]||b.trips?.to_city||"?"}`,date:b.trips?.trip_date,ts:b.created_at,managerName:b.action_taken_by?actorMap[b.action_taken_by]:null})),
-      ...(edits||[]).map(e=>({type:"edit",id:e.id,status:e.status,route:`${gc(e.trips?.from_city)?.[lang]||e.trips?.from_city||"?"}→${gc(e.trips?.to_city)?.[lang]||e.trips?.to_city||"?"}`,newTime:e.requested_time,ts:e.created_at})),
+      ...(bks||[]).map(b=>({type:"booking",id:b.id,title:b.passenger_name,status:b.status,seats:b.seats,route:`${gc(b.trips?.from_city)?.[lang]||b.trips?.from_city||"?"}${arr}${gc(b.trips?.to_city)?.[lang]||b.trips?.to_city||"?"}`,date:b.trips?.trip_date,ts:b.created_at,managerName:b.action_taken_by?actorMap[b.action_taken_by]:null})),
+      ...(edits||[]).map(e=>({type:"edit",id:e.id,status:e.status,route:`${gc(e.trips?.from_city)?.[lang]||e.trips?.from_city||"?"}${arr}${gc(e.trips?.to_city)?.[lang]||e.trips?.to_city||"?"}`,newTime:e.requested_time,ts:e.created_at})),
     ].sort((a,b)=>new Date(b.ts)-new Date(a.ts));
     setAdminActivity(events);
     // If any source returned a full page, there may be more to load.
@@ -938,13 +940,13 @@ const [driverEditing,setDriverEditing]=useState(false);
     setDriverTrips(ts=>ts.map(t=>t.id===tripId?{...t,status:"completed"}:t));
     setSelectedTripDetail(t=>t?.id===tripId?{...t,status:"completed"}:t);
     const fc=gc(data.from_city),tc=gc(data.to_city);
-    const routeBilingual=`${fc?.ar||data.from_city} → ${tc?.ar||data.to_city} / ${fc?.en||data.from_city} → ${tc?.en||data.to_city}`;
+    const routeBilingual=`${fc?.ar||data.from_city} ← ${tc?.ar||data.to_city} / ${fc?.en||data.from_city} → ${tc?.en||data.to_city}`;
     // Auto-rejected pending → "rejected" notification
     for(const r of (data.rejected||[])){
       if(!r.user_id) continue;
       createNotif(r.user_id,"booking_rejected",
         lang==="ar"?"تم رفض حجزك":"Booking Rejected",
-        lang==="ar"?`اكتملت رحلة ${fc?.ar||data.from_city} → ${tc?.ar||data.to_city} دون تأكيد حجزك.`:`The ${fc?.en||data.from_city} → ${tc?.en||data.to_city} trip completed without confirming your booking.`);
+        lang==="ar"?`اكتملت رحلة ${fc?.ar||data.from_city} ← ${tc?.ar||data.to_city} دون تأكيد حجزك.`:`The ${fc?.en||data.from_city} → ${tc?.en||data.to_city} trip completed without confirming your booking.`);
     }
     // Confirmed passengers → review prompt
     for(const c of (data.confirmed||[])){
@@ -1048,7 +1050,7 @@ const [driverEditing,setDriverEditing]=useState(false);
     const routeCounts={};
     (allTrips||[]).forEach(t=>{const key=`${t.from_city}-${t.to_city}`;routeCounts[key]=(routeCounts[key]||0)+1;});
     const popularRoute=Object.entries(routeCounts).sort((a,b)=>b[1]-a[1])[0];
-    const popularLabel=popularRoute?`${gc(popularRoute[0].split("-")[0])?.[lang]||popularRoute[0].split("-")[0]} → ${gc(popularRoute[0].split("-")[1])?.[lang]||popularRoute[0].split("-")[1]}`:"—";
+    const popularLabel=popularRoute?`${gc(popularRoute[0].split("-")[0])?.[lang]||popularRoute[0].split("-")[0]} ${arr} ${gc(popularRoute[0].split("-")[1])?.[lang]||popularRoute[0].split("-")[1]}`:"—";
     setDashStats({activeTrips:activeCount,totalDrivers:(drivers||[]).length,bookingsToday:bookingsToday||0,popularRoute:popularLabel});
     // 7-day bookings chart
     const days=Array.from({length:7},(_,i)=>{const d=new Date();d.setDate(d.getDate()-6+i);return d.toISOString().split("T")[0];});
@@ -1426,7 +1428,7 @@ const [driverEditing,setDriverEditing]=useState(false);
     if(bk?.user_id){
       const trip=bk.trips||driverTrips.find(t=>t.id===bk.trip_id);
       const fc=gc(trip?.from_city);const tc=gc(trip?.to_city);
-      const route=trip?`${fc?.[lang]||trip.from_city} → ${tc?.[lang]||trip.to_city}`:"";
+      const route=trip?`${fc?.[lang]||trip.from_city} ${arr} ${tc?.[lang]||trip.to_city}`:"";
       createNotif(bk.user_id,"booking_confirmed",lang==="ar"?"تم تأكيد حجزك ✅":"Booking Confirmed ✅",lang==="ar"?`${route} بتاريخ ${trip?.trip_date||""}`:`${route} on ${trip?.trip_date||""}`);
     }
   };
@@ -1555,7 +1557,7 @@ const [driverEditing,setDriverEditing]=useState(false);
       createNotif(a.user_id,"booking_cancelled",
         lang==="ar"?"تم إلغاء رحلتك":"Trip Cancelled",
         lang==="ar"
-          ?`ألغى السائق رحلة ${fc?.ar||data.from_city} → ${tc?.ar||data.to_city} بتاريخ ${data.trip_date}.`
+          ?`ألغى السائق رحلة ${fc?.ar||data.from_city} ← ${tc?.ar||data.to_city} بتاريخ ${data.trip_date}.`
           :`The driver cancelled the ${fc?.en||data.from_city} → ${tc?.en||data.to_city} trip on ${data.trip_date}.`);
     }
     loadDriverData();
@@ -1587,16 +1589,30 @@ const [driverEditing,setDriverEditing]=useState(false);
     const enriched=(data||[]).map(t=>({...t,profiles:driverMap[t.driver_id]||null}));
     setTrips(enriched);
     if(enriched.length===0){
+      // Look ±2 days for trips on the same route, clamped to today so we don't return past trips.
+      const useObj=new Date(useDate);
+      const startObj=new Date(useObj);startObj.setDate(startObj.getDate()-2);
+      const endObj=new Date(useObj);endObj.setDate(endObj.getDate()+2);
       const today=new Date().toISOString().slice(0,10);
-      const fromDate=useDate>=today?useDate:today;
-      let nq=supabase.from("trips").select("trip_date,from_city,to_city,gender_type").eq("status","active").eq("approved",true).neq("trip_date",useDate).gte("trip_date",fromDate).order("trip_date").limit(20);
+      const startStr=startObj.toISOString().slice(0,10);
+      const endStr=endObj.toISOString().slice(0,10);
+      const effectiveStart=startStr<today?today:startStr;
+      let nq=supabase.from("trips").select("*").eq("status","active").eq("approved",true)
+        .neq("trip_date",useDate)
+        .gte("trip_date",effectiveStart)
+        .lte("trip_date",endStr)
+        .order("trip_date").order("trip_time");
       if(searchFrom) nq=nq.eq("from_city",searchFrom);
       if(searchTo) nq=nq.eq("to_city",searchTo);
       if(searchGender) nq=nq.eq("gender_type",searchGender);
       const{data:near}=await nq;
-      const uniqueDates=[];const seen=new Set();
-      (near||[]).forEach(t=>{if(!seen.has(t.trip_date)){seen.add(t.trip_date);uniqueDates.push(t.trip_date);}});
-      setNearbyTrips(uniqueDates.slice(0,3));
+      const nearbyDriverIds=[...new Set((near||[]).map(t=>t.driver_id).filter(Boolean))];
+      let nearbyDriverMap={};
+      if(nearbyDriverIds.length){
+        const{data:nearbyDrivers}=await supabase.from("profiles").select("id,id_verified,avatar_url").in("id",nearbyDriverIds);
+        nearbyDriverMap=Object.fromEntries((nearbyDrivers||[]).map(d=>[d.id,d]));
+      }
+      setNearbyTrips((near||[]).map(t=>({...t,profiles:nearbyDriverMap[t.driver_id]||null})));
     }else{
       setNearbyTrips([]);
     }
@@ -1710,13 +1726,6 @@ const [driverEditing,setDriverEditing]=useState(false);
 
   const statusBadge=(s)=>({padding:"4px 12px",borderRadius:20,fontSize:11,fontWeight:700,background:s==="active"?"#D1FAE5":s==="confirmed"?"#BBF7D0":s==="pending"?"#FFF3CD":s==="completed"?"#E0F2FE":s==="no_show"?"#FEF3C7":"#FEE2E2",color:s==="active"?"#065F46":s==="confirmed"?"#065F46":s==="pending"?"#92400E":s==="completed"?"#0369A1":s==="no_show"?"#92400E":"#991B1B"});
 
-  const timeOptions=Array.from({length:96},(_,i)=>{
-    const h=Math.floor(i/4);const m=(i%4)*15;
-    const ampm=h<12?"AM":"PM";const h12=h===0?12:h>12?h-12:h;
-    const label=`${h12}:${String(m).padStart(2,"0")} ${ampm}`;
-    const value=`${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`;
-    return{label,value};
-  });
 
   if(loading) return <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",fontFamily:"Montserrat,sans-serif",color:"#1B3A2A",fontSize:18,fontWeight:700}}>سفّرني...</div>;
 
@@ -1767,7 +1776,7 @@ const [driverEditing,setDriverEditing]=useState(false);
           {user&&<div onClick={()=>{setPage("profile");setMenuOpen(false)}} style={{padding:"10px 24px",cursor:"pointer",fontSize:15,fontWeight:700,color:"#1B3A2A"}}>{t.nav.profile}</div>}
           {user?(<div onClick={()=>{handleLogout();setMenuOpen(false)}} style={{padding:"10px 24px",cursor:"pointer",fontSize:15,color:"#444"}}>{t.nav.logout}</div>):(<div onClick={()=>{resetAuth();setPage("login");setMenuOpen(false)}} style={{padding:"10px 24px",cursor:"pointer",fontSize:15,color:"#1B3A2A",fontWeight:700}}>{t.nav.login}</div>)}
           <div style={{padding:"8px 24px"}}><button onClick={()=>{scrollToSearch();setMenuOpen(false)}} style={{background:"#1B3A2A",color:"white",border:"none",padding:"10px 24px",borderRadius:8,fontSize:14,fontWeight:700,cursor:"pointer",width:"100%",fontFamily:"inherit"}}>{t.nav.book}</button></div>
-          {user&&!isDriverApplied&&<div onClick={()=>{setPage("apply");setMenuOpen(false)}} style={{padding:"10px 24px",borderTop:"1px solid #F0EEEA",cursor:"pointer",fontSize:15,fontWeight:700,color:"#1B3A2A",marginTop:4}}>{t.nav.apply} →</div>}
+          {user&&!isDriverApplied&&<div onClick={()=>{setPage("apply");setMenuOpen(false)}} style={{padding:"10px 24px",borderTop:"1px solid #F0EEEA",cursor:"pointer",fontSize:15,fontWeight:700,color:"#1B3A2A",marginTop:4}}>{t.nav.apply} {arr}</div>}
         </div>)}
         <style>{`@media(max-width:700px){.dnav{display:none!important}.mnav{display:flex!important}}`}</style>
       </nav>
@@ -2088,7 +2097,7 @@ const [driverEditing,setDriverEditing]=useState(false);
                 <div style={{background:"white",borderRadius:16,padding:"32px",border:"1px solid #BBF7D0",textAlign:"center"}}>
                   <div style={{fontSize:48,marginBottom:12}}>🚗</div>
                   <h3 style={{fontSize:18,fontWeight:900,color:"#1B3A2A",marginBottom:8}}>{prof.driverStatus.approved}</h3>
-                  <button onClick={()=>setPage("driver")} style={{background:"#1B3A2A",color:"white",border:"none",padding:"12px 32px",borderRadius:10,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit",marginTop:12}}>{t.nav.driver} →</button>
+                  <button onClick={()=>setPage("driver")} style={{background:"#1B3A2A",color:"white",border:"none",padding:"12px 32px",borderRadius:10,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit",marginTop:12}}>{t.nav.driver} {arr}</button>
                 </div>
               ):driverApplication?.status==="pending"?(
                 <div style={{background:"white",borderRadius:16,padding:"32px",border:"1px solid #FFF3CD",textAlign:"center"}}>
@@ -2298,7 +2307,7 @@ const [driverEditing,setDriverEditing]=useState(false);
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:12}}>
                     <div>
                       <div style={{fontWeight:800,fontSize:15,color:"#1B3A2A",marginBottom:4}}>{fc?.[lang]||trip?.from_city} {lang==="ar"?"إلى":"to"} {tc?.[lang]||trip?.to_city}</div>
-                      <div style={{fontSize:12,color:"#888"}}>{trip?.trip_date} · {adm.currentTime}: {formatTime(trip?.trip_time)} → {adm.requestedTime}: <span style={{fontWeight:700,color:"#1B3A2A"}}>{formatTime(req.requested_time)}</span></div>
+                      <div style={{fontSize:12,color:"#888"}}>{trip?.trip_date} · {adm.currentTime}: {formatTime(trip?.trip_time)} {arr} {adm.requestedTime}: <span style={{fontWeight:700,color:"#1B3A2A"}}>{formatTime(req.requested_time)}</span></div>
                     </div>
                     <div style={{display:"flex",gap:8}}>
                       <button onClick={()=>handleEditRequest(req.id,"approved",req.trip_id,req.requested_time)} style={{background:"#1B3A2A",color:"white",border:"none",padding:"8px 16px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{adm.approve}</button>
@@ -2393,7 +2402,7 @@ const [driverEditing,setDriverEditing]=useState(false);
               :adminRouteRequests.map((r,i)=>{const fc=gc(r.from_city);const tc=gc(r.to_city);return(
                 <div key={r.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 0",borderBottom:i<adminRouteRequests.length-1?"1px solid #F0EEEA":"none",flexWrap:"wrap",gap:8}}>
                   <div>
-                    <div style={{fontWeight:700,fontSize:14,color:"#1B3A2A"}}>{fc?.[lang]||r.from_city} → {tc?.[lang]||r.to_city}</div>
+                    <div style={{fontWeight:700,fontSize:14,color:"#1B3A2A"}}>{fc?.[lang]||r.from_city} {arr} {tc?.[lang]||r.to_city}</div>
                     <div style={{fontSize:12,color:"#888"}}>{r.passenger_name} · {r.passenger_phone}{r.preferred_date?` · ${r.preferred_date}`:""}</div>
                     <div style={{fontSize:11,color:"#BBB"}}>{new Date(r.created_at).toLocaleDateString()}</div>
                   </div>
@@ -2512,7 +2521,7 @@ const [driverEditing,setDriverEditing]=useState(false);
                     <div style={{color:"#333",fontWeight:600,fontSize:13}}>
                       {ev.type==="application"&&ev.title}
                       {ev.type==="booking"&&<>{`${ev.title||"—"} · ${ev.seats} ${lang==="ar"?"مقعد":"seat(s)"} · ${ev.route||""} ${ev.date?`(${ev.date})`:""}`}{ev.managerName&&<span style={{marginInlineStart:8,display:"inline-block",padding:"2px 8px",borderRadius:20,fontSize:10,fontWeight:700,background:"#EDE9FE",color:"#5B21B6",verticalAlign:"middle"}}>🗂️ {lang==="ar"?`بواسطة المدير ${ev.managerName}`:`by Manager ${ev.managerName}`}</span>}</>}
-                      {ev.type==="edit"&&`${ev.route||""} → ${ev.newTime||""}`}
+                      {ev.type==="edit"&&`${ev.route||""} ${arr} ${ev.newTime||""}`}
                     </div>
                     <div style={{textAlign:"center"}}><span style={{padding:"3px 10px",borderRadius:20,fontSize:11,fontWeight:700,background:statusBg,color:statusFg}}>{ev.status||"—"}</span></div>
                     <div style={{textAlign:"right",fontSize:11,color:"#AAA",fontWeight:600}}>{timeAgo(ev.ts)}</div>
@@ -2550,7 +2559,7 @@ const [driverEditing,setDriverEditing]=useState(false);
                       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:8}}>
                         <div>
                           <div style={{fontWeight:800,fontSize:14,color:"#1B3A2A"}}>{bk.name||"—"}</div>
-                          <div style={{fontSize:12,color:"#666",marginTop:2}}>{fc?.[lang]||trip?.from_city} → {tc?.[lang]||trip?.to_city} · {trip?.trip_date} {trip?.trip_time?formatTime(trip.trip_time):""}</div>
+                          <div style={{fontSize:12,color:"#666",marginTop:2}}>{fc?.[lang]||trip?.from_city} {arr} {tc?.[lang]||trip?.to_city} · {trip?.trip_date} {trip?.trip_time?formatTime(trip.trip_time):""}</div>
                           <div style={{fontSize:12,color:"#666",marginTop:1}}>{lang==="ar"?"عدد المقاعد:":"Seats:"} {bk.seats}</div>
                         </div>
                         <div style={{display:"flex",gap:8,flexShrink:0}}>
@@ -2602,7 +2611,7 @@ const [driverEditing,setDriverEditing]=useState(false);
               </div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:16}}>
                 <div><label style={lbl}>{drv.date} *</label><input type="date" value={tripForm.date} min={new Date().toISOString().split("T")[0]} onChange={e=>setTripForm({...tripForm,date:e.target.value})} style={inp}/></div>
-                <div><label style={lbl}>{drv.time}</label><select value={tripForm.time} onChange={e=>setTripForm({...tripForm,time:e.target.value})} style={inp}><option value="">--</option>{timeOptions.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}</select></div>
+                <div><label style={lbl}>{drv.time}</label><input type="time" value={tripForm.time} onChange={e=>setTripForm({...tripForm,time:e.target.value})} style={inp}/></div>
               </div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12,marginBottom:16}}>
                 <div>{(()=>{const dr=tripForm.from&&tripForm.to?findRoute(tripForm.from,tripForm.to):null;const lim=dr&&!dr.comingSoon?dr:null;return(<><label style={lbl}>{drv.pricePerSeat} *{lim&&<span style={{fontWeight:600,color:"#1B3A2A",marginInlineStart:4,fontSize:10}}>(${lim.seatMin}–${lim.seatMax})</span>}</label><input type="number" min={lim?.seatMin} max={lim?.seatMax} value={tripForm.pricePerSeat} onChange={e=>setTripForm({...tripForm,pricePerSeat:e.target.value})} style={inp} placeholder={lim?`${lim.seatMin}–${lim.seatMax}`:"0"}/></>)})()}</div>
@@ -2787,7 +2796,7 @@ const [driverEditing,setDriverEditing]=useState(false);
               const fc=gc(trip?.from_city);const tc=gc(trip?.to_city);
               return(<>
                 <div style={{background:"#F0F7F3",borderRadius:14,padding:"16px 20px",marginBottom:16}}>
-                  <div style={{fontWeight:900,fontSize:16,color:"#1B3A2A",marginBottom:6}}>{fc?.[lang]||trip?.from_city} → {tc?.[lang]||trip?.to_city}</div>
+                  <div style={{fontWeight:900,fontSize:16,color:"#1B3A2A",marginBottom:6}}>{fc?.[lang]||trip?.from_city} {arr} {tc?.[lang]||trip?.to_city}</div>
                   <div style={{fontSize:13,color:"#555"}}>{trip?.trip_date} · {formatTime(trip?.trip_time)}</div>
                   {trip?.car_type&&<div style={{fontSize:12,color:"#888",marginTop:4}}>🚗 {trip.car_type}</div>}
                 </div>
@@ -2829,7 +2838,7 @@ const [driverEditing,setDriverEditing]=useState(false);
               const fc=gc(trip.from_city);const tc=gc(trip.to_city);
               return(<>
                 <div style={{background:"#F0F7F3",borderRadius:14,padding:"14px 18px",marginBottom:20}}>
-                  <div style={{fontWeight:900,fontSize:15,color:"#1B3A2A"}}>{fc?.[lang]||trip.from_city} → {tc?.[lang]||trip.to_city}</div>
+                  <div style={{fontWeight:900,fontSize:15,color:"#1B3A2A"}}>{fc?.[lang]||trip.from_city} {arr} {tc?.[lang]||trip.to_city}</div>
                   <div style={{fontSize:12,color:"#555",marginTop:4}}>{trip.trip_date} · {formatTime(trip.trip_time)} · {trip.total_seats-trip.available_seats}/{trip.total_seats} {lang==="ar"?"مقعد محجوز":"seats booked"}</div>
                   {trip.status==="active"&&<button onClick={()=>markTripCompleted(trip.id)} style={{marginTop:10,background:"#0369A1",color:"white",border:"none",padding:"7px 18px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>✓ {lang==="ar"?"تحديد كمكتملة":"Mark as Completed"}</button>}
                   {trip.status==="completed"&&<div style={{marginTop:8,fontSize:12,fontWeight:700,color:"#0369A1"}}>✓ {lang==="ar"?"الرحلة مكتملة":"Trip completed"}</div>}
@@ -2866,7 +2875,7 @@ const [driverEditing,setDriverEditing]=useState(false);
                         <div style={{fontWeight:800,fontSize:14,color:"#1B3A2A",marginBottom:2}}>{bk.passenger_name}</div>
                         <div style={{fontSize:12,color:"#555",display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
                           <span>{bk.status==="confirmed"?bk.passenger_phone:(lang==="ar"?"📞 يظهر الرقم بعد التأكيد":"📞 Phone visible after confirming")}</span>
-                          {bk.status==="confirmed"&&bk.passenger_phone&&(()=>{const fc=gc(selectedTripDetail?.from_city);const tc=gc(selectedTripDetail?.to_city);const msg=lang==="ar"?`مرحباً ${bk.passenger_name||""}! ✅ تم تأكيد حجزك على رحلة ${fc?.ar||selectedTripDetail?.from_city} → ${tc?.ar||selectedTripDetail?.to_city} بتاريخ ${selectedTripDetail?.trip_date}. رقم الحجز: ${bk.ref_code||""}. نراك قريباً! 🚗`:`Hi ${bk.passenger_name||""}! ✅ Your booking is confirmed for ${fc?.en||selectedTripDetail?.from_city} → ${tc?.en||selectedTripDetail?.to_city} on ${selectedTripDetail?.trip_date}. Ref: ${bk.ref_code||""}. See you soon! 🚗`;return(<a href={`https://wa.me/${bk.passenger_phone.replace(/\D/g,"")}?text=${encodeURIComponent(msg)}`} target="_blank" rel="noopener noreferrer" style={{background:"#25D366",color:"white",borderRadius:8,padding:"3px 10px",fontSize:11,fontWeight:700,textDecoration:"none",display:"inline-block"}}>📱 WhatsApp</a>);})()}
+                          {bk.status==="confirmed"&&bk.passenger_phone&&(()=>{const fc=gc(selectedTripDetail?.from_city);const tc=gc(selectedTripDetail?.to_city);const msg=lang==="ar"?`مرحباً ${bk.passenger_name||""}! ✅ تم تأكيد حجزك على رحلة ${fc?.ar||selectedTripDetail?.from_city} ← ${tc?.ar||selectedTripDetail?.to_city} بتاريخ ${selectedTripDetail?.trip_date}. رقم الحجز: ${bk.ref_code||""}. نراك قريباً! 🚗`:`Hi ${bk.passenger_name||""}! ✅ Your booking is confirmed for ${fc?.en||selectedTripDetail?.from_city} → ${tc?.en||selectedTripDetail?.to_city} on ${selectedTripDetail?.trip_date}. Ref: ${bk.ref_code||""}. See you soon! 🚗`;return(<a href={`https://wa.me/${bk.passenger_phone.replace(/\D/g,"")}?text=${encodeURIComponent(msg)}`} target="_blank" rel="noopener noreferrer" style={{background:"#25D366",color:"white",borderRadius:8,padding:"3px 10px",fontSize:11,fontWeight:700,textDecoration:"none",display:"inline-block"}}>📱 WhatsApp</a>);})()}
                         </div>
                         <div style={{fontSize:11,color:"#888",marginTop:4}}>💺 {bk.seats} {lang==="ar"?"مقعد":"seat(s)"} · {bk.payment_method} · 📋 {bk.ref_code}</div>
                       </div>
@@ -2950,10 +2959,7 @@ const [driverEditing,setDriverEditing]=useState(false);
           <div style={{background:"white",borderRadius:20,padding:"32px",maxWidth:360,width:"100%",animation:"fadeUp 0.3s ease"}}>
             <h3 style={{fontSize:18,fontWeight:900,color:"#1B3A2A",marginBottom:16}}>{drv.requestTimeEdit}</h3>
             <div style={{marginBottom:20}}><label style={lbl}>{drv.newTime} *</label>
-              <select value={editRequestForm.newTime} onChange={e=>setEditRequestForm({...editRequestForm,newTime:e.target.value})} style={inp}>
-                <option value="">--</option>
-                {timeOptions.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}
-              </select>
+              <input type="time" value={editRequestForm.newTime} onChange={e=>setEditRequestForm({...editRequestForm,newTime:e.target.value})} style={inp}/>
             </div>
             <div style={{display:"flex",gap:10}}>
               <button onClick={()=>setShowEditModal(false)} style={{flex:1,background:"white",color:"#666",border:"1.5px solid #DDD",padding:"12px",borderRadius:10,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>✕</button>
@@ -2997,7 +3003,7 @@ const [driverEditing,setDriverEditing]=useState(false);
                     <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,flexWrap:"wrap"}}>
                       <div>
                         <div style={{fontWeight:700,fontSize:13,color:"#1B3A2A"}}>{bk.name||"—"} · 💺 {bk.seats}</div>
-                        <div style={{fontSize:11,color:"#888",marginTop:2}}>{fc?.[lang]||trip?.from_city} → {tc?.[lang]||trip?.to_city} · {trip?.trip_date}</div>
+                        <div style={{fontSize:11,color:"#888",marginTop:2}}>{fc?.[lang]||trip?.from_city} {arr} {tc?.[lang]||trip?.to_city} · {trip?.trip_date}</div>
                       </div>
                       <div style={{display:"flex",gap:6}}>
                         <button onClick={()=>managerConfirmBooking(bk.id,bk)} style={{background:"#065F46",color:"white",border:"none",padding:"6px 14px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>✓ {lang==="ar"?"تأكيد":"Confirm"}</button>
@@ -3017,7 +3023,7 @@ const [driverEditing,setDriverEditing]=useState(false);
                 <div><label style={lbl}>{lang==="ar"?"من":"From"} *</label><select value={tripForm.from} onChange={e=>setTripForm({...tripForm,from:e.target.value,to:""})} style={inp}><option value="">{lang==="ar"?"اختر المحافظة":"Select city"}</option>{cities.map(c=><option key={c.id} value={c.id}>{c[lang]}</option>)}</select></div>
                 <div><label style={lbl}>{lang==="ar"?"إلى":"To"} *</label><select value={tripForm.to} onChange={e=>setTripForm({...tripForm,to:e.target.value})} style={inp} disabled={!tripForm.from}><option value="">{lang==="ar"?"اختر":"Select"}</option>{tripForm.from?getDests(tripForm.from).map(id=>{const c=gc(id);return<option key={id} value={id}>{c[lang]}</option>}):null}</select></div>
                 <div><label style={lbl}>{lang==="ar"?"التاريخ":"Date"} *</label><input type="date" value={tripForm.date} min={new Date().toISOString().split("T")[0]} onChange={e=>setTripForm({...tripForm,date:e.target.value})} style={inp}/></div>
-                <div><label style={lbl}>{lang==="ar"?"الوقت":"Time"}</label><select value={tripForm.time} onChange={e=>setTripForm({...tripForm,time:e.target.value})} style={inp}><option value="">--</option>{timeOptions.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}</select></div>
+                <div><label style={lbl}>{lang==="ar"?"الوقت":"Time"}</label><input type="time" value={tripForm.time} onChange={e=>setTripForm({...tripForm,time:e.target.value})} style={inp}/></div>
                 <div>{(()=>{const dr=tripForm.from&&tripForm.to?findRoute(tripForm.from,tripForm.to):null;const lim=dr&&!dr.comingSoon?dr:null;return(<><label style={lbl}>{lang==="ar"?"سعر المقعد ($)":"Price/Seat ($)"} *{lim&&<span style={{fontWeight:600,color:"#1B3A2A",marginInlineStart:4,fontSize:10}}>(${lim.seatMin}–${lim.seatMax})</span>}</label><input type="number" min={lim?.seatMin} max={lim?.seatMax} value={tripForm.pricePerSeat} onChange={e=>setTripForm({...tripForm,pricePerSeat:e.target.value})} style={inp} placeholder={lim?`${lim.seatMin}–${lim.seatMax}`:"0"}/></>);})()}</div>
                 <div><label style={lbl}>{lang==="ar"?"عدد المقاعد":"Total Seats"}</label><select value={tripForm.totalSeats} onChange={e=>setTripForm({...tripForm,totalSeats:e.target.value})} style={inp}>{[2,3,4,5,6,7,8,9,10].map(n=><option key={n} value={n}>{n}</option>)}</select></div>
                 <div><label style={lbl}>{lang==="ar"?"نوع السيارة":"Car Type"}</label><input value={tripForm.carType} onChange={e=>setTripForm({...tripForm,carType:e.target.value})} style={inp}/></div>
@@ -3038,7 +3044,7 @@ const [driverEditing,setDriverEditing]=useState(false);
               return(<div key={trip.id} onClick={()=>{setSelectedTripDetail(trip);loadTripBookings(trip.id);setExternalSeats(1);}} style={{background:"white",borderRadius:14,padding:"16px 18px",border:"1px solid #E8E6E1",marginBottom:10,animation:`fadeUp 0.4s ease ${0.05*i}s both`,cursor:"pointer"}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10,flexWrap:"wrap"}}>
                   <div>
-                    <div style={{fontWeight:800,fontSize:14,color:"#1B3A2A"}}>{fc?.[lang]||trip.from_city} → {tc?.[lang]||trip.to_city}</div>
+                    <div style={{fontWeight:800,fontSize:14,color:"#1B3A2A"}}>{fc?.[lang]||trip.from_city} {arr} {tc?.[lang]||trip.to_city}</div>
                     <div style={{fontSize:12,color:"#888",marginTop:3}}>{trip.trip_date} · {formatTime(trip.trip_time)} · 💺 {trip.total_seats-trip.available_seats}/{trip.total_seats}</div>
                   </div>
                   <div style={{display:"flex",gap:6,alignItems:"center"}}>
@@ -3241,7 +3247,7 @@ const [driverEditing,setDriverEditing]=useState(false);
               <div style={{marginTop:6,display:"flex",flexWrap:"wrap",gap:6}}>
                 <span style={{fontSize:11,color:"#666",fontWeight:700,alignSelf:"center"}}>{lang==="ar"?"المحفوظة:":"Saved:"}</span>
                 {savedRoutes.map((r,idx)=>{const fc=gc(r.from);const tc=gc(r.to);return(
-                  <button key={idx} onClick={()=>{setSearchFrom(r.from);setSearchTo(r.to);}} style={{background:"#F0EBE3",color:"#1B3A2A",border:"none",padding:"5px 10px",borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{fc?.[lang]||r.from} → {tc?.[lang]||r.to}</button>
+                  <button key={idx} onClick={()=>{setSearchFrom(r.from);setSearchTo(r.to);}} style={{background:"#F0EBE3",color:"#1B3A2A",border:"none",padding:"5px 10px",borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{fc?.[lang]||r.from} {arr} {tc?.[lang]||r.to}</button>
                 );})}
               </div>
             )}
@@ -3250,15 +3256,26 @@ const [driverEditing,setDriverEditing]=useState(false);
             {tripsLoaded&&(<div style={{marginTop:20}}>
               {trips.length===0?(<div style={{textAlign:"center",padding:"24px 0"}}>
                 <p style={{color:"#AAA",fontSize:14,marginBottom:nearbyTrips.length?8:16}}>{lang==="ar"?"لا توجد رحلات في هذا التاريخ":"No trips on this exact date"}</p>
-                {nearbyTrips.length>0&&(<div style={{marginTop:12}}>
-                  <p style={{color:"#1B3A2A",fontSize:13,fontWeight:700,marginBottom:10}}>{lang==="ar"?"لكن توجد رحلات في تواريخ أخرى:":"But there are trips on other dates:"}</p>
-                  <div style={{display:"flex",flexDirection:"column",gap:8,alignItems:"center"}}>
-                    {nearbyTrips.map(d=>(
-                      <button key={d} onClick={()=>{setSearchDate(d);searchTrips(d);}} style={{background:"#F0F7F3",color:"#1B3A2A",border:"1.5px solid #1B3A2A",padding:"10px 22px",borderRadius:10,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
-                        {lang==="ar"?"عرض رحلات ":"View trips on "}{new Date(d).toLocaleDateString(lang==="ar"?"ar-EG":"en-US",{weekday:"short",day:"numeric",month:"short",year:"numeric"})} →
-                      </button>
-                    ))}
-                  </div>
+                {nearbyTrips.length>0&&(<div style={{marginTop:12,textAlign:isRTL?"right":"left"}}>
+                  <p style={{color:"#1B3A2A",fontSize:13,fontWeight:700,marginBottom:10,textAlign:"center"}}>{lang==="ar"?"رحلات قريبة على نفس المسار (±يومان):":"Nearby trips on the same route (±2 days):"}</p>
+                  {(()=>{
+                    const grouped={};
+                    nearbyTrips.forEach(t=>{(grouped[t.trip_date]=grouped[t.trip_date]||[]).push(t);});
+                    return Object.entries(grouped).map(([date,trips])=>(
+                      <div key={date} style={{marginBottom:14}}>
+                        <div style={{fontSize:12,fontWeight:700,color:"#1B3A2A",background:"#F0F7F3",padding:"6px 12px",borderRadius:8,marginBottom:8,display:"inline-block"}}>📅 {new Date(date).toLocaleDateString(lang==="ar"?"ar-EG":"en-US",{weekday:"short",day:"numeric",month:"short"})}</div>
+                        {trips.map(t=>{const fc=gc(t.from_city);const tc=gc(t.to_city);const isWomen=t.gender_type==="women_only";return(
+                          <div key={t.id} style={{border:`1px solid ${isWomen?"#DDD6FE":"#E8E6E1"}`,borderRadius:10,padding:"12px 14px",marginBottom:6,background:isWomen?"#FAFAFF":"white",display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+                            <div style={{flex:1,minWidth:160}}>
+                              <div style={{fontWeight:700,fontSize:13,color:isWomen?"#6D28D9":"#1B3A2A"}}>{fc?.[lang]||t.from_city} {arr} {tc?.[lang]||t.to_city}</div>
+                              <div style={{fontSize:11,color:"#888",marginTop:2}}>{formatTime(t.trip_time)} · ${t.price_per_seat}/{lang==="ar"?"مقعد":"seat"} · {t.available_seats} {b.seatsLeft}</div>
+                            </div>
+                            {t.available_seats>0?<button onClick={()=>{if(!user){resetAuth();setPage("login");return;}setSelectedTrip(t);setTripBooked(false);setRatingSubmitted(false);setTripRating(0);setTripBooking({name:profile?.full_name||"",phone:profile?.phone||"",seats:1,payment:"cash"});}} style={{background:isWomen?"#7C3AED":"#1B3A2A",color:"white",border:"none",padding:"7px 14px",borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{b.bookSeat}</button>:<span style={{fontSize:11,fontWeight:700,color:"#991B1B"}}>🔴 {lang==="ar"?"ممتلئة":"Full"}</span>}
+                          </div>
+                        );})}
+                      </div>
+                    ));
+                  })()}
                 </div>)}
                 {searchFrom&&searchTo&&(<div style={{marginTop:20,background:"white",borderRadius:14,border:"1px solid #E8E6E1",padding:"20px"}}>
                   {routeReqSent?(<div style={{textAlign:"center",padding:"8px 0"}}>
@@ -3324,7 +3341,7 @@ const [driverEditing,setDriverEditing]=useState(false);
                 })}
               </div>)}
               <div style={{marginTop:16,paddingTop:16,borderTop:"1px solid #E8E6E1",textAlign:"center"}}>
-                <span style={{fontSize:13,color:"#888"}}>{b.customBook} → </span>
+                <span style={{fontSize:13,color:"#888"}}>{b.customBook} {arr} </span>
                 <span onClick={scrollToCustomBook} style={{fontSize:13,color:"#1B3A2A",fontWeight:700,cursor:"pointer"}}>{b.title}</span>
               </div>
             </div>)}
@@ -3359,7 +3376,7 @@ const [driverEditing,setDriverEditing]=useState(false);
                   <GenderBadge type={selectedTrip.gender_type} lang={lang}/>
                 </div>
                 {(()=>{const fc=gc(selectedTrip.from_city);const tc=gc(selectedTrip.to_city);return(<div style={{background:selectedTrip.gender_type==="women_only"?"#F5F3FF":"#F0F7F3",borderRadius:10,padding:"12px 16px",marginBottom:16}}>
-                  <div style={{fontWeight:800,fontSize:15,color:"#1B3A2A",marginBottom:4}}>{fc?.[lang]||selectedTrip.from_city} {lang==="ar"?"→":"→"} {tc?.[lang]||selectedTrip.to_city}</div>
+                  <div style={{fontWeight:800,fontSize:15,color:"#1B3A2A",marginBottom:4}}>{fc?.[lang]||selectedTrip.from_city} {arr} {tc?.[lang]||selectedTrip.to_city}</div>
                   <div style={{fontSize:12,color:"#555"}}>{selectedTrip.trip_date}{selectedTrip.trip_time?" · "+formatTime(selectedTrip.trip_time):""} · ${selectedTrip.price_per_seat}/{lang==="ar"?"مقعد":"seat"} · {selectedTrip.available_seats} {lang==="ar"?"مقاعد متبقية":"seats left"}</div>
                 </div>);})()}
                 <div style={{marginBottom:12}}><label style={lbl}>{b.name} *</label><input value={tripBooking.name} onChange={e=>setTripBooking({...tripBooking,name:e.target.value})} style={inp}/></div>
@@ -3431,7 +3448,7 @@ const [driverEditing,setDriverEditing]=useState(false);
             {form.payment==="shamcash"&&<div style={{background:"#F0F0F0",borderRadius:12,padding:"16px",marginBottom:18,textAlign:"center"}}><p style={{fontSize:13,fontWeight:700,color:"#888"}}>{b.shamcashSoon}</p></div>}
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:18}}>
               <div><label style={lbl}>{b.date} *</label><input type="date" value={form.date} onChange={e=>setForm({...form,date:e.target.value})} style={inp}/></div>
-              <div><label style={lbl}>{b.time}</label><select value={form.time} onChange={e=>setForm({...form,time:e.target.value})} style={inp}><option value="">--</option>{timeOptions.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}</select></div>
+              <div><label style={lbl}>{b.time}</label><input type="time" value={form.time} onChange={e=>setForm({...form,time:e.target.value})} style={inp}/></div>
             </div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:18}}>
               <div><label style={lbl}>{b.passengers} *</label><select value={form.passengers} onChange={e=>setForm({...form,passengers:e.target.value})} style={inp}>{[1,2,3,4,5,6,7,8,9,10].map(n=><option key={n} value={n}>{n}</option>)}</select></div>
@@ -3457,7 +3474,7 @@ const [driverEditing,setDriverEditing]=useState(false);
             <div>{t.pricing.route}</div><div style={{textAlign:"center"}}>{lang==="ar"?"مقعد / شخص":"Per Seat"}</div><div style={{textAlign:"center"}}>{t.pricing.car}</div><div style={{textAlign:"center"}}>{t.pricing.van}</div>
           </div>
           {pricingRoutes.map((r,i)=>(<div key={i} style={{display:"grid",gridTemplateColumns:"1.8fr 1fr 1fr 1fr",padding:"14px 20px",borderBottom:i<pricingRoutes.length-1?"1px solid #F0EEEA":"none",fontSize:13,transition:"background 0.15s"}} onMouseEnter={e=>e.currentTarget.style.background="#FAFAF8"} onMouseLeave={e=>e.currentTarget.style.background="white"}>
-            <div style={{fontWeight:800,color:"#1B3A2A"}}>{r.from[lang]} → {r.to[lang]}</div>
+            <div style={{fontWeight:800,color:"#1B3A2A"}}>{r.from[lang]} {arr} {r.to[lang]}</div>
             <div style={{textAlign:"center",fontWeight:700}}>${r.seat}</div>
             <div style={{textAlign:"center",fontWeight:700}}>${r.car}</div>
             <div style={{textAlign:"center",fontWeight:700}}>${r.van}</div>
