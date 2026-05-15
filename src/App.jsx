@@ -1603,7 +1603,6 @@ const [driverEditing,setDriverEditing]=useState(false);
   const handleSubmit=()=>{
     if(!user){resetAuth();setPage("login");return;}
     if(!form.from||!form.to||!form.date||!form.name||!form.phone){setError(b.fillAll);return;}
-    if(!route||route.comingSoon||price==null){setError(lang==="ar"?"هذا المسار غير متاح للحجز الخاص حالياً":"This route isn't available for custom booking yet");return;}
     if(form.payment==="shamcash") return;
     setError("");
     const ref=genRef();setBookingRef(ref);
@@ -1612,9 +1611,11 @@ const [driverEditing,setDriverEditing]=useState(false);
     const rtEn=`${fc.en} to ${tc.en}`;
     const tl=eType==="seat"?"Seat":eType==="car"?"Car":"Van";
     const pl=form.payment==="cash"?"Cash":form.payment==="crypto"?"Crypto (USDT)":"Sham Cash";
+    const priceArLine=price!=null?`$${price}`:"يحدد لاحقاً";
+    const priceEnLine=price!=null?`$${price}`:"TBD";
     const msg=lang==="ar"
-      ?`🚗 *طلب حجز جديد - سفّرني*\n\n📋 رقم الحجز: ${ref}\n📍 المسار: ${rt}\n🧾 النوع: ${eType==="seat"?"مقعد":eType==="car"?"سيارة كاملة":"فان"}\n💰 السعر: $${price}\n💳 الدفع: ${form.payment==="cash"?"كاش":form.payment==="crypto"?"عملات رقمية (USDT)":"شام كاش"}\n\n📅 التاريخ: ${form.date}\n⏰ الوقت: ${form.time?formatTime(form.time):"-"}\n👥 عدد الركاب: ${form.passengers}\n🧳 الحقائب: ${form.bags||"0"}\n\n👤 الاسم: ${form.name}\n📞 الهاتف: ${form.phone}\n📝 ملاحظات: ${form.notes||"-"}`
-      :`🚗 *New Booking - Safferni*\n\n📋 Ref: ${ref}\n📍 Route: ${rt}\n🧾 Type: ${tl}\n💰 Price: $${price}\n💳 Payment: ${pl}\n\n📅 Date: ${form.date}\n⏰ Time: ${form.time?formatTime(form.time):"-"}\n👥 Passengers: ${form.passengers}\n🧳 Bags: ${form.bags||"0"}\n\n👤 Name: ${form.name}\n📞 Phone: ${form.phone}\n📝 Notes: ${form.notes||"-"}`;
+      ?`🚗 *طلب حجز جديد - سفّرني*\n\n📋 رقم الحجز: ${ref}\n📍 المسار: ${rt}\n🧾 النوع: ${eType==="seat"?"مقعد":eType==="car"?"سيارة كاملة":"فان"}\n💰 السعر: ${priceArLine}\n💳 الدفع: ${form.payment==="cash"?"كاش":form.payment==="crypto"?"عملات رقمية (USDT)":"شام كاش"}\n\n📅 التاريخ: ${form.date}\n⏰ الوقت: ${form.time?formatTime(form.time):"-"}\n👥 عدد الركاب: ${form.passengers}\n🧳 الحقائب: ${form.bags||"0"}\n\n👤 الاسم: ${form.name}\n📞 الهاتف: ${form.phone}\n📝 ملاحظات: ${form.notes||"-"}`
+      :`🚗 *New Booking - Safferni*\n\n📋 Ref: ${ref}\n📍 Route: ${rt}\n🧾 Type: ${tl}\n💰 Price: ${priceEnLine}\n💳 Payment: ${pl}\n\n📅 Date: ${form.date}\n⏰ Time: ${form.time?formatTime(form.time):"-"}\n👥 Passengers: ${form.passengers}\n🧳 Bags: ${form.bags||"0"}\n\n👤 Name: ${form.name}\n📞 Phone: ${form.phone}\n📝 Notes: ${form.notes||"-"}`;
     window.open(`https://wa.me/${WA_PHONE}?text=${encodeURIComponent(msg)}`,"_blank");
     setSubmitted(true);
     setForm({from:"",to:"",type:"car",date:"",time:"",name:"",phone:"",passengers:"1",bags:"0",notes:"",payment:"cash"});
@@ -3281,7 +3282,6 @@ const [driverEditing,setDriverEditing]=useState(false);
                 {[["seat",b.seat],["car",b.car],["van",b.van]].map(([k,l])=>(<button key={k} onClick={()=>setForm({...form,type:k})} style={{flex:1,minWidth:130,padding:"11px 10px",borderRadius:10,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit",border:"2px solid",transition:"all 0.2s",borderColor:eType===k?"#1B3A2A":"#E8E6E1",background:eType===k?"#1B3A2A":"white",color:eType===k?"white":"#666"}}>{l}</button>))}
               </div>
             </div>
-            {route?.comingSoon&&form.to&&<div style={{background:"#FFF3CD",border:"1px solid #FFE082",borderRadius:12,padding:"14px 20px",marginBottom:18,textAlign:"center"}}><span style={{fontSize:14,fontWeight:700,color:"#92400E"}}>🚧 {lang==="ar"?"هذا المسار قريباً":"This route is coming soon"}</span></div>}
             {price!==null&&<div style={{background:"linear-gradient(135deg,#F0F7F3,#E8F5ED)",borderRadius:12,padding:"14px 20px",marginBottom:18,display:"flex",justifyContent:"space-between",alignItems:"center"}}><span style={{fontSize:13,fontWeight:700,color:"#555"}}>{b.price}</span><span style={{fontSize:28,fontWeight:900,color:"#1B3A2A"}}>${price}</span></div>}
             <div style={{marginBottom:18}}><label style={lbl}>{b.payment} *</label>
               <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
