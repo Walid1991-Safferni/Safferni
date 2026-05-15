@@ -1024,12 +1024,18 @@ const [driverEditing,setDriverEditing]=useState(false);
   };
 
   const loadAdminData=async()=>{
-    const{data:apps}=await supabase.from("driver_applications").select("*").order("created_at",{ascending:false});
+    const[{data:apps},{data:drivers},{data:edits},{data:idQ},{data:routeReqs}]=await Promise.all([
+      supabase.from("driver_applications").select("*").order("created_at",{ascending:false}),
+      supabase.from("profiles").select("*").eq("role","driver"),
+      supabase.from("trip_edit_requests").select("*, trips(from_city,to_city,trip_date,trip_time)").eq("status","pending").order("created_at",{ascending:false}),
+      supabase.from("profiles").select("id,full_name,id_photo_url,id_verified,id_verification_pending").eq("id_verification_pending",true),
+      supabase.from("route_requests").select("*").order("created_at",{ascending:false}),
+    ]);
     setApplications(apps||[]);
-    const{data:drivers}=await supabase.from("profiles").select("*").eq("role","driver");
     setAdminDrivers(drivers||[]);
-    const{data:edits}=await supabase.from("trip_edit_requests").select("*, trips(from_city,to_city,trip_date,trip_time)").eq("status","pending").order("created_at",{ascending:false});
     setEditRequests(edits||[]);
+    setAdminIdQueue(idQ||[]);
+    setAdminRouteRequests(routeReqs||[]);
     const{data:allTrips}=await supabase.from("trips").select("*").order("trip_date",{ascending:false});
     // Auto-complete active trips whose date has passed
     const today=new Date().toISOString().split("T")[0];
@@ -1393,7 +1399,7 @@ const [driverEditing,setDriverEditing]=useState(false);
     const valid=await validateTrip(managerSelectedDriver.id);
     if(!valid) return;
     const weeks=Math.min(Math.max(parseInt(tripForm.repeatWeeks)||1,1),12);
-    const base={driver_id:managerSelectedDriver.id,from_city:tripForm.from,to_city:tripForm.to,trip_time:tripForm.time||null,price_per_seat:parseFloat(tripForm.pricePerSeat),total_seats:parseInt(tripForm.totalSeats),available_seats:parseInt(tripForm.totalSeats),car_type:tripForm.carType||managerSelectedDriver.car_type||"",gender_type:tripForm.genderType,approved:false,status:"pending",created_by:user.id};
+    const base={driver_id:managerSelectedDriver.id,from_city:tripForm.from,to_city:tripForm.to,trip_time:tripForm.time||null,price_per_seat:parseFloat(tripForm.pricePerSeat),total_seats:parseInt(tripForm.totalSeats),available_seats:parseInt(tripForm.totalSeats),car_type:tripForm.carType||managerSelectedDriver.car_type||"",gender_type:tripForm.genderType,approved:true,status:"active",created_by:user.id};
     const rows=Array.from({length:weeks},(_,i)=>{const d=new Date(tripForm.date);d.setDate(d.getDate()+i*7);return{...base,trip_date:d.toISOString().split("T")[0]};});
     const{error}=await supabase.from("trips").insert(rows);
     if(!error){setTripSuccess(true);setTimeout(()=>setTripSuccess(false),3000);setTripForm({from:"",to:"",date:"",time:"",pricePerSeat:"",totalSeats:"4",carType:"",genderType:"mixed",repeatWeeks:"1"});loadManagerDriverData(managerSelectedDriver.id);}
@@ -2201,11 +2207,53 @@ const [driverEditing,setDriverEditing]=useState(false);
               </div>
             </div>
           );})()}
-          <div style={{display:"flex",gap:8,marginBottom:28,justifyContent:"center",flexWrap:"wrap"}}>
-            {[["requests",lang==="ar"?"الطلبات 📥":"Requests 📥"],["routeRequests",lang==="ar"?"طلبات المسارات 🗺️":"Route Requests 🗺️"],["drivers",adm.drivers],["allTrips",adm.allTrips],["promoCodes",lang==="ar"?"كودات الخصم":"Promo Codes"],["idVerification",lang==="ar"?"التحقق من الهوية 🪪":"ID Verification 🪪"],["managers",lang==="ar"?"المديرون 🗂️":"Managers 🗂️"],["activity",lang==="ar"?"سجل النشاط 📋":"Activity Log 📋"]].map(([k,l])=>(
-              <button key={k} onClick={()=>setAdminTab(k)} style={{padding:"10px 20px",borderRadius:10,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",border:"2px solid",borderColor:adminTab===k?"#1B3A2A":"#E8E6E1",background:adminTab===k?"#1B3A2A":"white",color:adminTab===k?"white":"#666"}}>{l}</button>
-            ))}
-          </div>
+          {(()=>{
+            const pendingApps=applications.filter(a=>a.status==="pending").length;
+            const pendingIds=adminIdQueue.length;
+            const pendingRoutes=adminRouteRequests.length;
+            const pendingEdits=editRequests.length;
+            const pendingTripApprovals=adminAllTrips.filter(t=>t.status==="pending").length;
+            const totalPending=pendingApps+pendingIds+pendingRoutes+pendingEdits+pendingTripApprovals;
+            const chip=(label,count,target,icon)=>(
+              <button key={label} onClick={()=>setAdminTab(target)} style={{display:"flex",alignItems:"center",gap:6,padding:"8px 14px",borderRadius:20,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",border:"1.5px solid",borderColor:count>0?"#F59E0B":"#E8E6E1",background:count>0?"#FFF7ED":"#FAFAF8",color:count>0?"#92400E":"#888"}}>
+                <span>{icon}</span><span>{label}</span><span style={{background:count>0?"#F59E0B":"#D1D5DB",color:"white",borderRadius:20,padding:"1px 8px",fontSize:11,fontWeight:900,minWidth:18,textAlign:"center"}}>{count}</span>
+              </button>
+            );
+            const groups=[
+              {label:lang==="ar"?"الصندوق":"Inbox",tabs:[["requests",lang==="ar"?"الطلبات 📥":"Requests 📥",pendingApps],["idVerification",lang==="ar"?"التحقق من الهوية 🪪":"ID Verification 🪪",pendingIds],["routeRequests",lang==="ar"?"طلبات المسارات 🗺️":"Route Requests 🗺️",pendingRoutes],["activity",lang==="ar"?"سجل النشاط 📋":"Activity 📋",pendingEdits]]},
+              {label:lang==="ar"?"العمليات":"Operations",tabs:[["allTrips",adm.allTrips,pendingTripApprovals],["drivers",adm.drivers,0],["managers",lang==="ar"?"المديرون 🗂️":"Managers 🗂️",0]]},
+              {label:lang==="ar"?"الإعدادات":"Config",tabs:[["promoCodes",lang==="ar"?"كودات الخصم":"Promo Codes",0]]},
+            ];
+            return(<>
+              <div style={{background:"white",borderRadius:14,padding:"16px 20px",border:"1px solid #E8E6E1",marginBottom:16,display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+                <span style={{fontSize:12,fontWeight:800,color:"#1B3A2A",textTransform:"uppercase",letterSpacing:0.5,marginInlineEnd:4}}>{lang==="ar"?"📥 الصندوق":"📥 Inbox"}</span>
+                {totalPending===0
+                  ?<span style={{fontSize:13,color:"#888",fontWeight:600}}>{lang==="ar"?"لا شيء بانتظار إجراء — كل شيء على ما يرام ✓":"Nothing waiting — you're all caught up ✓"}</span>
+                  :<>
+                    {chip(lang==="ar"?"طلبات سائقين":"Applications",pendingApps,"requests","📥")}
+                    {chip(lang==="ar"?"تحقق الهوية":"ID Verification",pendingIds,"idVerification","🪪")}
+                    {chip(lang==="ar"?"موافقات الرحلات":"Trip Approvals",pendingTripApprovals,"allTrips","🚗")}
+                    {chip(lang==="ar"?"طلبات تعديل وقت":"Time Edits",pendingEdits,"activity","⏰")}
+                    {chip(lang==="ar"?"طلبات مسارات":"Route Requests",pendingRoutes,"routeRequests","🗺️")}
+                  </>}
+              </div>
+              <div style={{marginBottom:24,display:"flex",flexDirection:"column",gap:10}}>
+                {groups.map(g=>(
+                  <div key={g.label} style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+                    <span style={{fontSize:10,fontWeight:800,color:"#888",textTransform:"uppercase",letterSpacing:0.6,minWidth:90}}>{g.label}</span>
+                    <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                      {g.tabs.map(([k,l,count])=>(
+                        <button key={k} onClick={()=>setAdminTab(k)} style={{display:"flex",alignItems:"center",gap:6,padding:"9px 16px",borderRadius:10,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",border:"2px solid",borderColor:adminTab===k?"#1B3A2A":"#E8E6E1",background:adminTab===k?"#1B3A2A":"white",color:adminTab===k?"white":"#666"}}>
+                          <span>{l}</span>
+                          {count>0&&<span style={{background:adminTab===k?"#F59E0B":"#FEE2E2",color:adminTab===k?"white":"#991B1B",borderRadius:20,padding:"1px 7px",fontSize:10,fontWeight:900}}>{count}</span>}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>);
+          })()}
 
           {adminTab==="requests"&&(<div>
             <div style={{display:"flex",gap:20,alignItems:"flex-start",flexWrap:"wrap"}}>
